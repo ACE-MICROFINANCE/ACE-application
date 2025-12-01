@@ -1,0 +1,34 @@
+import { Module } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { PassportModule } from '@nestjs/passport';
+import type { SignOptions } from 'jsonwebtoken';
+import { AuthService } from './auth.service';
+import { AuthController } from './auth.controller';
+import { JwtAccessStrategy } from './strategies/jwt-access.strategy';
+import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
+import { CustomersModule } from '../customers/customers.module';
+import { PrismaService } from '../../database/prisma.service';
+
+@Module({
+  imports: [
+    PassportModule,
+    CustomersModule,
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => {
+        const secret = configService.getOrThrow<string>('jwt.accessSecret');
+        const expiresIn = (configService.get<string>('jwt.accessExpiresIn') ?? '15m') as SignOptions['expiresIn'];
+
+        return {
+          secret,
+          signOptions: { expiresIn },
+        };
+      },
+      inject: [ConfigService],
+    }),
+  ],
+  controllers: [AuthController],
+  providers: [AuthService, JwtAccessStrategy, JwtRefreshStrategy, PrismaService],
+})
+export class AuthModule {}

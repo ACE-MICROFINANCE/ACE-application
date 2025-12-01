@@ -1,0 +1,11 @@
+{
+  "expo": {
+    "name": "ACE Farmer",
+    "slug": "ace-farmer",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "jsEngine": "hermes",
+    "platforms": ["ios", "android"],
+    "assetBundlePatterns": ["**/*"]
+  }
+}

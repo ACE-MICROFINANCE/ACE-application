@@ -1,0 +1,55 @@
+# Root
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.swp
+*.swo
+node_modules/
+dist/
+build/
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Backend (NestJS/Prisma)
+/backend/dist/
+/backend/node_modules/
+/backend/.env
+/backend/.env.local
+/backend/prisma/*.db
+/backend/prisma/*-journal
+/backend/prisma/dev.db*
+/backend/prisma/migrations/
+
+# Web (Next.js)
+/web/.next/
+/web/node_modules/
+/web/.env
+/web/.env.local
+/web/.turbo/
+
+# Mobile (Expo/React Native)
+/mobile/.expo/
+/mobile/.expo-shared/
+/mobile/.expo/*
+/mobile/.expo-shared/*
+/mobile/node_modules/
+/mobile/.env
+/mobile/.env.local
+/mobile/android/
+/mobile/ios/
+/mobile/web-build/
+
+# IDE/editor
+.vscode/
+.idea/
+*.iml
+*.code-workspace
+
+# OS
+ehthumbs.db
+Icon?
+Desktop.ini

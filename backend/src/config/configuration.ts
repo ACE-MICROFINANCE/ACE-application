@@ -8,4 +8,16 @@ export default () => ({
     accessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN || '15m',
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
   },
+  admin: {
+    apiKey: process.env.ADMIN_API_KEY,
+  },
+  weather: {
+    apiKey: process.env.WEATHER_API_KEY,
+    baseUrl: process.env.WEATHER_API_BASE_URL,
+  },
+  payment: {
+    bankBin: process.env.PAYMENT_BANK_BIN,
+    accountNumber: process.env.PAYMENT_BANK_ACCOUNT_NO,
+    accountName: process.env.PAYMENT_BANK_ACCOUNT_NAME,
+  },
 });

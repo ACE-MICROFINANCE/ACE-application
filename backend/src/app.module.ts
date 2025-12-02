@@ -2,9 +2,16 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import configuration from './config/configuration';
 import { ConfigValidationSchema } from './config/config.module';
-import { PrismaService } from './database/prisma.service';
+import { PrismaModule } from './database/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CustomersModule } from './modules/customers/customers.module';
+import { AdminModule } from './modules/admin/admin.module';
+import { LoansModule } from './modules/loans/loans.module';
+import { SavingsModule } from './modules/savings/savings.module';
+import { EventsModule } from './modules/events/events.module';
+import { FeedbackModule } from './modules/feedback/feedback.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { WeatherModule } from './weather/weather.module';
 
 @Module({
   imports: [
@@ -13,9 +20,16 @@ import { CustomersModule } from './modules/customers/customers.module';
       load: [configuration],
       validationSchema: ConfigValidationSchema,
     }),
+    PrismaModule,
     AuthModule,
     CustomersModule,
+    AdminModule,
+    LoansModule,
+    SavingsModule,
+    EventsModule,
+    FeedbackModule,
+    DashboardModule,
+    WeatherModule,
   ],
-  providers: [PrismaService],
 })
 export class AppModule {}

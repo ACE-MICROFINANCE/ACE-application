@@ -4,20 +4,20 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
+import { motion, AnimatePresence } from 'framer-motion';
 import { AceInput } from '@/share/ui/AceInput';
 import { AceButton } from '@/share/ui/AceButton';
 import { FormErrorText } from '@/share/ui/FormErrorText';
-import { motion, AnimatePresence } from 'framer-motion';
 
 type ForgotPasswordFormValues = {
-  customerId: string;
+  memberNo: string;
 };
 
 const schema = yup.object({
-  customerId: yup
+  memberNo: yup
     .string()
     .required('Mã khách hàng bắt buộc')
-    .matches(/^[0-9]+$/, 'Mã khách hàng chỉ gồm số.'),
+    .matches(/^[0-9]+$/, 'Mã khách hàng chỉ gồm chữ số.'),
 });
 
 export const ForgotPasswordForm = () => {
@@ -33,7 +33,7 @@ export const ForgotPasswordForm = () => {
 
   const onSubmit = (values: ForgotPasswordFormValues) => {
     setInfo(
-      'Tính năng quên mật khẩu hiện đang được phát triển. Vui lòng liên hệ cán bộ ACE để được hỗ trợ.',
+      'Tính năng quên mật khẩu đang được phát triển. Vui lòng liên hệ cán bộ ACE để được hỗ trợ cấp lại mật khẩu tạm thời.',
     );
     return values;
   };
@@ -41,18 +41,18 @@ export const ForgotPasswordForm = () => {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
       <div className="space-y-2">
-        <label htmlFor="customerId" className="text-sm font-medium text-[#333]">
+        <label htmlFor="memberNo" className="text-sm font-medium text-[#333]">
           Mã khách hàng
         </label>
         <AceInput
-          id="customerId"
+          id="memberNo"
           placeholder="Nhập mã khách hàng"
           inputMode="numeric"
           pattern="[0-9]*"
-          error={Boolean(errors.customerId)}
-          {...register('customerId')}
+          error={Boolean(errors.memberNo)}
+          {...register('memberNo')}
         />
-        <FormErrorText>{errors.customerId?.message}</FormErrorText>
+        <FormErrorText>{errors.memberNo?.message}</FormErrorText>
       </div>
 
       <AceButton
@@ -77,4 +77,7 @@ export const ForgotPasswordForm = () => {
       </AnimatePresence>
     </form>
   );
+
+  // TODO: replaced by ACE Farmer implementation
+  // Form cũ dùng customerId và thông báo lỗi mã hóa; đã cập nhật sang memberNo và tiếng Việt rõ ràng.
 };

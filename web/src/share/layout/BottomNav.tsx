@@ -29,7 +29,7 @@ export const BottomNav = () => {
     return 'home';
   }, [pathname, searchParams]);
 
-  const handleClick = (item: typeof navItems[number]) => {
+  const handleClick = (item: (typeof navItems)[number]) => {
     if (activeKey === item.key) {
       router.push('/dashboard');
       return;
@@ -70,4 +70,7 @@ export const BottomNav = () => {
       </div>
     </div>
   );
+
+  // TODO: replaced by ACE Farmer implementation
+  // Các nhãn điều hướng cũ (mã hóa lỗi) đã được thay bằng tiếng Việt chuẩn.
 };

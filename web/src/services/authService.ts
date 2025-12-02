@@ -3,14 +3,21 @@
 import { axiosClient } from '@/lib/axiosClient';
 
 export interface Customer {
-  id: string;
-  customerId: string;
+  id: string | number;
+  memberNo: string;
   fullName: string;
   mustChangePassword?: boolean;
+  gender?: string | null;
+  idCardNumber?: string | null;
+  phoneNumber?: string | null;
+  groupName?: string | null;
+  groupCode?: string | null;
+  villageName?: string | null;
+  membershipStartDate?: string | null;
 }
 
 export interface LoginRequest {
-  customerId: string;
+  memberNo: string;
   password: string;
 }
 
@@ -22,8 +29,9 @@ export interface LoginResponse {
 }
 
 export interface ChangePasswordRequest {
-  oldPassword?: string;
+  oldPassword: string;
   newPassword: string;
+  confirmPassword: string;
 }
 
 export interface ChangePasswordResponse {
@@ -54,7 +62,7 @@ const changePassword = async (
 };
 
 const getMe = async (): Promise<Customer> => {
-  const response = await axiosClient.get<Customer>('/auth/me');
+  const response = await axiosClient.get<Customer>('/me');
   return response.data;
 };
 

@@ -1,29 +1,66 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
-import { hashPassword } from '../../utils/password.util';
 
 @Injectable()
 export class CustomersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findByCustomerId(customerId: string) {
-    return this.prisma.customer.findUnique({ where: { customerId } });
+  private mapProfile(customer: Prisma.CustomerGetPayload<{ include: { credential: true } }>) {
+    return {
+      id: Number(customer.id),
+      memberNo: customer.memberNo,
+      fullName: customer.fullName,
+      gender: customer.gender,
+      idCardNumber: customer.idCardNumber,
+      phoneNumber: customer.phoneNumber,
+      locationType: customer.locationType,
+      villageName: customer.villageName,
+      groupCode: customer.groupCode,
+      groupName: customer.groupName,
+      membershipStartDate: customer.membershipStartDate,
+      mustChangePassword: customer.credential?.mustChangePassword ?? true,
+    };
   }
 
-  async findById(id: string) {
-    return this.prisma.customer.findUnique({ where: { id } });
-  }
+  async getProfile(customerId: string | bigint) {
+    const id = typeof customerId === 'string' ? BigInt(customerId) : customerId;
+    const customer = await this.prisma.customer.findUnique({
+      where: { id },
+      include: { credential: true },
+    });
 
-  async updatePassword(id: string, newPassword: string) {
-    const customer = await this.findById(id);
     if (!customer) {
       throw new NotFoundException('Customer not found');
     }
 
-    const passwordHash = await hashPassword(newPassword);
-    return this.prisma.customer.update({
-      where: { id },
-      data: { passwordHash, mustChangePassword: false },
-    });
+    return this.mapProfile(customer);
+  }
+
+  async createCustomer(
+    data: Prisma.CustomerCreateInput,
+    passwordHash: string,
+    mustChangePassword = true,
+  ) {
+    try {
+      const customer = await this.prisma.customer.create({
+        data: {
+          ...data,
+          credential: {
+            create: {
+              passwordHash,
+              mustChangePassword,
+            },
+          },
+        },
+        include: { credential: true },
+      });
+      return this.mapProfile(customer);
+    } catch (error: any) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException('Customer with this memberNo already exists');
+      }
+      throw error;
+    }
   }
 }

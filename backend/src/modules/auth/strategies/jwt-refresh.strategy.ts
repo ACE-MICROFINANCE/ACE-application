@@ -21,10 +21,12 @@ export class JwtRefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh'
       jwtFromRequest: ExtractJwt.fromExtractors([cookieOrBodyExtractor]),
       ignoreExpiration: false,
       secretOrKey: configService.get<string>('jwt.refreshSecret'),
+      passReqToCallback: true,
     });
   }
 
-  validate(payload: JwtPayload) {
-    return { userId: payload.sub, customerId: payload.customerId };
+  validate(req: any, payload: JwtPayload) {
+    const refreshToken = cookieOrBodyExtractor(req);
+    return { userId: payload.sub, memberNo: payload.memberNo, refreshToken };
   }
 }

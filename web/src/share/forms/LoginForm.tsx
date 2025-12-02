@@ -14,19 +14,19 @@ import { routes } from '@/lib/routes';
 import { useAuth } from '@/hooks/useAuth';
 
 type LoginFormValues = {
-  customerId: string;
+  memberNo: string;
   password: string;
 };
 
 const schema = yup.object({
-  customerId: yup
+  memberNo: yup
     .string()
     .required('Mã khách hàng bắt buộc')
-    .matches(/^[0-9]+$/, 'Mã khách hàng chỉ gồm số.'),
+    .matches(/^[0-9]+$/, 'Mã khách hàng chỉ gồm chữ số.'),
   password: yup
     .string()
     .required('Mật khẩu bắt buộc')
-    .matches(/^[0-9]+$/, 'Mật khẩu chỉ gồm số.')
+    .matches(/^[0-9]+$/, 'Mật khẩu chỉ gồm chữ số.')
     .min(6, 'Mật khẩu phải tối thiểu 6 số'),
 });
 
@@ -47,8 +47,8 @@ export const LoginForm = () => {
   const onSubmit = async (values: LoginFormValues) => {
     setSubmitError('');
     try {
-      const result = await login(values);
-      if (result.mustChangePassword) {
+      const result = await login({ memberNo: values.memberNo, password: values.password });
+      if (result.customer?.mustChangePassword) {
         router.replace(routes.changePassword);
       } else {
         router.replace(routes.dashboard);
@@ -65,18 +65,18 @@ export const LoginForm = () => {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
       <div className="space-y-2">
-        <label htmlFor="customerId" className="text-sm font-medium text-[#333]">
+        <label htmlFor="memberNo" className="text-sm font-medium text-[#333]">
           Mã khách hàng
         </label>
         <AceInput
-          id="customerId"
+          id="memberNo"
           placeholder="Nhập mã khách hàng"
           inputMode="numeric"
           pattern="[0-9]*"
-          error={Boolean(errors.customerId)}
-          {...register('customerId')}
+          error={Boolean(errors.memberNo)}
+          {...register('memberNo')}
         />
-        <FormErrorText>{errors.customerId?.message}</FormErrorText>
+        <FormErrorText>{errors.memberNo?.message}</FormErrorText>
       </div>
 
       <div className="space-y-2">
@@ -120,4 +120,7 @@ export const LoginForm = () => {
       </div>
     </form>
   );
+
+  // TODO: replaced by ACE Farmer implementation
+  // Mẫu đăng nhập cũ đã được thay bằng phiên bản dùng memberNo & thông báo tiếng Việt.
 };

@@ -133,8 +133,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
       customer: payload.customer,
       accessToken: payload.accessToken,
       refreshToken: payload.refreshToken,
-      mustChangePassword:
-        'mustChangePassword' in payload ? Boolean(payload.mustChangePassword) : false,
+      mustChangePassword: Boolean(payload.customer?.mustChangePassword),
     };
 
     authStore.setAuth(nextAuth);

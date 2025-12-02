@@ -11,3 +11,16 @@ export const comparePassword = async (
 ): Promise<boolean> => {
   return bcrypt.compare(password, hash);
 };
+
+/**
+ * Generates a random numeric password with length between minLength and maxLength.
+ */
+export const generateNumericPassword = (minLength = 6, maxLength = 8): string => {
+  const length =
+    minLength + Math.floor(Math.random() * (maxLength - minLength + 1));
+  let result = '';
+  for (let i = 0; i < length; i += 1) {
+    result += Math.floor(Math.random() * 10).toString();
+  }
+  return result;
+};

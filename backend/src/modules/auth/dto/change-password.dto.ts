@@ -1,15 +1,21 @@
-import { IsNotEmpty, IsOptional, IsString, MinLength, Matches } from 'class-validator';
+import { IsNotEmpty, IsString, Matches, MinLength } from 'class-validator';
 
 export class ChangePasswordDto {
   @IsString()
-  @IsOptional()
-  oldPassword?: string;
+  @IsNotEmpty()
+  @MinLength(6)
+  @Matches(/^[0-9]+$/, { message: 'oldPassword must be numeric and at least 6 digits' })
+  oldPassword!: string;
 
   @IsString()
   @IsNotEmpty()
   @MinLength(6)
-  @Matches(/^[0-9]+$/, {
-    message: 'Mật khẩu mới phải là số và tối thiểu 6 ký tự',
-  })
+  @Matches(/^[0-9]+$/, { message: 'newPassword must be numeric and at least 6 digits' })
   newPassword!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(6)
+  @Matches(/^[0-9]+$/, { message: 'confirmPassword must be numeric and at least 6 digits' })
+  confirmPassword!: string;
 }

@@ -59,6 +59,7 @@ export const ChangePasswordForm = () => {
       const response = await authService.changePassword({
         oldPassword: values.oldPassword,
         newPassword: values.newPassword,
+        confirmPassword: values.confirmNewPassword,
       });
       setTokensAndCustomerFromLoginResponse(response);
       setMustChangePassword(false);
@@ -143,4 +144,7 @@ export const ChangePasswordForm = () => {
       </AceButton>
     </form>
   );
+
+  // TODO: replaced by ACE Farmer implementation
+  // Form đổi mật khẩu cũ đã được cập nhật để gửi đủ old/new/confirm và hiển thị tiếng Việt.
 };

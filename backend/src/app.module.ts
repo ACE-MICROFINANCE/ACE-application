@@ -5,6 +5,7 @@ import { ConfigValidationSchema } from './config/config.module';
 import { PrismaService } from './database/prisma.service';
 import { AuthModule } from './modules/auth/auth.module';
 import { CustomersModule } from './modules/customers/customers.module';
+import { WeatherModule } from './weather/weather.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { CustomersModule } from './modules/customers/customers.module';
     }),
     AuthModule,
     CustomersModule,
+    WeatherModule,
   ],
   providers: [PrismaService],
 })

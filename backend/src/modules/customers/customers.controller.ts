@@ -1,11 +1,14 @@
-import { Controller, Get, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Req, UseGuards } from '@nestjs/common';
+import { JwtAccessGuard } from '../../common/guards/jwt-access.guard';
+import { CustomersService } from './customers.service';
 
-@Controller('customers')
+@Controller()
 export class CustomersController {
-  @Get()
-  @HttpCode(HttpStatus.NOT_IMPLEMENTED)
-  // TODO: Admin-only customer management endpoints can be implemented here.
-  listPlaceholder() {
-    return { message: 'Customer admin endpoints are not implemented yet.' };
+  constructor(private readonly customersService: CustomersService) {}
+
+  @UseGuards(JwtAccessGuard)
+  @Get('me')
+  async me(@Req() req: any) {
+    return this.customersService.getProfile(req.user.userId);
   }
 }

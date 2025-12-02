@@ -8,12 +8,122 @@ datasource db {
 }
 
 model Customer {
-  id                 String   @id @default(cuid())
-  customerId         String   @unique
-  fullName           String
-  phone              String?
+  id                  BigInt   @id @default(autoincrement())
+  memberNo            String   @unique                     // numeric string used to login
+  fullName            String
+  gender              String?
+  idCardNumber        String?
+  phoneNumber         String?
+  locationType        String?                             // "Rural"/"Urban"
+  villageName         String?                             // Ward/Village
+  groupCode           String?
+  groupName           String?
+  membershipStartDate DateTime?
+  isActive            Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  credential     CustomerCredential?
+  refreshTokens  RefreshToken[]
+  loans          Loan[]
+  savings        CustomerSavings[]
+  feedbacks      Feedback[]
+}
+
+model CustomerCredential {
+  customerId         BigInt  @id
   passwordHash       String
-  mustChangePassword Boolean  @default(true)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  mustChangePassword Boolean @default(true)
+  passwordUpdatedAt  DateTime?
+  lastLoginAt        DateTime?
+
+  customer Customer @relation(fields: [customerId], references: [id])
+}
+
+model RefreshToken {
+  id         BigInt   @id @default(autoincrement())
+  customerId BigInt
+  tokenHash  String
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  createdAt  DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id])
+}
+
+model Loan {
+  id                        BigInt   @id @default(autoincrement())
+  customerId                BigInt
+  loanNo                    String   @unique
+  externalLoanId            String?
+  productName               String?
+  loanCycle                 Int?
+  principalAmount           Decimal
+  interestRate              Decimal
+  termInstallments          Int?
+  disbursementDate          DateTime?
+  maturityDate              DateTime?
+  totalPrincipalOutstanding Decimal?
+  totalInterestOutstanding  Decimal?
+  status                    String   @default("ACTIVE")
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  customer     Customer          @relation(fields: [customerId], references: [id])
+  installments LoanInstallment[]
+}
+
+model LoanInstallment {
+  id            BigInt   @id @default(autoincrement())
+  loanId        BigInt
+  installmentNo Int
+  dueDate       DateTime
+  principalDue  Decimal
+  interestDue   Decimal
+  status        String   @default("PENDING")
+  createdAt     DateTime @default(now())
+
+  loan Loan @relation(fields: [loanId], references: [id])
+
+  @@unique([loanId, installmentNo])
+}
+
+model CustomerSavings {
+  id                BigInt   @id @default(autoincrement())
+  customerId        BigInt
+  type              String
+  principalAmount   Decimal  @default(0)
+  currentBalance    Decimal  @default(0)
+  interestAccrued   Decimal  @default(0)
+  lastDepositAmount Decimal?
+  lastDepositDate   DateTime?
+  importedAt        DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id])
+
+  @@unique([customerId, type])
+}
+
+model Event {
+  id          BigInt   @id @default(autoincrement())
+  title       String
+  description String?
+  eventType   String
+  startDate   DateTime
+  endDate     DateTime?
+  scope       String   @default("GLOBAL")
+  groupCode   String?
+  villageName String?
+  importedAt  DateTime @default(now())
+}
+
+model Feedback {
+  id           BigInt   @id @default(autoincrement())
+  customerId   BigInt
+  content      String
+  createdAt    DateTime @default(now())
+  status       String   @default("NEW")
+  exportBatchId Int?
+
+  customer Customer @relation(fields: [customerId], references: [id])
 }

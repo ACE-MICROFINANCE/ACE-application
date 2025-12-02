@@ -43,8 +43,15 @@ export default function SavingPage() {
     }
   }, [isAuthenticated, isInitializing, mustChangePassword, router]);
 
-  const compulsory = useMemo(() => savings.find((item) => item.type === 'COMPULSORY'), [savings]);
-  const voluntary = useMemo(() => savings.find((item) => item.type === 'VOLUNTARY'), [savings]);
+  const safeSavings = Array.isArray(savings) ? savings : [];
+  const compulsory = useMemo(
+    () => safeSavings.find((item) => item.type === 'COMPULSORY'),
+    [safeSavings],
+  );
+  const voluntary = useMemo(
+    () => safeSavings.find((item) => item.type === 'VOLUNTARY'),
+    [safeSavings],
+  );
 
   const renderCard = (item: SavingsItem, label: string, tone: 'red' | 'green') => {
     const baseColor = tone === 'red' ? 'bg-red-100' : 'bg-[#8fdba9]';

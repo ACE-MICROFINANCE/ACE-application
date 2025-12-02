@@ -5,6 +5,7 @@
 - Authentication: numeric `memberNo` + numeric password (>= 6 digits). Access token short-lived, refresh token long-lived and stored hashed in DB. Flag `mustChangePassword` forces password rotation after first login or admin reset.
 - Admin protection: header `X-ADMIN-KEY` must match `ADMIN_API_KEY` in `.env`.
 - Information screen is **frontend-only** for now: no `/info` API; only feedback is stored.
+- Loan QR: `/loan/current` builds VietQR payload (`bankBin`, `accountNumber`, `accountName`, `description`, `amount`) from env `PAYMENT_BANK_BIN`, `PAYMENT_BANK_ACCOUNT_NO`, `PAYMENT_BANK_ACCOUNT_NAME`.
 
 ## Data Model (Prisma)
 - **Customer**: id (BigInt), `memberNo` (unique), `fullName`, optional gender/idCardNumber/phoneNumber/locationType/villageName/groupCode/groupName, `membershipStartDate`, `isActive`, timestamps.
@@ -92,8 +93,18 @@ Auth header for protected endpoints: `Authorization: Bearer <accessToken>`.
     "principalAmount": 30000000,
     "remainingPrincipal": 27000000,
     "interestRate": 3,
-    "nextPayment": { "dueDate": "2025-12-08T00:00:00.000Z", "principalDue": 3000000, "interestDue": 0 },
-    "qrPayload": "ACE|L001|2025-12-08T00:00:00.000Z|3000000"
+    "nextPayment": {
+      "dueDate": "2025-12-08T00:00:00.000Z",
+      "principalDue": 3000000,
+      "interestDue": 0
+    },
+    "qrPayload": {
+      "bankBin": "970415",
+      "accountNumber": "1234567890",
+      "accountName": "ACE FARMER",
+      "description": "100001 NGUYEN VAN A",
+      "amount": 3000000
+    }
   }
   ```
 
@@ -154,6 +165,12 @@ Run seed: `npm run prisma:seed` (after migrations and generate).
 1) `cd backend`  
 2) `npm install`  
 3) Create `.env` from `.env.example` and fill `DATABASE_URL`, JWT secrets, expiry, `ADMIN_API_KEY`.  
+   Payment QR:
+   ```
+   PAYMENT_BANK_BIN=970415
+   PAYMENT_BANK_ACCOUNT_NO=1234567890
+   PAYMENT_BANK_ACCOUNT_NAME=ACE FARMER
+   ```
 4) Prisma:
    - `npx prisma migrate dev` (or `npm run prisma:migrate`)
    - `npx prisma generate`

@@ -92,13 +92,14 @@ export default function SchedulePage() {
         </div>
       );
     }
-    if (!events.length) {
+    const safeEvents = Array.isArray(events) ? events : [];
+    if (!safeEvents.length) {
       return <p className="text-center text-sm text-[#666]">Chưa có sự kiện sắp tới.</p>;
     }
 
     return (
       <div className="space-y-3">
-        {events.map((event) => (
+        {safeEvents.map((event) => (
           <button
             key={event.id}
             onClick={() => setSelectedId(event.id)}

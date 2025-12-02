@@ -35,7 +35,7 @@ export const DashboardRemindersCard = () => {
         ]);
         if (!mounted) return;
         if (loanData) setLoan(loanData);
-        setEvents(scheduleData ?? []);
+        setEvents(Array.isArray(scheduleData) ? scheduleData : []);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -55,10 +55,11 @@ export const DashboardRemindersCard = () => {
       ];
     }
 
+    const safeEvents = Array.isArray(events) ? events : [];
     const items: ReminderItem[] = [];
 
     // Farming task
-    const farming = findNearest(events, 'FARMING_TASK');
+    const farming = findNearest(safeEvents, 'FARMING_TASK');
     if (farming) {
       const diff = daysUntil(new Date(farming.startDate));
       const text =
@@ -89,7 +90,7 @@ export const DashboardRemindersCard = () => {
     }
 
     // Meeting
-    const meeting = findNearest(events, 'MEETING');
+    const meeting = findNearest(safeEvents, 'MEETING');
     if (meeting) {
       const diff = daysUntil(new Date(meeting.startDate));
       const text =
@@ -125,6 +126,7 @@ export const DashboardRemindersCard = () => {
 };
 
 const findNearest = (events: ScheduleItem[], type: string) => {
+  if (!Array.isArray(events)) return undefined;
   const today = startOfToday();
   const filtered = events
     .filter((e) => e.eventType === type)

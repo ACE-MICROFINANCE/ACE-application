@@ -13,7 +13,13 @@ export type LoanCurrentResponse = {
     principalDue: number;
     interestDue: number;
   };
-  qrPayload?: string;
+  qrPayload?: {
+    bankBin: string;
+    accountNumber: string;
+    accountName: string;
+    description: string;
+    amount?: number;
+  };
 };
 
 export type SavingsItem = {

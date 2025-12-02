@@ -1,12 +1,18 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Prisma, LoanInstallment } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
+import { removeVietnameseAccents } from '../../common/utils/string.utils';
+import { QrPayload } from './dto/qr-payload.dto';
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
 @Injectable()
 export class LoansService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
+  ) {}
 
   private startOfToday() {
     const now = new Date();
@@ -14,7 +20,7 @@ export class LoansService {
   }
 
   private mapLoanResponse(
-    loan: Prisma.LoanGetPayload<{ include: { installments: true } }>,
+    loan: Prisma.LoanGetPayload<{ include: { installments: true; customer: true } }>,
     nextInstallment?: LoanInstallment | null,
   ) {
     const remainingPrincipal =
@@ -28,9 +34,26 @@ export class LoansService {
         }
       : undefined;
 
-    const qrPayload =
-      nextPayment &&
-      `ACE|${loan.loanNo}|${nextPayment.dueDate.toISOString()}|${nextPayment.principalDue}`;
+    // Build VietQR payload from env + customer info
+    const bankBin = this.configService.get<string>('payment.bankBin') ?? '';
+    const accountNumber = this.configService.get<string>('payment.accountNumber') ?? '';
+    const accountName = this.configService.get<string>('payment.accountName') ?? '';
+
+    let qrPayload: QrPayload | undefined;
+    if (nextPayment) {
+      const normalizedName = removeVietnameseAccents(loan.customer.fullName || '').toUpperCase();
+      const description = `${loan.customer.memberNo} ${normalizedName}`.trim();
+      qrPayload = {
+        bankBin,
+        accountNumber,
+        accountName,
+        description,
+        amount: nextPayment.principalDue,
+      };
+    }
+
+    // NOTE: old static QR string kept for reference
+    // const qrPayload = nextPayment && `ACE|${loan.loanNo}|${nextPayment.dueDate.toISOString()}|${nextPayment.principalDue}`;
 
     return {
       loanNo: loan.loanNo,
@@ -54,7 +77,7 @@ export class LoansService {
     const id = typeof customerId === 'string' ? BigInt(customerId) : customerId;
     const loan = await this.prisma.loan.findFirst({
       where: { customerId: id, status: 'ACTIVE' },
-      include: { installments: true },
+      include: { installments: true, customer: true },
       orderBy: [{ disbursementDate: 'desc' }],
     });
 

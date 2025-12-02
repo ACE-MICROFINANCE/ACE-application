@@ -9,4 +9,7 @@ export const ConfigValidationSchema = Joi.object({
   ADMIN_API_KEY: Joi.string().required(),
   WEATHER_API_KEY: Joi.string().required(),
   WEATHER_API_BASE_URL: Joi.string().required(),
+  PAYMENT_BANK_BIN: Joi.string().required(),
+  PAYMENT_BANK_ACCOUNT_NO: Joi.string().required(),
+  PAYMENT_BANK_ACCOUNT_NAME: Joi.string().required(),
 });

@@ -5,7 +5,9 @@ import { CenteredAuthLayout } from '@/share/layout/CenteredAuthLayout';
 import { AceCard } from '@/share/ui/AceCard';
 import { ChangePasswordForm } from '@/share/forms/ChangePasswordForm';
 
-export default function ChangePasswordPage() {
+export default function ChangePasswordPage({ searchParams }: { searchParams?: Record<string, string> }) {
+  const mode = searchParams?.mode;
+
   return (
     <CenteredAuthLayout>
       <motion.div
@@ -18,7 +20,9 @@ export default function ChangePasswordPage() {
           <div className="text-center mb-5 space-y-1">
             <h1 className="text-2xl font-semibold text-[#333]">Đổi mật khẩu</h1>
             <p className="text-sm text-[#666]">
-              Vì lý do bảo mật, bạn cần đổi mật khẩu trước khi sử dụng ứng dụng.
+              {mode === 'force'
+                ? 'Bạn cần đổi mật khẩu để tiếp tục sử dụng ứng dụng.'
+                : 'Vì bảo mật, hãy nhập mật khẩu hiện tại và tạo mật khẩu mới.'}
             </p>
           </div>
           <ChangePasswordForm />

@@ -49,7 +49,7 @@ const DashboardContent = () => {
     if (!isAuthenticated) {
       router.replace(routes.login);
     } else if (mustChangePassword) {
-      router.replace(routes.changePassword);
+      router.replace(`${routes.changePassword}?mode=force`);
     }
   }, [isAuthenticated, isInitializing, mustChangePassword, router]);
 

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Card } from '@/share/ui/Card';
 import { DashboardInfoItem } from './DashboardInfoItem';
 import { appApi, type LoanCurrentResponse, type ScheduleItem } from '@/services/appApi';
-import { formatCurrencyVND, formatDate } from '@/lib/format';
+import { formatCurrencyVND } from '@/lib/format';
 
 type ReminderItem = {
   imageUrl: string;
@@ -49,16 +49,16 @@ export const DashboardRemindersCard = () => {
   const reminders = useMemo<ReminderItem[]>(() => {
     if (loading) {
       return [
-        { imageUrl: '/img/farming-plant-rice.png', alt: 'loading', text: 'Đang tải...' },
-        { imageUrl: '/img/loan-payment.png', alt: 'loading', text: 'Đang tải...' },
-        { imageUrl: '/img/community-meeting.png', alt: 'loading', text: 'Đang tải...' },
+        { imageUrl: '/img/farming-plant-rice.png', alt: 'Đang tải', text: 'Đang tải...' },
+        { imageUrl: '/img/loan-payment.png', alt: 'Đang tải', text: 'Đang tải...' },
+        { imageUrl: '/img/community-meeting.png', alt: 'Đang tải', text: 'Đang tải...' },
       ];
     }
 
     const safeEvents = Array.isArray(events) ? events : [];
     const items: ReminderItem[] = [];
 
-    // Farming task
+    // Nhiệm vụ canh tác
     const farming = findNearest(safeEvents, 'FARMING_TASK');
     if (farming) {
       const diff = daysUntil(new Date(farming.startDate));
@@ -68,12 +68,12 @@ export const DashboardRemindersCard = () => {
           : `Trong ${diff} ngày nữa: ${farming.title.toLowerCase()}.`;
       items.push({
         imageUrl: '/img/farming-plant-rice.png',
-        alt: 'Farming schedule',
+        alt: 'Lịch canh tác',
         text,
       });
     }
 
-    // Loan next payment
+    // Nhắc thanh toán
     if (loan?.nextPayment?.dueDate) {
       const due = new Date(loan.nextPayment.dueDate);
       const diff = daysUntil(due);
@@ -84,12 +84,12 @@ export const DashboardRemindersCard = () => {
           : `Trong ${diff} ngày nữa, khoản thanh toán ${amount} sẽ đến hạn.`;
       items.push({
         imageUrl: '/img/loan-payment.png',
-        alt: 'Loan reminder',
+        alt: 'Nhắc thanh toán',
         text,
       });
     }
 
-    // Meeting
+    // Họp nhóm
     const meeting = findNearest(safeEvents, 'MEETING');
     if (meeting) {
       const diff = daysUntil(new Date(meeting.startDate));
@@ -99,7 +99,7 @@ export const DashboardRemindersCard = () => {
           : `Bạn có cuộc họp trong ${diff} ngày tới.`;
       items.push({
         imageUrl: '/img/community-meeting.png',
-        alt: 'Community meeting',
+        alt: 'Họp nhóm',
         text,
       });
     }

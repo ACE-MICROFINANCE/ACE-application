@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AceInput } from '@/share/ui/AceInput';
 import { AceButton } from '@/share/ui/AceButton';
 import { FormErrorText } from '@/share/ui/FormErrorText';
+import { appApi } from '@/services/appApi';
 
 type ForgotPasswordFormValues = {
   memberNo: string;
@@ -16,33 +17,45 @@ type ForgotPasswordFormValues = {
 const schema = yup.object({
   memberNo: yup
     .string()
-    .required('Mã khách hàng bắt buộc')
+    .required('Mã khách hàng không được để trống')
     .matches(/^[0-9]+$/, 'Mã khách hàng chỉ gồm chữ số.'),
 });
 
 export const ForgotPasswordForm = () => {
   const [info, setInfo] = useState<string>('');
+  const [error, setError] = useState<string | null>(null);
 
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
+    reset,
   } = useForm<ForgotPasswordFormValues>({
     resolver: yupResolver(schema),
   });
 
-  const onSubmit = (values: ForgotPasswordFormValues) => {
-    setInfo(
-      'Tính năng quên mật khẩu đang được phát triển. Vui lòng liên hệ cán bộ ACE để được hỗ trợ cấp lại mật khẩu tạm thời.',
-    );
-    return values;
+  const onSubmit = async (values: ForgotPasswordFormValues) => {
+    setError(null);
+    try {
+      await appApi.requestPasswordReset(values.memberNo.trim());
+      setInfo(
+        'Yêu cầu đổi mật khẩu đã được gửi đến nhân viên ACE. Nhân viên sẽ liên hệ với bạn trong thời gian sớm nhất.',
+      );
+      reset();
+    } catch (err) {
+      // Không tiết lộ khách hàng có tồn tại hay không
+      setInfo(
+        'Yêu cầu đổi mật khẩu đã được gửi đến nhân viên ACE. Nhân viên sẽ liên hệ với bạn trong thời gian sớm nhất.',
+      );
+      setError('Không thể gửi yêu cầu lúc này, vui lòng thử lại.');
+    }
   };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
       <div className="space-y-2">
         <label htmlFor="memberNo" className="text-sm font-medium text-[#333]">
-          Mã khách hàng
+          Mã khách hàng (memberNo)
         </label>
         <AceInput
           id="memberNo"
@@ -58,9 +71,9 @@ export const ForgotPasswordForm = () => {
       <AceButton
         type="submit"
         isLoading={isSubmitting}
-        className="!bg-gray-400 !hover:bg-gray-500"
+        className="!bg-[#2b6cb0] !hover:bg-[#245a93]"
       >
-        Yêu cầu cấp lại mật khẩu (đang phát triển)
+        Gửi yêu cầu
       </AceButton>
 
       <AnimatePresence>
@@ -75,9 +88,10 @@ export const ForgotPasswordForm = () => {
           </motion.div>
         ) : null}
       </AnimatePresence>
+
+      {error ? <p className="text-sm text-red-500">{error}</p> : null}
     </form>
   );
 
-  // TODO: replaced by ACE Farmer implementation
-  // Form cũ dùng customerId và thông báo lỗi mã hóa; đã cập nhật sang memberNo và tiếng Việt rõ ràng.
+  // NOTE: bản tiếng Việt, gọi /auth/request-password-reset.
 };

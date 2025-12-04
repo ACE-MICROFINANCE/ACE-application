@@ -1,10 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { CreateFeedbackDto } from './dto/create-feedback.dto';
+import { NotificationService } from '../notifications/notification.service';
 
 @Injectable()
 export class FeedbackService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationService: NotificationService,
+  ) {}
 
   private map(feedback: any) {
     return {
@@ -24,6 +28,14 @@ export class FeedbackService {
         content: dto.content,
       },
     });
+
+    const customer = await this.prisma.customer.findUnique({
+      where: { id },
+    });
+    if (customer) {
+      await this.notificationService.sendFeedbackToStaff(customer, feedback);
+    }
+
     return this.map(feedback);
   }
 

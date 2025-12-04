@@ -49,7 +49,7 @@ export const LoginForm = () => {
     try {
       const result = await login({ memberNo: values.memberNo, password: values.password });
       if (result.customer?.mustChangePassword) {
-        router.replace(routes.changePassword);
+        router.replace(`${routes.changePassword}?mode=force`);
       } else {
         router.replace(routes.dashboard);
       }
@@ -94,8 +94,8 @@ export const LoginForm = () => {
           {...register('password')}
         />
         <div className="text-xs text-[#777] leading-relaxed">
-          Mật khẩu lần đầu do cán bộ ACE cung cấp. Sau khi đăng nhập, ứng dụng sẽ yêu cầu đổi mật
-          khẩu.
+          Mật khẩu lần đầu do nhân viên ACE cung cấp. Sau khi đăng nhập, ứng dụng sẽ yêu cầu bạn đổi
+          mật khẩu mới.
         </div>
         <FormErrorText>{errors.password?.message}</FormErrorText>
       </div>
@@ -121,6 +121,5 @@ export const LoginForm = () => {
     </form>
   );
 
-  // TODO: replaced by ACE Farmer implementation
-  // Mẫu đăng nhập cũ đã được thay bằng phiên bản dùng memberNo & thông báo tiếng Việt.
+  // NOTE: replaced bản tiếng Anh bằng tiếng Việt đầy đủ.
 };

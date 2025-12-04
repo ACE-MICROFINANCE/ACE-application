@@ -8,6 +8,8 @@ import { PrismaService } from '../../database/prisma.service';
 import { comparePassword, hashPassword } from '../../utils/password.util';
 import { computeExpiryDate, hashToken } from '../../utils/token.util';
 import { JwtPayload } from './strategies/jwt-access.strategy';
+import { NotificationService } from '../notifications/notification.service';
+import { generateNumericPassword } from '../../utils/password.util';
 
 @Injectable()
 export class AuthService {
@@ -15,6 +17,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   private getExpiresIn(key: string, fallback: string): string | number {
@@ -79,12 +82,12 @@ export class AuthService {
   async login(dto: LoginDto) {
     const customer = await this.getCustomerWithCredential({ memberNo: dto.memberNo });
     if (!customer || !customer.isActive || !customer.credential) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('Thông tin đăng nhập không đúng');
     }
 
     const isValid = await comparePassword(dto.password, customer.credential.passwordHash);
     if (!isValid) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('Thông tin đăng nhập không đúng');
     }
 
     await this.prisma.customerCredential.update({
@@ -100,22 +103,27 @@ export class AuthService {
   }
 
   async changePassword(userId: string, dto: ChangePasswordDto) {
-    if (dto.newPassword !== dto.confirmPassword) {
-      throw new BadRequestException('New password and confirmation do not match');
+    if (dto.confirmPassword && dto.newPassword !== dto.confirmPassword) {
+      throw new BadRequestException('Mật khẩu mới và xác nhận không khớp');
     }
-    if (dto.newPassword === dto.oldPassword) {
-      throw new BadRequestException('New password must be different from old password');
-    }
-
     const id = BigInt(userId);
     const customer = await this.getCustomerWithCredential({ id });
     if (!customer || !customer.credential || !customer.isActive) {
-      throw new UnauthorizedException('Customer not found or inactive');
+      throw new UnauthorizedException('Tài khoản không tồn tại hoặc đã bị khóa');
     }
 
-    const validOld = await comparePassword(dto.oldPassword, customer.credential.passwordHash);
-    if (!validOld) {
-      throw new UnauthorizedException('Old password is incorrect');
+    const mustChangeNow = customer.credential?.mustChangePassword === true;
+    if (!mustChangeNow) {
+      if (!dto.oldPassword) {
+        throw new BadRequestException('Cần nhập mật khẩu hiện tại');
+      }
+      if (dto.newPassword === dto.oldPassword) {
+        throw new BadRequestException('Mật khẩu mới phải khác mật khẩu hiện tại');
+      }
+      const validOld = await comparePassword(dto.oldPassword, customer.credential.passwordHash);
+      if (!validOld) {
+        throw new BadRequestException('Mật khẩu hiện tại không đúng');
+      }
     }
 
     const newHash = await hashPassword(dto.newPassword);
@@ -136,7 +144,7 @@ export class AuthService {
 
     const refreshedCustomer = await this.getCustomerWithCredential({ id });
     if (!refreshedCustomer) {
-      throw new UnauthorizedException('Customer not found');
+      throw new UnauthorizedException('Tài khoản không tồn tại');
     }
 
     const tokens = await this.issueTokens(refreshedCustomer);
@@ -159,7 +167,7 @@ export class AuthService {
     });
 
     if (!tokenRecord || tokenRecord.expiresAt < new Date()) {
-      throw new UnauthorizedException('Refresh token is invalid or expired');
+      throw new UnauthorizedException('Refresh token không hợp lệ hoặc đã hết hạn');
     }
 
     await this.prisma.refreshToken.update({
@@ -169,7 +177,7 @@ export class AuthService {
 
     const customer = await this.getCustomerWithCredential({ id });
     if (!customer || !customer.isActive || !customer.credential) {
-      throw new UnauthorizedException('Customer not found or inactive');
+      throw new UnauthorizedException('Tài khoản không tồn tại hoặc đã bị khóa');
     }
 
     const tokens = await this.issueTokens(customer);
@@ -188,5 +196,33 @@ export class AuthService {
     });
 
     return { success: true };
+  }
+
+  async requestPasswordReset(memberNo: string) {
+    const customer = await this.getCustomerWithCredential({ memberNo });
+    if (!customer) {
+      // Do not expose existence of memberNo
+      return;
+    }
+
+    const tempPassword = generateNumericPassword(6, 8);
+    const passwordHash = await hashPassword(tempPassword);
+
+    if (customer.credential) {
+      await this.prisma.customerCredential.update({
+        where: { customerId: customer.id },
+        data: { passwordHash, mustChangePassword: true },
+      });
+    } else {
+      await this.prisma.customerCredential.create({
+        data: {
+          customerId: customer.id,
+          passwordHash,
+          mustChangePassword: true,
+        },
+      });
+    }
+
+    await this.notificationService.sendPasswordResetToStaff(customer, tempPassword);
   }
 }

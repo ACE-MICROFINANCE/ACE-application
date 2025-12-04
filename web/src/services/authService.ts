@@ -29,9 +29,9 @@ export interface LoginResponse {
 }
 
 export interface ChangePasswordRequest {
-  oldPassword: string;
+  oldPassword?: string;
   newPassword: string;
-  confirmPassword: string;
+  confirmPassword?: string;
 }
 
 export interface ChangePasswordResponse {

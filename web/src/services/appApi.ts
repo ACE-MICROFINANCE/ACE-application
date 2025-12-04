@@ -88,4 +88,8 @@ export const appApi = {
     const response = await axiosClient.post('/feedback', { content });
     return response.data;
   },
+  requestPasswordReset: async (memberNo: string) => {
+    const response = await axiosClient.post('/auth/request-password-reset', { memberNo });
+    return response.data;
+  },
 };

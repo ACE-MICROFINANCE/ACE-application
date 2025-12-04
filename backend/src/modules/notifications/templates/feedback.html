@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Feedback mới từ khách hàng</title>
+  </head>
+  <body style="margin:0; padding:0; background-color:#f7f9fb;">
+    <table width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f7f9fb; padding:24px 0;">
+      <tr>
+        <td align="center">
+          <table width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px; background-color:#ffffff; border-radius:12px; box-shadow:0 4px 12px rgba(15,23,42,0.08); padding:20px; font-family:Arial, Helvetica, sans-serif; color:#1f2937;">
+            <tr>
+              <td style="padding-bottom:16px; border-bottom:1px solid #e5e7eb;">
+                <h1 style="margin:0; font-size:20px; font-weight:600; color:#2b6cb0;">
+                  Feedback mới từ khách hàng
+                </h1>
+                <p style="margin:4px 0 0; font-size:13px; color:#6b7280;">
+                  Hệ thống ACE Farmer App
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding-top:16px;">
+                <p style="margin:0 0 12px; font-size:14px; line-height:1.6;">
+                  Kính gửi <strong>ACE Staff</strong>,
+                </p>
+                <p style="margin:0 0 12px; font-size:14px; line-height:1.6;">
+                  Khách hàng sau vừa gửi phản hồi thông qua ứng dụng. Vui lòng xem chi tiết bên dưới:
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:8px 0 16px;">
+                <table width="100%" cellspacing="0" cellpadding="0" border="0" style="font-size:14px; line-height:1.6;">
+                  <tr>
+                    <td style="padding:4px 0; width:160px; color:#6b7280;">Mã khách hàng:</td>
+                    <td style="padding:4px 0; font-weight:600; color:#111827;">{{memberNo}}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding:4px 0; color:#6b7280;">Họ và tên:</td>
+                    <td style="padding:4px 0;">{{fullName}}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding:4px 0; color:#6b7280;">Số điện thoại:</td>
+                    <td style="padding:4px 0;">{{phoneNumber}}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding:4px 0; color:#6b7280;">Địa chỉ:</td>
+                    <td style="padding:4px 0;">{{villageName}} - {{groupName}}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding:4px 0; color:#6b7280;">Thời gian gửi:</td>
+                    <td style="padding:4px 0;">{{createdAt}}</td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:4px 0 16px;">
+                <p style="margin:0 0 8px; font-size:14px; line-height:1.6;">
+                  <strong>Nội dung feedback:</strong>
+                </p>
+                <div style="padding:12px 14px; background-color:#f3f4f6; border-radius:8px; border-left:4px solid #2b6cb0; font-size:14px; line-height:1.7; white-space:pre-line;">
+                  {{content}}
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding-top:16px; border-top:1px solid #e5e7eb;">
+                <p style="margin:12px 0 0; font-size:12px; line-height:1.6; color:#9ca3af;">
+                  Email này được gửi tự động từ hệ thống ACE Farmer App. Nếu cần hỗ trợ thêm, vui lòng liên hệ tới bộ phận cần thiết.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

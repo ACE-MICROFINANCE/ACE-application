@@ -5,6 +5,7 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { JwtAccessGuard } from '../../common/guards/jwt-access.guard';
 import { JwtRefreshGuard } from '../../common/guards/jwt-refresh.guard';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { RequestPasswordResetDto } from './dto/request-password-reset.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -13,6 +14,16 @@ export class AuthController {
   @Post('login')
   async login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
+  }
+
+  @Post('request-password-reset')
+  @HttpCode(HttpStatus.OK)
+  async requestPasswordReset(@Body() dto: RequestPasswordResetDto) {
+    await this.authService.requestPasswordReset(dto.memberNo);
+    return {
+      success: true,
+      message: 'If this member number exists, staff will contact the customer to reset password.',
+    };
   }
 
   @UseGuards(JwtRefreshGuard)

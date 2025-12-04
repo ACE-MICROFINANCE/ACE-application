@@ -15,6 +15,15 @@ export default () => ({
     apiKey: process.env.WEATHER_API_KEY,
     baseUrl: process.env.WEATHER_API_BASE_URL,
   },
+  mail: {
+    host: process.env.MAIL_HOST,
+    port: process.env.MAIL_PORT ? Number(process.env.MAIL_PORT) : undefined,
+    secure: process.env.MAIL_SECURE === 'true',
+    user: process.env.MAIL_USER,
+    pass: process.env.MAIL_PASS,
+    from: process.env.MAIL_FROM,
+    to: process.env.MAIL_TO,
+  },
   payment: {
     bankBin: process.env.PAYMENT_BANK_BIN,
     accountNumber: process.env.PAYMENT_BANK_ACCOUNT_NO,

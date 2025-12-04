@@ -18,7 +18,7 @@ export default function ForgotPasswordPage() {
           <div className="text-center mb-5">
             <h1 className="text-2xl font-semibold text-[#333]">Quên mật khẩu</h1>
             <p className="text-sm text-[#666] mt-1">
-              Tính năng đang được phát triển. Vui lòng liên hệ cán bộ ACE để được hỗ trợ.
+              Nhập mã khách hàng để gửi yêu cầu. Nhân viên ACE sẽ liên hệ và cấp mật khẩu tạm cho bạn.
             </p>
           </div>
           <ForgotPasswordForm />

@@ -14,7 +14,7 @@ const buildEventText = (event: ScheduleItem) => {
     return `Bạn có cuộc họp trong ${event.daysUntilEvent} ngày tới`;
   }
   if (event.eventType === 'FIELD_SCHOOL') {
-    return `Trong ${event.daysUntilEvent} ngày nữa sẽ có tập huấn tại địa phương`;
+    return `Trong ${event.daysUntilEvent} ngày nữa sẽ có buổi tập huấn tại địa phương`;
   }
   if (event.eventType === 'FARMING_TASK') {
     return `Trong ${event.daysUntilEvent} ngày nữa: ${event.title.toLowerCase()}`;
@@ -41,7 +41,7 @@ export default function SchedulePage() {
       const data = await appApi.getSchedule();
       setEvents(data);
     } catch (err) {
-      setError('Không lấy được lịch sự kiện. Vui lòng thử lại.');
+      setError('Không tải được lịch sự kiện. Vui lòng thử lại.');
     } finally {
       setIsLoading(false);
     }
@@ -65,7 +65,7 @@ export default function SchedulePage() {
     if (!isAuthenticated) {
       router.replace(routes.login);
     } else if (mustChangePassword) {
-      router.replace(routes.changePassword);
+      router.replace(`${routes.changePassword}?mode=force`);
     } else {
       fetchSchedule();
     }
@@ -120,7 +120,7 @@ export default function SchedulePage() {
     <div className="min-h-screen px-4 pb-28 pt-8">
       <div className="mx-auto flex w-full max-w-md flex-col space-y-4">
         <AceCard className="bg-[#DFF5D1] shadow-md px-6 py-4 rounded-2xl text-center">
-          <h1 className="text-xl md:text-2xl font-semibold text-slate-900">Schedule</h1>
+          <h1 className="text-xl md:text-2xl font-semibold text-slate-900">Lịch</h1>
         </AceCard>
         <AceCard className="space-y-4">{content}</AceCard>
       </div>
@@ -133,7 +133,7 @@ export default function SchedulePage() {
               onClick={() => setSelectedId(null)}
               className="absolute right-3 top-3 text-[#666] hover:text-[#111]"
             >
-              ✕
+              ×
             </button>
             <h2 className="mb-3 text-lg font-semibold text-[#333] text-center">Chi tiết lịch</h2>
             {detailLoading ? (

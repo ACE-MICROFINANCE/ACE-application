@@ -102,7 +102,7 @@ export default function LoanPage() {
                 </div>
               </div>
 
-              <p className="text-xs text-red-600 font-medium">
+              <p className="text-xs text-red-600 font-medium text-center">
                 Không thanh toán vượt mức nếu không có chỉ dẫn từ nhân viên ACE về trả nợ trước hạn.
               </p>
 
@@ -141,3 +141,4 @@ export default function LoanPage() {
     </div>
   );
 }
+

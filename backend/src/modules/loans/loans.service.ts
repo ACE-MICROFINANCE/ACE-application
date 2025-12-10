@@ -41,8 +41,9 @@ export class LoansService {
 
     let qrPayload: QrPayload | undefined;
     if (nextPayment) {
+      const normalizedVillageName = removeVietnameseAccents(loan.customer.villageName || '').toUpperCase();
       const normalizedName = removeVietnameseAccents(loan.customer.fullName || '').toUpperCase();
-      const description = `${loan.customer.memberNo} ${normalizedName}`.trim();
+      const description = `${normalizedName} ${normalizedVillageName} ${loan.customer.memberNo} `.trim();
       qrPayload = {
         bankBin,
         accountNumber,

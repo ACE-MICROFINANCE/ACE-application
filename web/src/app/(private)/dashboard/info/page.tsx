@@ -15,21 +15,9 @@ type InfoItem = {
 };
 
 const infoItems: InfoItem[] = [
-  {
-    imageUrl: '/img/policy.png',
-    alt: 'ACE policy',
-    text: "ACE's product & Policy",
-  },
-  {
-    imageUrl: '/img/youtube.jpg',
-    alt: 'ACE Youtube',
-    text: 'Go to ACE Youtube channel to study training tips',
-  },
-  {
-    imageUrl: '/img/contact_sso.png',
-    alt: 'Contact Social worker',
-    text: 'Contact Social worker: 0877500429',
-  },
+  { imageUrl: '/img/policy.png', alt: 'ACE policy', text: "ACE's product & Policy" },
+  { imageUrl: '/img/youtube.jpg', alt: 'ACE Youtube', text: 'Go to ACE Youtube channel to study training tips' },
+  { imageUrl: '/img/contact_sso.png', alt: 'Contact Social worker', text: 'Contact Social worker: 0877500429' },
 ];
 
 export default function InfoPage() {
@@ -46,8 +34,8 @@ export default function InfoPage() {
   }, [isAuthenticated, isInitializing, mustChangePassword, router]);
 
   return (
-    <div className="min-h-screen px-4 pb-28 pt-8">
-      <div className="mx-auto flex w-full max-w-md flex-col space-y-4">
+    <div className="min-h-screen px-4 pb-28 pt-8 w-full">
+      <div className="flex w-full flex-col space-y-4">
         <AceCard className="text-center !bg-[#BFD8B8]">
           <h1 className="text-xl font-semibold text-[#333]">Thông tin</h1>
         </AceCard>

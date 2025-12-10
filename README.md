@@ -66,6 +66,7 @@ npm run dev    # runs at 3000
 
 ## Core Business Rules
 - Login with numeric `memberNo` + numeric password (>= 6).
+- Customer IDs (memberNo) and temporary passwords are created/provided by ACE staff; no self-registration.
 - First login or admin reset sets `mustChangePassword=true` → FE forces change-password flow.
 - Refresh tokens are stored hashed in DB; logout/rotate revokes old tokens.
 - Temp passwords (6–8 digits) are only revealed to staff via email or admin API responses (never logged).
@@ -108,4 +109,3 @@ npm run dev    # runs at 3000
 ## Seed Data (prisma/seed.ts)
 - Demo customer: memberNo `100001`, password `123456`.
 - Demo loan `L001` with installments, savings (compulsory/voluntary), events (group/village/global), one feedback.
-

@@ -44,14 +44,8 @@ export default function SavingPage() {
   }, [isAuthenticated, isInitializing, mustChangePassword, router]);
 
   const safeSavings = Array.isArray(savings) ? savings : [];
-  const compulsory = useMemo(
-    () => safeSavings.find((item) => item.type === 'COMPULSORY'),
-    [safeSavings],
-  );
-  const voluntary = useMemo(
-    () => safeSavings.find((item) => item.type === 'VOLUNTARY'),
-    [safeSavings],
-  );
+  const compulsory = useMemo(() => safeSavings.find((item) => item.type === 'COMPULSORY'), [safeSavings]);
+  const voluntary = useMemo(() => safeSavings.find((item) => item.type === 'VOLUNTARY'), [safeSavings]);
 
   const renderCard = (item: SavingsItem, label: string, tone: 'red' | 'green') => {
     const baseColor = tone === 'red' ? 'bg-red-100' : 'bg-[#8fdba9]';
@@ -71,7 +65,7 @@ export default function SavingPage() {
             <span className="font-semibold">{formatCurrencyVND(item.currentBalance)}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-[#444]">Lãi tích luỹ</span>
+            <span className="text-[#444]">Lãi tích lũy</span>
             <span className="font-semibold">{formatCurrencyVND(item.interestAccrued)}</span>
           </div>
           {item.type === 'VOLUNTARY' ? (
@@ -112,8 +106,8 @@ export default function SavingPage() {
   };
 
   return (
-    <div className="min-h-screen px-4 pb-28 pt-8">
-      <div className="mx-auto flex w-full max-w-md flex-col space-y-4">
+    <div className="min-h-screen px-4 pb-28 pt-8 w-full">
+      <div className="flex w-full flex-col space-y-4">
         <AceCard className="text-center !bg-[#f9c6e6] text-[#333]">
           <h1 className="text-xl font-semibold">Sổ tiết kiệm</h1>
         </AceCard>

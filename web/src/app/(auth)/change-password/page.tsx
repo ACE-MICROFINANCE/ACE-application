@@ -1,12 +1,14 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { useSearchParams } from 'next/navigation';
 import { CenteredAuthLayout } from '@/share/layout/CenteredAuthLayout';
 import { AceCard } from '@/share/ui/AceCard';
 import { ChangePasswordForm } from '@/share/forms/ChangePasswordForm';
 
-export default function ChangePasswordPage({ searchParams }: { searchParams?: Record<string, string> }) {
-  const mode = searchParams?.mode;
+export default function ChangePasswordPage() {
+  const searchParams = useSearchParams();
+  const mode = searchParams?.get('mode');
 
   return (
     <CenteredAuthLayout>

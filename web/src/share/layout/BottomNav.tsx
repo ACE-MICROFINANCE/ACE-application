@@ -52,7 +52,7 @@ export const BottomNav = () => {
           >
             <span
               className={clsx(
-                'relative h-10 w-10 rounded-full bg-white p-1 shadow-sm border-4 overflow-hidden',
+                'relative h-12 w-12 rounded-full bg-white p-1 shadow-sm border-4 overflow-hidden',
                 activeKey === item.key ? 'border-red-700' : 'border-transparent',
               )}
             >
@@ -60,7 +60,7 @@ export const BottomNav = () => {
                 src={item.iconSrc}
                 alt={item.label}
                 fill
-                sizes="36px"
+                sizes="44px"
                 className="object-contain"
                 priority
               />

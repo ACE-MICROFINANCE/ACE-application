@@ -10,6 +10,7 @@ import { computeExpiryDate, hashToken } from '../../utils/token.util';
 import { JwtPayload } from './strategies/jwt-access.strategy';
 import { NotificationService } from '../notifications/notification.service';
 import { generateNumericPassword } from '../../utils/password.util';
+import { BijliCustomerSyncService } from '../customers/bijli-customer-sync.service';
 
 @Injectable()
 export class AuthService {
@@ -18,6 +19,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly notificationService: NotificationService,
+    private readonly bijliCustomerSyncService: BijliCustomerSyncService, // [BIJLI-CUSTOMER] sync profile on login
   ) {}
 
   private getExpiresIn(key: string, fallback: string): string | number {
@@ -95,10 +97,21 @@ export class AuthService {
       data: { lastLoginAt: new Date() },
     });
 
-    const tokens = await this.issueTokens(customer);
+    let loginCustomer = customer;
+    try {
+      await this.bijliCustomerSyncService.syncMemberNo(customer.memberNo); // [BIJLI-CUSTOMER] refresh profile each login
+      const refreshed = await this.getCustomerWithCredential({ id: customer.id }); // [BIJLI-CUSTOMER] load latest profile
+      if (refreshed) {
+        loginCustomer = refreshed; // [BIJLI-CUSTOMER] return updated data to FE
+      }
+    } catch {
+      // [BIJLI-CUSTOMER] ignore BIJLI errors to keep login working
+    }
+
+    const tokens = await this.issueTokens(loginCustomer);
     return {
       ...tokens,
-      customer: this.toCustomerResponse(customer),
+      customer: this.toCustomerResponse(loginCustomer),
     };
   }
 

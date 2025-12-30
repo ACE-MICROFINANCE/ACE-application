@@ -8,10 +8,13 @@ export type LoanCurrentResponse = {
   principalAmount: number;
   remainingPrincipal: number;
   interestRate: number;
+  loanType?: 'BULLET' | 'DEGRESSIVE' | string; // [BIJLI-LOAN-RULE]
+  loanTypeLabel?: string; // [BIJLI-LOAN-RULE]
   nextPayment?: {
     dueDate: string;
     principalDue: number;
     interestDue: number;
+    totalDue?: number; // [BIJLI-LOAN-RULE]
   };
   qrPayload?: {
     bankBin: string;

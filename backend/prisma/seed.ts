@@ -11,7 +11,7 @@ const TEMP_PASSWORD = '123456';
 
 type CustomerSeed = {
   memberNo: string;
-  fullName: string;
+  fullName?: string;
   gender?: string | null;
   idCardNumber?: string | null;
   phoneNumber?: string | null;
@@ -66,13 +66,13 @@ type EventSeed = {
   villageName?: string | null;
 };
 
-// ================== DATA TỪ EXCEL (CUSTOMER/LOAN/INSTALLMENT) ================== //
+// ================== DATA KHÁCH HÀNG / KHOẢN VAY / KỲ TRẢ ================== //
 
 const customersSeed: CustomerSeed[] = [
   {
     memberNo: '10011851',
     fullName: 'TÒNG THỊ HÉM',
-    gender: 'Female',
+    gender: 'Nữ',
     idCardNumber: '11183002883',
     phoneNumber: '379635954',
     locationType: 'Rural',
@@ -82,8 +82,8 @@ const customersSeed: CustomerSeed[] = [
   },
   {
     memberNo: '20004454',
-    fullName: 'LƯỜNG THỊ luyến',
-    gender: 'Female',
+    fullName: 'LƯỜNG THỊ Luyến',
+    gender: 'Nữ',
     idCardNumber: '11178003951',
     phoneNumber: '335367335',
     locationType: 'Rural',
@@ -94,7 +94,7 @@ const customersSeed: CustomerSeed[] = [
   {
     memberNo: '20003438',
     fullName: 'VÌ THỊ LÚN',
-    gender: 'Female',
+    gender: 'Nữ',
     idCardNumber: '11164004300',
     phoneNumber: '386683112',
     locationType: 'Rural',
@@ -105,7 +105,7 @@ const customersSeed: CustomerSeed[] = [
   {
     memberNo: '20011201',
     fullName: 'LƯỜNG THỊ Nhung',
-    gender: 'Female',
+    gender: 'Nữ',
     idCardNumber: '11186006738',
     phoneNumber: '383629966',
     locationType: 'Rural',
@@ -116,7 +116,7 @@ const customersSeed: CustomerSeed[] = [
   {
     memberNo: '20010673',
     fullName: 'CÀ THỊ Phong',
-    gender: 'Female',
+    gender: 'Nữ',
     idCardNumber: '11182006740',
     phoneNumber: '393380578',
     locationType: 'Rural',
@@ -127,7 +127,7 @@ const customersSeed: CustomerSeed[] = [
   {
     memberNo: '20003501',
     fullName: 'TRẦN THỊ Anh',
-    gender: 'Female',
+    gender: 'Nữ',
     idCardNumber: '34169019591',
     phoneNumber: '906188335',
     locationType: 'Rural',
@@ -138,7 +138,7 @@ const customersSeed: CustomerSeed[] = [
   {
     memberNo: '10011774',
     fullName: 'LÒ THỊ PHÁNG',
-    gender: 'Female',
+    gender: 'Nữ',
     idCardNumber: '11172001603',
     phoneNumber: '398310135',
     locationType: 'Rural',
@@ -149,13 +149,19 @@ const customersSeed: CustomerSeed[] = [
   {
     memberNo: '30000172',
     fullName: 'HOÀNG THỊ Thịnh',
-    gender: 'Female',
+    gender: 'Nữ',
     idCardNumber: '11162000395',
     phoneNumber: '392063204',
     locationType: 'Rural',
     villageName: 'THANH XUONG',
     groupCode: '30000025',
     groupName: 'TX-D4B BAN TEN - DK',
+  },
+  {
+    memberNo: '20004047',
+  },
+  {
+    memberNo: '10011825',
   },
 ];
 
@@ -164,7 +170,7 @@ const loansSeed: LoanSeed[] = [
     memberNo: '10011851',
     loanNo: '001-0044355',
     externalLoanId: '865',
-    productName: 'BASIC - DEGRESSIVE',
+    productName: 'Gói cơ bản - dư nợ giảm dần',
     loanCycle: 3,
     principalAmount: 15000000,
     interestRate: 16.8,
@@ -178,7 +184,7 @@ const loansSeed: LoanSeed[] = [
     memberNo: '20004454',
     loanNo: '001-0044356',
     externalLoanId: '866',
-    productName: 'BASIC - DEGRESSIVE',
+    productName: 'Gói cơ bản - dư nợ giảm dần',
     loanCycle: 12,
     principalAmount: 15000000,
     interestRate: 16.8,
@@ -192,7 +198,7 @@ const loansSeed: LoanSeed[] = [
     memberNo: '20003438',
     loanNo: '001-0044357',
     externalLoanId: '867',
-    productName: 'BASIC - BULLET',
+    productName: 'Gói cơ bản - trả gốc cuối kỳ',
     loanCycle: 13,
     principalAmount: 10000000,
     interestRate: 16.8,
@@ -206,7 +212,7 @@ const loansSeed: LoanSeed[] = [
     memberNo: '20011201',
     loanNo: '001-0044358',
     externalLoanId: '868',
-    productName: 'SCALE-UP - DEGRESSIVE',
+    productName: 'Gói tăng dần - dư nợ giảm dần',
     loanCycle: 6,
     principalAmount: 20000000,
     interestRate: 16.8,
@@ -220,7 +226,7 @@ const loansSeed: LoanSeed[] = [
     memberNo: '20010673',
     loanNo: '001-0044359',
     externalLoanId: '869',
-    productName: 'SCALE-UP - DEGRESSIVE',
+    productName: 'Gói tăng dần - dư nợ giảm dần',
     loanCycle: 7,
     principalAmount: 20000000,
     interestRate: 16.8,
@@ -234,7 +240,7 @@ const loansSeed: LoanSeed[] = [
     memberNo: '20003501',
     loanNo: '001-0044360',
     externalLoanId: '870',
-    productName: 'SCALE-UP - DEGRESSIVE',
+    productName: 'Gói tăng dần - dư nợ giảm dần',
     loanCycle: 12,
     principalAmount: 25000000,
     interestRate: 16.8,
@@ -248,7 +254,7 @@ const loansSeed: LoanSeed[] = [
     memberNo: '10011774',
     loanNo: '001-0044361',
     externalLoanId: '871',
-    productName: 'BASIC - BULLET',
+    productName: 'Gói cơ bản - trả gốc cuối kỳ',
     loanCycle: 3,
     principalAmount: 15000000,
     interestRate: 16.8,
@@ -262,7 +268,7 @@ const loansSeed: LoanSeed[] = [
     memberNo: '30000172',
     loanNo: '001-0044362',
     externalLoanId: '872',
-    productName: 'SCALE-UP - DEGRESSIVE',
+    productName: 'Gói tăng dần - dư nợ giảm dần',
     loanCycle: 11,
     principalAmount: 20000000,
     interestRate: 16.8,
@@ -452,7 +458,7 @@ const installmentsSeed: InstallmentSeed[] = [
   },
 ];
 
-// ================== SEED SAVINGS (COMPULSORY / VOLUNTARY) ================== //
+// ================== SEED SAVINGS (BẮT BUỘC / TỰ NGUYỆN) ================== //
 
 const savingsSeed: SavingsSeed[] = [
   // mỗi khách tối đa 2 dòng: COMPULSORY + VOLUNTARY
@@ -546,11 +552,9 @@ const savingsSeed: SavingsSeed[] = [
   },
 ];
 
-// ================== SEED EVENTS (SCHEDULE) ================== //
+// ================== SEED EVENTS (LỊCH SỰ KIỆN) ================== //
 
-// Giả định ngày "hiện tại" khoảng cuối 2025 để FE test "upcoming"
-
-// Giả định ngày "hiện tại" khoảng đầu 12/2025 để FE test "upcoming"
+// Giả định ngày "hiện tại" ~ đầu 12/2025 để FE test "upcoming"
 const eventsSeed: EventSeed[] = [
   // 10011851 - TÒNG THỊ HÉM - THANH YEN - 20000021
   {
@@ -854,7 +858,7 @@ async function main() {
         villageName: c.villageName ?? undefined,
         groupCode: c.groupCode ?? undefined,
         groupName: c.groupName ?? undefined,
-        // membershipStartDate: giữ nguyên nếu đã có trong DB, nên không update
+        // membershipStartDate: giữ nguyên nếu đã có trong DB
       },
       create: {
         memberNo: c.memberNo,
@@ -876,7 +880,7 @@ async function main() {
     await prisma.customerCredential.upsert({
       where: { customerId: customer.id },
       update: {
-        // Không bắt buộc ghi đè password; nếu muốn reset, có thể set lại:
+        // Nếu muốn reset mật khẩu mỗi lần seed, bỏ comment 2 dòng dưới:
         // passwordHash,
         // mustChangePassword: true,
       },

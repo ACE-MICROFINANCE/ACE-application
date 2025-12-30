@@ -10,7 +10,7 @@ datasource db {
 model Customer {
   id                  BigInt   @id @default(autoincrement())
   memberNo            String   @unique                     // numeric string used to login
-  fullName            String
+  fullName            String?
   gender              String?
   idCardNumber        String?
   phoneNumber         String?
@@ -22,6 +22,7 @@ model Customer {
   isActive            Boolean  @default(true)
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
+  lastSyncedAt        DateTime? // [BIJLI-CUSTOMER] cache sync timestamp
 
   credential     CustomerCredential?
   refreshTokens  RefreshToken[]
@@ -65,6 +66,8 @@ model Loan {
   maturityDate              DateTime?
   totalPrincipalOutstanding Decimal?
   totalInterestOutstanding  Decimal?
+  lastSyncedAt              DateTime? // [BIJLI-LOAN] cache sync timestamp
+  loanType                  String   @default("DEGRESSIVE") // [BIJLI-LOAN-RULE] BULLET/DEGRESSIVE
   status                    String   @default("ACTIVE")
   createdAt                 DateTime @default(now())
   updatedAt                 DateTime @updatedAt

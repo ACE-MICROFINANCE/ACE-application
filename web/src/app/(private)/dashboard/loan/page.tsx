@@ -35,7 +35,7 @@ export default function LoanPage() {
     }
   }, [isAuthenticated, isInitializing, mustChangePassword, router]);
 
-  const qrAmount = loan?.qrPayload?.amount ?? loan?.nextPayment?.principalDue ?? 0;
+  const qrAmount = loan?.qrPayload?.amount ?? loan?.nextPayment?.totalDue ?? 0; // [BIJLI-LOAN-RULE]
   const qrImageUrl =
     loan?.qrPayload &&
     `https://img.vietqr.io/image/${loan.qrPayload.bankBin}-${loan.qrPayload.accountNumber}-compact.png?accountName=${encodeURIComponent(
@@ -43,6 +43,9 @@ export default function LoanPage() {
     )}&addInfo=${encodeURIComponent(loan.qrPayload.description)}${
       qrAmount > 0 ? `&amount=${Math.round(qrAmount)}` : ''
     }`;
+  const loanTypeLabel =
+    loan?.loanTypeLabel ??
+    (loan?.loanType === 'BULLET' ? 'Trả gốc cuối kỳ' : 'Trả gốc hàng kỳ'); // [BIJLI-LOAN-RULE]
 
   return (
     <div className="min-h-screen px-4 pb-28 pt-8">
@@ -87,11 +90,21 @@ export default function LoanPage() {
                   <span className="text-[#555]">Lãi suất</span>
                   <span className="font-semibold">{loan.interestRate}%</span>
                 </div>
+                {/* [BIJLI-LOAN-RULE] loan type label */}
+                <div className="flex justify-between">
+                  <span className="text-[#555]">Loại Khoản Vay</span>
+                  <span className="font-semibold">{loanTypeLabel}</span>
+                </div>
                 <div className="flex items-start justify-between text-sm sm:text-base text-[#555]">
                   <span>Kỳ thanh toán</span>
                   <div className="text-right leading-tight">
+                    {/* [BIJLI-LOAN-RULE] show total due for installment */}
                     <div className="font-semibold">
-                      {loan.nextPayment ? formatCurrencyVND(loan.nextPayment.principalDue) : '—'}
+                      {loan.nextPayment
+                        ? formatCurrencyVND(
+                            loan.nextPayment.totalDue ?? loan.nextPayment.principalDue,
+                          )
+                        : '—'}
                     </div>
                     {loan.nextPayment?.dueDate ? (
                       <div className="text-[#555] whitespace-nowrap">
@@ -99,7 +112,18 @@ export default function LoanPage() {
                       </div>
                     ) : null}
                   </div>
-                </div>
+                
+                {/* [BIJLI-LOAN-RULE] next payment total due */}
+                {/* <div className="flex justify-between">
+                  <span className="text-[#555]">S? ti?n k? t?i</span>
+                  <span className="font-semibold">
+                    {loan.nextPayment?.totalDue
+                      ? formatCurrencyVND(loan.nextPayment.totalDue)
+                      : '?'}
+                  </span>
+                </div> */}
+
+</div>
               </div>
 
               <p className="text-xs text-red-600 font-medium text-center">

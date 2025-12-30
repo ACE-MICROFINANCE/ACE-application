@@ -8,11 +8,13 @@ import { JwtAccessStrategy } from './strategies/jwt-access.strategy';
 import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
 import { PrismaModule } from '../../database/prisma.module';
 import { NotificationModule } from '../notifications/notification.module';
+import { CustomersModule } from '../customers/customers.module';
 
 @Module({
   imports: [
     PrismaModule,
     NotificationModule,
+    CustomersModule, // [BIJLI-CUSTOMER] allow customer sync service in auth
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => {

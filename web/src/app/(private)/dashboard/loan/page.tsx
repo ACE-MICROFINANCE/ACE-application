@@ -46,6 +46,7 @@ export default function LoanPage() {
   const loanTypeLabel =
     loan?.loanTypeLabel ??
     (loan?.loanType === 'BULLET' ? 'Trả gốc cuối kỳ' : 'Trả gốc hàng kỳ'); // [BIJLI-LOAN-RULE]
+  const loanPaymentTypeLabel = loan?.loanPaymentTypeLabel ?? null; // CHANGED: nhãn "hình thức trả nợ" do BE tính sẵn
 
   return (
     <div className="min-h-screen px-4 pb-28 pt-8">
@@ -68,8 +69,10 @@ export default function LoanPage() {
             <>
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-sm text-[#666]">Khoản vay</p>
-                  <p className="text-xl font-semibold text-[#333]">#{loan.loanNo}</p>
+                  <p className="text-sm text-[#666]">Mã khoản vay</p> {/* CHANGED: hiện thị mã KH thay vì mã khoản vay */}
+                  <p className="text-xl font-semibold text-[#333]">
+  {loan.loanNo ?? `#${loan.memberNo}`} {/* CHANGED: ưu tiên memberNo, fallback loanNo */}
+</p>
                 </div>
                 <div className="text-right text-sm text-[#555]">
                   <p>Ngày giải ngân</p>
@@ -83,35 +86,74 @@ export default function LoanPage() {
                   <span className="font-semibold">{formatCurrencyVND(loan.principalAmount)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-[#555]">Dư nợ còn lại</span>
+                  <span className="text-[#555]">Dư nợ gốc còn lại</span>
                   <span className="font-semibold">{formatCurrencyVND(loan.remainingPrincipal)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-[#555]">Lãi suất</span>
                   <span className="font-semibold">{loan.interestRate}%</span>
                 </div>
-                {/* [BIJLI-LOAN-RULE] loan type label */}
-                <div className="flex justify-between">
-                  <span className="text-[#555]">Loại Khoản Vay</span>
-                  <span className="font-semibold">{loanTypeLabel}</span>
-                </div>
-                <div className="flex items-start justify-between text-sm sm:text-base text-[#555]">
-                  <span>Kỳ thanh toán</span>
-                  <div className="text-right leading-tight">
-                    {/* [BIJLI-LOAN-RULE] show total due for installment */}
-                    <div className="font-semibold">
-                      {loan.nextPayment
-                        ? formatCurrencyVND(
-                            loan.nextPayment.totalDue ?? loan.nextPayment.principalDue,
-                          )
-                        : '—'}
-                    </div>
-                    {loan.nextPayment?.dueDate ? (
-                      <div className="text-[#555] whitespace-nowrap">
-                        Hạn tới {formatDate(loan.nextPayment.dueDate)}
-                      </div>
-                    ) : null}
+                {loanPaymentTypeLabel ? ( // CHANGED: chỉ hiển thị khi BE phân loại được
+                  <div className="flex justify-between">
+                    <span className="text-[#555]">Loại khoản vay</span>
+                    <span className="font-semibold">{loanPaymentTypeLabel}</span>
                   </div>
+                ) : null}
+                {/* [BIJLI-LOAN-RULE] loan type label */}
+                 <div className="flex justify-between">
+                  <span className="text-[#555]">Số kỳ còn phải trả</span>
+                  <span className="font-semibold">{loan.remainingInstallments}/{loan.termInstallments} Kỳ</span>
+                </div> 
+                 <div className="flex justify-between">
+                  <span className="text-[#555]">Số ngày phải trả tiếp theo</span>
+                  <span className="font-semibold">
+                   {loan.nextPayment?.dueDate ? (
+    <div className="mt-0.5 inline-block text-right">
+      <div className="text-[#555] whitespace-nowrap">
+        {formatDate(loan.nextPayment.dueDate)}
+      </div>
+
+      {typeof loan.remainingInstallments === 'number' &&
+      typeof loan.termInstallments === 'number' &&
+      loan.termInstallments > 0 ? (
+        <div className="text-[#555] whitespace-nowrap">
+          {/* Còn {loan.remainingInstallments}/{loan.termInstallments} Kỳ */}
+        </div>
+      ) : null}
+    </div>
+  ) : null}
+                    </span>
+                </div> 
+                
+                
+        <div className="grid grid-cols-[1fr_auto] items-start gap-3 text-sm sm:text-base text-[#555]">
+          <span>Số tiền phải trả tiếp theo</span>
+
+          <div className="grid justify-items-end leading-tight">
+          <div className="font-semibold text-right">
+            {loan.nextPayment
+              ? formatCurrencyVND(loan.nextPayment.totalDue ?? loan.nextPayment.principalDue)
+              : '—'}
+          </div>
+
+  {loan.nextPayment?.dueDate ? (
+    <div className="mt-0.5 inline-block text-right">
+      {/* <div className="text-[#555] whitespace-nowrap">
+        Hạn tới {formatDate(loan.nextPayment.dueDate)}
+      </div> */}
+
+      {typeof loan.remainingInstallments === 'number' &&
+      typeof loan.termInstallments === 'number' &&
+      loan.termInstallments > 0 ? (
+        <div className="text-[#555] whitespace-nowrap">
+          {/* Còn {loan.remainingInstallments}/{loan.termInstallments} Kỳ */}
+        </div>
+      ) : null}
+    </div>
+  ) : null}
+</div>
+  
+</div>
                 
                 {/* [BIJLI-LOAN-RULE] next payment total due */}
                 {/* <div className="flex justify-between">
@@ -123,7 +165,6 @@ export default function LoanPage() {
                   </span>
                 </div> */}
 
-</div>
               </div>
 
               <p className="text-xs text-red-600 font-medium text-center">
@@ -165,4 +206,9 @@ export default function LoanPage() {
     </div>
   );
 }
+
+
+
+
+
 

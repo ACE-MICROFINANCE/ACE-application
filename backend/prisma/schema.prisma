@@ -28,6 +28,7 @@ model Customer {
   refreshTokens  RefreshToken[]
   loans          Loan[]
   savings        CustomerSavings[]
+  savingsTransactions CustomerSavingsTransaction[] // CHANGED: lưu lịch sử giao dịch tiết kiệm
   feedbacks      Feedback[]
 }
 
@@ -107,6 +108,23 @@ model CustomerSavings {
   @@unique([customerId, type])
 }
 
+model CustomerSavingsTransaction {
+  id               BigInt   @id @default(autoincrement())
+  customerId       BigInt
+  savingsType      String
+  trnDate          DateTime
+  trnType          String
+  depositAmount    Decimal  @default(0)
+  withdrawalAmount Decimal  @default(0)
+  externalKey      String   @unique
+  createdAt        DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id])
+
+  @@index([customerId, savingsType, trnDate])
+  // CHANGED: thêm bảng lưu lịch sử giao dịch tiết kiệm để phục vụ /savings
+}
+
 model Event {
   id          BigInt   @id @default(autoincrement())
   title       String
@@ -130,3 +148,5 @@ model Feedback {
 
   customer Customer @relation(fields: [customerId], references: [id])
 }
+
+// NOTE: Them CustomerSavingsTransaction de luu lich su giao dich tu BIJLI va phuc vu /savings.

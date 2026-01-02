@@ -11,6 +11,7 @@ import { JwtPayload } from './strategies/jwt-access.strategy';
 import { NotificationService } from '../notifications/notification.service';
 import { generateNumericPassword } from '../../utils/password.util';
 import { BijliCustomerSyncService } from '../customers/bijli-customer-sync.service';
+import { formatVietnameseName } from '../../common/utils/string.utils';
 
 @Injectable()
 export class AuthService {
@@ -106,6 +107,21 @@ export class AuthService {
       }
     } catch {
       // [BIJLI-CUSTOMER] ignore BIJLI errors to keep login working
+    }
+
+    if (loginCustomer.fullName) {
+      const formattedName = formatVietnameseName(loginCustomer.fullName);
+      if (formattedName !== loginCustomer.fullName) {
+        try {
+          loginCustomer = await this.prisma.customer.update({
+            where: { id: loginCustomer.id },
+            data: { fullName: formattedName },
+            include: { credential: true },
+          });
+        } catch {
+          // Khong chan login neu cap nhat ten that bai.
+        }
+      }
     }
 
     const tokens = await this.issueTokens(loginCustomer);

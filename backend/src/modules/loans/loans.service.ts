@@ -82,6 +82,34 @@ export class LoansService {
     return loanType === 'BULLET' ? 'Trả gốc cuối kỳ' : 'Trả gốc lẫn lãi';
   }
 
+  private differenceInCalendarDaysUtc(dateLeft: Date, dateRight: Date) {
+    // CHANGED: tính chênh lệch ngày theo UTC để tránh lệch timezone
+    const leftUtc = Date.UTC(dateLeft.getUTCFullYear(), dateLeft.getUTCMonth(), dateLeft.getUTCDate());
+    const rightUtc = Date.UTC(dateRight.getUTCFullYear(), dateRight.getUTCMonth(), dateRight.getUTCDate());
+    return Math.round((leftUtc - rightUtc) / MS_PER_DAY);
+  }
+
+  private getLoanPaymentTypeLabel(productName: string | null | undefined, installments: LoanInstallment[]) {
+    // CHANGED: chỉ áp dụng cho ProductName có "DEGRESSIVE" (không phân biệt hoa/thường)
+    if (!productName || !productName.toUpperCase().includes('DEGRESSIVE')) return null;
+
+    const dueDates = (installments ?? [])
+      .map((i) => i.dueDate)
+      .filter((d): d is Date => d instanceof Date)
+      .sort((a, b) => a.getTime() - b.getTime());
+    if (dueDates.length < 2) return null;
+
+    const gapsDays: number[] = [];
+    for (let i = 1; i < dueDates.length; i += 1) {
+      const gap = this.differenceInCalendarDaysUtc(dueDates[i], dueDates[i - 1]); // CHANGED: differenceInCalendarDays
+      if (gap > 0) gapsDays.push(gap);
+    }
+    if (gapsDays.length < 1) return null;
+
+    const ratio28 = gapsDays.filter((gap) => gap <= 28).length / gapsDays.length; // CHANGED: tỉ lệ gap <= 28 ngày
+    return ratio28 >= 0.6 ? 'Trả gốc lãi hàng kỳ' : 'Trả dần linh hoạt';
+  }
+
   // [BIJLI-LOAN] cache stale check
   private isStale(lastSyncedAt?: Date | null) {
     if (!lastSyncedAt) return true;
@@ -94,6 +122,23 @@ export class LoansService {
   ) {
     const remainingPrincipal =
       loan.totalPrincipalOutstanding ?? loan.principalAmount ?? loan.principalAmount;
+
+    const termInstallments =
+      loan.termInstallments ?? (loan.installments?.length ? loan.installments.length : null); // CHANGED: tính tổng số kỳ để FE hiển thị
+
+    const today = this.startOfToday(); // CHANGED: dùng mốc hôm nay nhất quán với logic nextPayment
+    const remainingInstallments = loan.installments?.length
+      ? loan.installments.filter((inst) => {
+          const status = String(inst.status ?? '').toUpperCase();
+          const principal = Number(inst.principalDue ?? 0);
+          const interest = Number(inst.interestDue ?? 0);
+          return (
+            status !== 'PAID' &&
+            inst.dueDate >= today &&
+            (principal > 0 || interest > 0)
+          );
+        }).length
+      : null; // CHANGED: tính số kỳ còn lại (fallback theo dueDate do chưa có PAID status)
 
     const nextPayment = nextInstallment
       ? {
@@ -126,7 +171,10 @@ export class LoansService {
     // NOTE: old static QR string kept for reference
     // const qrPayload = nextPayment && `ACE|${loan.loanNo}|${nextPayment.dueDate.toISOString()}|${nextPayment.principalDue}`;
 
+    const loanPaymentTypeLabel = this.getLoanPaymentTypeLabel(loan.productName, loan.installments); // CHANGED: phân loại hình thức trả nợ (DEGRESSIVE)
+
     return {
+      memberNo: loan.customer?.memberNo, // CHANGED: bổ sung mã số khách hàng cho FE hiển thị
       loanNo: loan.loanNo,
       disbursementDate: loan.disbursementDate,
       principalAmount: Number(loan.principalAmount),
@@ -134,6 +182,9 @@ export class LoansService {
       interestRate: Number(loan.interestRate),
       loanType: loan.loanType ?? this.getLoanType(loan.productName), // [BIJLI-LOAN-RULE]
       loanTypeLabel: this.getLoanTypeLabel(loan.loanType ?? this.getLoanType(loan.productName)), // [BIJLI-LOAN-RULE]
+      loanPaymentTypeLabel, // CHANGED: nhãn "hình thức trả nợ" để FE chỉ hiển thị
+      termInstallments, // CHANGED: tổng số kỳ để FE hiển thị dưới "Hạn tới"
+      remainingInstallments, // CHANGED: số kỳ còn lại để FE hiển thị dưới "Hạn tới"
       nextPayment,
       qrPayload,
     };

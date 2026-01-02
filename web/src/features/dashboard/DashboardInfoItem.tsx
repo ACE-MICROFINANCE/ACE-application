@@ -1,9 +1,11 @@
 'use client';
 
+import { type ReactNode } from 'react';
+
 type DashboardInfoItemProps = {
   imageUrl: string;
   alt: string;
-  text: string;
+  text: ReactNode;
   showDivider?: boolean;
 };
 

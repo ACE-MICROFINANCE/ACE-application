@@ -3,8 +3,12 @@
 import { axiosClient } from '@/lib/axiosClient';
 
 export type LoanCurrentResponse = {
+  memberNo?: string; // CHANGED: thêm mã số khách hàng cho màn khoản vay
   loanNo: string;
   disbursementDate?: string;
+  loanPaymentTypeLabel?: string | null; // CHANGED: nhãn hình thức trả nợ (tính ở BE)
+  termInstallments?: number | null; // CHANGED: tổng số kỳ (BE tính sẵn)
+  remainingInstallments?: number | null; // CHANGED: số kỳ còn lại (BE tính sẵn)
   principalAmount: number;
   remainingPrincipal: number;
   interestRate: number;
@@ -25,6 +29,16 @@ export type LoanCurrentResponse = {
   };
 };
 
+export type SavingsTransactionItem = {
+  date: string;
+  title: string;
+  amount: number;
+  runningBalance: number;
+  rawType?: string | null;
+  deposit?: number;
+  withdrawal?: number;
+}; // CHANGED: schema giao dịch tiết kiệm cho FE
+
 export type SavingsItem = {
   type: 'COMPULSORY' | 'VOLUNTARY' | string;
   principalAmount: number;
@@ -32,6 +46,9 @@ export type SavingsItem = {
   interestAccrued: number;
   lastDepositAmount?: number | null;
   lastDepositDate?: string | null;
+  lastTxnDate?: string | null; // CHANGED: ngày giao dịch gần nhất (VOLUNTARY)
+  interestRun?: { amount: number; date: string } | null; // CHANGED: kỳ chạy lãi gần nhất (VOLUNTARY)
+  transactions?: SavingsTransactionItem[]; // CHANGED: lịch sử giao dịch từ BIJLI
 };
 
 export type ScheduleItem = {
@@ -55,6 +72,7 @@ export type ProfileResponse = {
   id: number;
   memberNo: string;
   fullName: string;
+  loanCycle?: number | null; // CHANGED: vòng quay (LoanCycle) lấy từ khoản vay ACTIVE
   gender?: string | null;
   idCardNumber?: string | null;
   phoneNumber?: string | null;
@@ -96,3 +114,5 @@ export const appApi = {
     return response.data;
   },
 };
+
+/* NOTE: Mở rộng SavingsItem để nhận lịch sử giao dịch từ BE. */

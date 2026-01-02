@@ -34,7 +34,16 @@ export class CustomersService {
       throw new NotFoundException('Customer not found');
     }
 
-    return this.mapProfile(customer);
+    const activeLoan = await this.prisma.loan.findFirst({
+      where: { customerId: id, status: 'ACTIVE' },
+      orderBy: [{ disbursementDate: 'desc' }],
+      select: { loanCycle: true },
+    }); // CHANGED: lấy vòng quay từ khoản vay ACTIVE mới nhất
+
+    return {
+      ...this.mapProfile(customer),
+      loanCycle: activeLoan?.loanCycle ?? null, // CHANGED: trả về loanCycle để FE hiển thị ở tab account
+    };
   }
 
   async createCustomer(

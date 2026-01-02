@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
 import { hashPassword, generateNumericPassword } from '../../utils/password.util';
 import { CreateCustomerDto } from './dto/create-customer.dto';
+import { formatVietnameseName } from '../../common/utils/string.utils';
 
 @Injectable()
 export class AdminService {
@@ -28,12 +29,13 @@ export class AdminService {
   async createCustomer(dto: CreateCustomerDto) {
     const tempPassword = generateNumericPassword();
     const passwordHash = await hashPassword(tempPassword);
+    const normalizedFullName = formatVietnameseName(dto.fullName);
 
     try {
       const created = await this.prisma.customer.create({
         data: {
           memberNo: dto.memberNo,
-          fullName: dto.fullName,
+          fullName: normalizedFullName,
           gender: dto.gender,
           idCardNumber: dto.idCardNumber,
           phoneNumber: dto.phoneNumber,

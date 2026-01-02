@@ -173,9 +173,19 @@ const DashboardContent = () => {
                   </span>
                 </div>
                 <div className="flex justify-between">
+                  <span className="text-[#555]">Vòng vay</span>
+                  <span className="font-semibold">
+                         {profile?.loanCycle !== null && profile?.loanCycle !== undefined
+                      ? `${profile.loanCycle}`
+                      : ''}{' '}
+                  </span>
+                </div>
+                <div className="flex justify-between">
                   <span className="text-[#555]">Ngày tham gia</span>
                   <span className="font-semibold">
                     {formatDate(profile?.membershipStartDate ?? null)}
+               
+                    {/* CHANGED: show loanCycle next to admission date */}
                   </span>
                 </div>
               </div>

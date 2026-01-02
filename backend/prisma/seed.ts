@@ -158,10 +158,10 @@ const customersSeed: CustomerSeed[] = [
     groupName: 'TX-D4B BAN TEN - DK',
   },
   {
-    memberNo: '20004047',
+    memberNo: '20010346',
   },
   {
-    memberNo: '10011825',
+    memberNo: '40004791',
   },
 ];
 

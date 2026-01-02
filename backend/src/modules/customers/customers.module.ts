@@ -9,6 +9,6 @@ import { BijliCustomerSyncService } from './bijli-customer-sync.service';
   imports: [PrismaModule],
   providers: [CustomersService, BijliClientService, BijliCustomerSyncService], // [BIJLI-CUSTOMER] BIJLI sync services
   controllers: [CustomersController],
-  exports: [CustomersService, BijliCustomerSyncService], // [BIJLI-CUSTOMER] allow sync usage in other modules
+  exports: [CustomersService, BijliCustomerSyncService, BijliClientService], // CHANGED: export BijliClientService for /savings
 })
 export class CustomersModule {}

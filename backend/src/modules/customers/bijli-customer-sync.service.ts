@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { BijliClientService } from './bijli-client.service';
+import { formatVietnameseName } from '../../common/utils/string.utils';
 
 @Injectable()
 export class BijliCustomerSyncService {
@@ -19,11 +20,13 @@ export class BijliCustomerSyncService {
     const mapped = this.mapBijliCustomer(data, memberNo);
     const { memberNo: normalizedMemberNo, ...updateData } = mapped;
 
-    await this.prisma.customer.upsert({
+    const customer = await this.prisma.customer.upsert({
       where: { memberNo: normalizedMemberNo },
       create: mapped,
       update: updateData,
     });
+
+    await this.syncSavingsFromBijli(customer.id, data); // CHANGED: dong bo so du + lich su tiet kiem tu BIJLI
 
     this.logger.log(`[BIJLI-CUSTOMER] Sync success memberNo=${normalizedMemberNo}`); // [BIJLI-CUSTOMER] debug success
     return true;
@@ -46,7 +49,8 @@ export class BijliCustomerSyncService {
         this.normalizeString(data.FirstNm),
       ) ??
       memberNo;
-    const fullName = this.fixMojibakeUtf8(rawFullName);
+    const fullNameRaw = this.fixMojibakeUtf8(rawFullName);
+    const fullName = formatVietnameseName(fullNameRaw);
 
     const gender = this.mapGender(this.normalizeString(data.Gender));
 
@@ -90,10 +94,163 @@ export class BijliCustomerSyncService {
     };
   }
 
+  // CHANGED: dong bo so du + lich su tiet kiem VOLUNTARY tu BIJLI
+  private async syncSavingsFromBijli(customerId: bigint, data: Record<string, unknown>) {
+    const compBalance = this.parseMoney(
+      data.CompSavings ?? data.CompSaving ?? data.CompBalance,
+    );
+    const volBalance = this.parseMoney(
+      data.VolSavings ?? data.VollSavings ?? data.VolBalance ?? data.VolSaving,
+    );
+
+    if (compBalance !== null) {
+      await this.prisma.customerSavings.upsert({
+        where: {
+          customerId_type: {
+            customerId,
+            type: 'COMPULSORY',
+          },
+        },
+        update: {
+          currentBalance: compBalance, // CHANGED: cap nhat tong so du bat buoc tu BIJLI
+          principalAmount: compBalance,
+        },
+        create: {
+          customerId,
+          type: 'COMPULSORY',
+          currentBalance: compBalance,
+          principalAmount: compBalance,
+          interestAccrued: 0,
+        },
+      });
+    }
+
+    if (volBalance !== null) {
+      await this.prisma.customerSavings.upsert({
+        where: {
+          customerId_type: {
+            customerId,
+            type: 'VOLUNTARY',
+          },
+        },
+        update: {
+          currentBalance: volBalance, // CHANGED: cap nhat tong so du tu nguyen tu BIJLI
+          principalAmount: volBalance,
+        },
+        create: {
+          customerId,
+          type: 'VOLUNTARY',
+          currentBalance: volBalance,
+          principalAmount: volBalance,
+          interestAccrued: 0,
+        },
+      });
+    }
+
+    const voluntaryRaw = this.normalizeArray(
+      data.VollSavings ?? data.VolSavings ?? data.volSavings ?? data.VOLLSAVINGS,
+    );
+
+    if (!voluntaryRaw.length) return;
+
+    const mapped = voluntaryRaw
+      .map((item) => {
+        const record = item as Record<string, unknown>;
+        const trnDateText =
+          this.normalizeString(record.TrnDate) ?? this.normalizeString(record.TranDate);
+        const trnDate = this.parseDateFlexible(trnDateText, true);
+        if (!trnDate) return null;
+
+        const trnType =
+          this.normalizeString(record.TrnType) ??
+          this.normalizeString(record.TrnTypeCode) ??
+          'UNKNOWN';
+        const depositAmount =
+          this.parseMoney(
+            record.DepositAmt ??
+              record.DepositAmount ??
+              record.Deposit ??
+              record.CrAmt,
+          ) ?? 0;
+        const withdrawalAmount =
+          this.parseMoney(
+            record.WithdrawalAmt ?? // CHANGED: BIJLI dùng key WithdrawalAmt
+              record.WithdrawalAmount ?? // CHANGED: fallback nếu BIJLI đổi tên field
+              record.WithdrawAmt ??
+              record.WithdrawAmount ??
+              record.Withdraw ??
+              record.DrAmt,
+          ) ?? 0;
+
+        return {
+          trnDate,
+          trnType,
+          depositAmount,
+          withdrawalAmount,
+        };
+      })
+      .filter(Boolean) as Array<{
+      trnDate: Date;
+      trnType: string;
+      depositAmount: number;
+      withdrawalAmount: number;
+    }>;
+
+    if (!mapped.length) return;
+
+    const occurrenceMap = new Map<string, number>();
+    const customerKey = customerId.toString();
+
+    const tasks = mapped.map((txn) => {
+      const baseKey = `${customerKey}:VOLUNTARY:${txn.trnDate.toISOString()}:${txn.trnType}:${txn.depositAmount}:${txn.withdrawalAmount}`;
+      const occurrence = (occurrenceMap.get(baseKey) ?? 0) + 1;
+      occurrenceMap.set(baseKey, occurrence);
+      const externalKey = `${baseKey}:${occurrence}`; // CHANGED: externalKey idempotent
+
+      return this.prisma.customerSavingsTransaction.upsert({
+        where: { externalKey },
+        create: {
+          customerId,
+          savingsType: 'VOLUNTARY',
+          trnDate: txn.trnDate,
+          trnType: txn.trnType,
+          depositAmount: txn.depositAmount,
+          withdrawalAmount: txn.withdrawalAmount,
+          externalKey,
+        },
+        update: {
+          trnDate: txn.trnDate,
+          trnType: txn.trnType,
+          depositAmount: txn.depositAmount,
+          withdrawalAmount: txn.withdrawalAmount,
+        },
+      });
+    });
+
+    await this.prisma.$transaction(tasks);
+  }
+
+  // CHANGED: chuan hoa danh sach giao dich tu payload BIJLI
+  private normalizeArray(value: unknown): Record<string, unknown>[] {
+    if (!value) return [];
+    if (Array.isArray(value)) return value as Record<string, unknown>[];
+    if (typeof value === 'object') return [value as Record<string, unknown>];
+    return [];
+  }
+
   private normalizeString(value: unknown): string | null {
     if (value === null || value === undefined) return null;
     const text = String(value).trim();
     return text.length > 0 ? text : null;
+  }
+
+  // CHANGED: parse so tien tu BIJLI (string/number)
+  private parseMoney(value: unknown): number | null {
+    if (value === null || value === undefined) return null;
+    const text = String(value).replace(/,/g, '').trim();
+    if (!text) return null;
+    const parsed = Number(text);
+    return Number.isNaN(parsed) ? null : parsed;
   }
 
   private composeName(
@@ -109,14 +266,14 @@ export class BijliCustomerSyncService {
   private mapGender(raw?: string | null): string | null {
     if (!raw) return null;
     const normalized = raw.trim().toLowerCase();
-    if (normalized === 'female') return 'Nữ';
+    if (normalized === 'female') return 'Nữ'; // CHANGED: sua chu Viet dung UTF-8
     if (normalized === 'male') return 'Nam';
     return null;
   }
 
   private fixMojibakeUtf8(value: string): string {
     if (!value) return value;
-    if (!/[ÃÂá»]/.test(value)) return value;
+    if (!/[\u00c3\u00c2]/.test(value)) return value;
     try {
       return Buffer.from(value, 'latin1').toString('utf8');
     } catch {
@@ -176,3 +333,5 @@ export class BijliCustomerSyncService {
     return new Date(Date.UTC(year, month - 1, day));
   }
 }
+
+/* NOTE: Cap nhat bijli-customer-sync de dong bo so du va lich su tiet kiem VOLUNTARY; sua mapGender va them parseMoney/normalizeArray. */

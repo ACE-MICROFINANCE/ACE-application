@@ -26,21 +26,21 @@ export class EventsService {
     if (!customer) {
       throw new NotFoundException('Customer not found');
     }
-
-    const filters = [
-      { scope: 'GLOBAL' },
-      customer.groupCode
-        ? { scope: 'GROUP', groupCode: customer.groupCode }
-        : undefined,
-      customer.villageName
-        ? { scope: 'VILLAGE', villageName: customer.villageName }
-        : undefined,
-    ].filter(Boolean) as any[];
+    //  const filters = [
+    //   { scope: 'GLOBAL' },
+    //   customer.groupCode
+    //     ? { scope: 'GROUP', groupCode: customer.groupCode }
+    //     : undefined,
+    //   customer.villageName
+    //     ? { scope: 'VILLAGE', villageName: customer.villageName }
+    //     : undefined,
+    // ].filter(Boolean) as any[];
 
     const events = await this.prisma.event.findMany({
       where: {
         startDate: { gte: this.startOfToday() },
-        OR: filters,
+        // TODO: replaced by ACE Farmer implementation
+        // OR: filters, // CHANGED: tạm bỏ lọc theo group/village để ai cũng thấy event
       },
       orderBy: { startDate: 'asc' },
     });

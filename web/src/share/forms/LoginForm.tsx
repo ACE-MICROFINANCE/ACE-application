@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
@@ -49,7 +49,7 @@ export const LoginForm = () => {
     try {
       const result = await login({ memberNo: values.memberNo, password: values.password });
       if (result.customer?.mustChangePassword) {
-        router.replace(`${routes.changePassword}?mode=force`);
+        router.replace(`${routes.dashboard}?tab=account`);
       } else {
         router.replace(routes.dashboard);
       }

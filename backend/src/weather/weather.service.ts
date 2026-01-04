@@ -38,7 +38,7 @@ export class WeatherService {
   }
 
   async getWeather(lat: number, lon: number): Promise<WeatherResponse> {
-    const url = `${this.baseUrl}/forecast.json?key=${this.apiKey}&q=${lat},${lon}&days=7&aqi=no&alerts=no`;
+    const url = `${this.baseUrl}/forecast.json?key=${this.apiKey}&q=${lat},${lon}&days=7&aqi=no&alerts=no&lang=vi`;
 
     try {
       const { data } = await firstValueFrom(this.httpService.get(url));

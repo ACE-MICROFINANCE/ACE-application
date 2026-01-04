@@ -11,7 +11,7 @@ type NavKey = 'home' | 'loans' | 'saving' | 'schedule' | 'info' | 'account';
 const navItems: { key: NavKey; label: string; iconSrc: string; href: string }[] = [
   { key: 'loans', label: 'Khoản vay', iconSrc: '/img/loan_icon.jpg', href: '/dashboard/loan' },
   { key: 'saving', label: 'Tiết kiệm', iconSrc: '/img/saving_icon.jpg', href: '/dashboard/saving' },
-  { key: 'schedule', label: 'Lịch', iconSrc: '/img/Schedule_icon.png', href: '/dashboard/schedule' },
+  { key: 'schedule', label: 'Họp Nhóm và Tập Huấn', iconSrc: '/img/Schedule_icon.png', href: '/dashboard/schedule' },
   { key: 'info', label: 'Thông tin', iconSrc: '/img/infomation_icon.jpg', href: '/dashboard/info' },
   { key: 'account', label: 'Tài khoản', iconSrc: '/img/account_icon.jpg', href: '/dashboard?tab=account' },
 ];
@@ -64,10 +64,8 @@ export const BottomNav = () => {
           const isActive = activeKey === item.key;
           const isClicked = clickedKey === item.key;
 
-          const baseMotion = isActive ? { scale: 1.15, y: -22 } : { scale: 1, y: 0 };
-          const activeMotion = isClicked
-            ? { scale: 1.25, y: isActive ? -22 : 0 }
-            : baseMotion;
+          const baseScale = isActive ? 1.15 : 1;
+          const scaleMotion = isClicked ? 1.25 : baseScale;
 
           return (
             <div key={item.key} className="relative flex h-16 items-center justify-center overflow-visible">
@@ -75,28 +73,38 @@ export const BottomNav = () => {
                 onClick={() => handleClick(item)}
                 className={clsx(
                   'flex flex-col items-center justify-center gap-1 rounded-xl px-3 py-2 transition',
-                  isActive ? 'bg-transparent text-[#2b6cb0]' : 'text-[#555] hover:bg-slate-100',
+                  isActive ? 'bg-[#e7f3ff] text-[#2b6cb0]' : 'text-[#555] hover:bg-slate-100',
                 )}
                 aria-label={item.label}
               >
-                <motion.span
-                  className={clsx(
-                    'relative h-12 w-12 rounded-full bg-white p-1 shadow-sm border-4 overflow-hidden',
-                    isActive ? 'border-red-700' : 'border-transparent',
-                  )}
-                  animate={activeMotion}
-                  whileHover={isActive ? undefined : { scale: 1.05 }}
-                  transition={{ type: 'spring', stiffness: 600, damping: 24 }}
+                <motion.div
+                  className="flex items-center justify-center"
+                  animate={isActive ? { y: [-22, -30, -22] } : { y: 0 }}
+                  transition={
+                    isActive
+                      ? { duration: 1.25, repeat: Infinity, ease: 'easeInOut' }
+                      : { type: 'spring', stiffness: 600, damping: 24 }
+                  }
                 >
-                  <Image
-                    src={item.iconSrc}
-                    alt={item.label}
-                    fill
-                    sizes="44px"
-                    className="object-contain"
-                    priority
-                  />
-                </motion.span>
+                  <motion.span
+                    className={clsx(
+                      'relative h-12 w-12 rounded-full bg-white p-1 shadow-sm border-4 overflow-hidden',
+                      isActive ? 'border-red-700' : 'border-transparent',
+                    )}
+                    animate={{ scale: scaleMotion }}
+                    whileHover={isActive ? undefined : { scale: 1.05 }}
+                    transition={{ type: 'spring', stiffness: 600, damping: 24 }}
+                  >
+                    <Image
+                      src={item.iconSrc}
+                      alt={item.label}
+                      fill
+                      sizes="44px"
+                      className="object-contain"
+                      priority
+                    />
+                  </motion.span>
+                </motion.div>
               </button>
             </div>
           );

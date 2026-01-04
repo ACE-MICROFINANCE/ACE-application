@@ -1,9 +1,11 @@
-'use client';
+﻿'use client';
 
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AceCard } from '@/share/ui/AceCard';
 import { AceButton } from '@/share/ui/AceButton';
+import { Modal, ModalBody, ModalContent, ModalHeader } from '@heroui/react';
+import { ChangePasswordForm } from '@/share/forms/ChangePasswordForm';
 import { useAuth } from '@/hooks/useAuth';
 import { routes } from '@/lib/routes';
 import { DashboardRemindersCard } from '@/features/dashboard/DashboardRemindersCard';
@@ -14,7 +16,7 @@ import {
   type ScheduleItem,
   type LoanCurrentResponse,
 } from '@/services/appApi';
-import { formatDate, formatCurrencyVND } from '@/lib/format';
+import { formatDate } from '@/lib/format';
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
 const startOfToday = () => {
@@ -37,6 +39,8 @@ const DashboardContent = () => {
   const [feedbackContent, setFeedbackContent] = useState('');
   const [feedbackSending, setFeedbackSending] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const prevMustChangeRef = useRef(mustChangePassword);
   const hasFetchedProfile = useRef(false);
 
   const [scheduleEvents, setScheduleEvents] = useState<ScheduleItem[]>([]);
@@ -49,9 +53,16 @@ const DashboardContent = () => {
     if (!isAuthenticated) {
       router.replace(routes.login);
     } else if (mustChangePassword) {
-      router.replace(`${routes.changePassword}?mode=force`);
+      setChangePasswordOpen(true);
     }
   }, [isAuthenticated, isInitializing, mustChangePassword, router]);
+
+  useEffect(() => {
+    if (prevMustChangeRef.current && !mustChangePassword) {
+      setChangePasswordOpen(false);
+    }
+    prevMustChangeRef.current = mustChangePassword;
+  }, [mustChangePassword]);
 
   const loadProfile = async () => {
     setProfileLoading(true);
@@ -105,11 +116,11 @@ const DashboardContent = () => {
     setFeedbackMessage(null);
     try {
       await appApi.sendFeedback(feedbackContent.trim());
-      setFeedbackMessage('Đã gửi phản hồi thành công.');
+      setFeedbackMessage('Cảm ơn bạn đã gửi góp ý!');
       setFeedbackContent('');
       setFeedbackOpen(false);
     } catch (err) {
-      setFeedbackMessage('Gửi phản hồi thất bại, thử lại sau.');
+      setFeedbackMessage('Gửi góp ý thất bại, thử lại sau.');
     } finally {
       setFeedbackSending(false);
     }
@@ -121,14 +132,54 @@ const DashboardContent = () => {
     }
   };
 
+  const handleChangePasswordOpenChange = (open: boolean) => {
+    if (mustChangePassword && !open) return;
+    setChangePasswordOpen(open);
+  };
+
+  const renderChangePasswordModal = () => (
+    <Modal
+      isOpen={changePasswordOpen}
+      onOpenChange={handleChangePasswordOpenChange}
+      placement="center"
+      backdrop="blur"
+      classNames={{ backdrop: 'bg-black/30 backdrop-blur-sm' }}
+      hideCloseButton={mustChangePassword}
+    >
+      <ModalContent className="mx-4 w-[92vw] max-w-md overflow-hidden rounded-[28px] border border-black/5 bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)]">
+        <ModalHeader className="relative flex items-center justify-center border-b border-black/5 px-6 py-5">
+          <span className="text-[17px] font-semibold text-[#111]">Đổi mật khẩu</span>
+          {!mustChangePassword ? (
+            <button
+              type="button"
+              aria-label="Đóng"
+              onClick={() => setChangePasswordOpen(false)}
+              className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full border border-black/10 bg-black/5 text-[#333] transition active:scale-95 hover:bg-black/10"
+            >
+              ×
+            </button>
+          ) : null}
+        </ModalHeader>
+        <ModalBody className="space-y-4 px-6 pb-6 pt-5">
+          <p className="text-center text-sm text-[#666]">
+            {mustChangePassword
+              ? 'Bạn cần đổi mật khẩu để tiếp tục sử dụng ứng dụng.'
+              : 'Vui lòng nhập đầy đủ thông tin để đổi mật khẩu.'}
+          </p>
+          <ChangePasswordForm />
+        </ModalBody>
+      </ModalContent>
+    </Modal>
+  );
+
   if (showAccount) {
     return (
       <div className="min-h-screen px-4 pb-28 pt-8">
         <div className="mx-auto flex w-full max-w-md flex-col space-y-4">
           <AceCard className="space-y-4">
             <div className="text-center">
-              <h2 className="text-lg font-semibold text-[#333]">Thông tin tài khoản</h2>
-              <p className="text-sm text-[#666]">Cập nhật từ hồ sơ khách hàng ACE Farmer</p>
+              <h2 className="text-lg font-semibold text-[#333]">Thông tin đối tác</h2>
+              {/* <p className="text-sm text-[#666]">Cập nhật từ hồ sơ khách hàng ACE Farmer</p> */}
             </div>
 
             {profileLoading ? (
@@ -142,50 +193,42 @@ const DashboardContent = () => {
               <div className="space-y-2 text-sm text-[#333]">
                 <div className="flex justify-between">
                   <span className="text-[#555]">Họ tên</span>
-                  <span className="font-semibold">
-                    {profile?.fullName ?? customer?.fullName ?? '—'}
-                  </span>
+                  <span className="font-semibold">{profile?.fullName ?? customer?.fullName ?? '—'}</span>
                 </div>
+
                 <div className="flex justify-between">
                   <span className="text-[#555]">Mã thành viên</span>
                   <span className="font-semibold">
                     {profile?.memberNo ?? (customer as any)?.memberNo ?? '—'}
                   </span>
                 </div>
+
                 <div className="flex justify-between">
                   <span className="text-[#555]">Số CMT/CCCD</span>
                   <span className="font-semibold">{profile?.idCardNumber ?? '—'}</span>
                 </div>
+
                 <div className="flex justify-between">
                   <span className="text-[#555]">Điện thoại</span>
                   <span className="font-semibold">{profile?.phoneNumber ?? '—'}</span>
                 </div>
+
                 <div className="flex justify-between">
                   <span className="text-[#555]">Nhóm/Vùng</span>
-                  <span className="font-semibold">
-                    {profile?.groupName ?? profile?.groupCode ?? '—'}
-                  </span>
+                  <span className="font-semibold">{profile?.groupName ?? profile?.groupCode ?? '—'}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-[#555]">Địa chỉ</span>
-                  <span className="font-semibold">
-                    {profile?.villageName ?? profile?.locationType ?? '—'}
-                  </span>
-                </div>
+
                 <div className="flex justify-between">
                   <span className="text-[#555]">Vòng vay</span>
                   <span className="font-semibold">
-                         {profile?.loanCycle !== null && profile?.loanCycle !== undefined
-                      ? `${profile.loanCycle}`
-                      : ''}{' '}
+                    {profile?.loanCycle !== null && profile?.loanCycle !== undefined ? `${profile.loanCycle}` : ''}
                   </span>
                 </div>
+
                 <div className="flex justify-between">
                   <span className="text-[#555]">Ngày tham gia</span>
                   <span className="font-semibold">
                     {formatDate(profile?.membershipStartDate ?? null)}
-               
-                    {/* CHANGED: show loanCycle next to admission date */}
                   </span>
                 </div>
               </div>
@@ -196,13 +239,19 @@ const DashboardContent = () => {
             ) : null}
 
             <div className="space-y-3">
-              <AceButton onClick={() => router.push(routes.changePassword)}>Đổi mật khẩu</AceButton>
-              <AceButton className="bg-[#f59e0b] hover:bg-[#d97706]" onClick={() => setFeedbackOpen(true)}>
-                Gửi phản hồi
+              <AceButton onClick={() => setChangePasswordOpen(true)}>Đổi mật khẩu</AceButton>
+
+              <AceButton
+                className="bg-[#f59e0b] hover:bg-[#d97706]"
+                onClick={() => setFeedbackOpen(true)}
+              >
+                Gửi góp ý
               </AceButton>
+
               <AceButton className="bg-[#10b981] hover:bg-[#0f9c6f]" onClick={handleCallCCO}>
                 Liên hệ CCO
               </AceButton>
+
               <AceButton
                 className="bg-[#ef4444] hover:bg-[#dc2626]"
                 onClick={() => {
@@ -218,7 +267,7 @@ const DashboardContent = () => {
 
         {feedbackOpen ? (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
-            <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-lg relative">
+            <div className="relative w-full max-w-md rounded-2xl bg-white p-5 shadow-lg">
               <button
                 aria-label="Đóng"
                 onClick={() => setFeedbackOpen(false)}
@@ -226,7 +275,9 @@ const DashboardContent = () => {
               >
                 ✕
               </button>
-              <h3 className="text-lg font-semibold text-[#333] text-center mb-3">Gửi phản hồi</h3>
+
+              <h3 className="mb-3 text-center text-lg font-semibold text-[#333]">Gửi phản hồi</h3>
+
               <textarea
                 className="w-full rounded-xl border border-[#d9d9d9] p-3 text-sm text-[#333] focus:outline-none focus:ring-2 focus:ring-[#2b6cb0]"
                 rows={4}
@@ -234,6 +285,7 @@ const DashboardContent = () => {
                 value={feedbackContent}
                 onChange={(e) => setFeedbackContent(e.target.value)}
               />
+
               <div className="mt-3 flex gap-3">
                 <AceButton onClick={handleSendFeedback} isLoading={feedbackSending}>
                   Gửi
@@ -242,15 +294,16 @@ const DashboardContent = () => {
                   className="bg-gray-200 text-[#333] hover:bg-gray-300"
                   onClick={() => setFeedbackOpen(false)}
                 >
-                  Huỷ
+                  Hủy
                 </AceButton>
               </div>
-              {feedbackMessage ? (
-                <p className="mt-2 text-sm text-[#2f855a]">{feedbackMessage}</p>
-              ) : null}
+
+              {feedbackMessage ? <p className="mt-2 text-sm text-[#2f855a]">{feedbackMessage}</p> : null}
             </div>
           </div>
         ) : null}
+
+        {renderChangePasswordModal()}
       </div>
     );
   }
@@ -259,15 +312,15 @@ const DashboardContent = () => {
     <div className="min-h-screen px-4 pb-28 pt-8">
       <div className="mx-auto flex w-full max-w-md flex-col space-y-4">
         <AceCard className="space-y-2">
-          <h1 className="text-xl font-semibold text-[#333] text-center">Chào mừng khách hàng</h1>
-          <p className="text-4xl md:text-xl text-[#2b6cb0] font-bold text-center">
+          <h1 className="text-center text-xl font-semibold text-[#333]">Chào mừng khách hàng</h1>
+          <p className="text-center text-4xl font-bold text-[#2b6cb0] md:text-xl">
             {customer?.fullName ?? 'Nguyễn Văn A'}
           </p>
         </AceCard>
 
         <WeatherCard />
-
         <DashboardRemindersCard />
+        {renderChangePasswordModal()}
       </div>
     </div>
   );

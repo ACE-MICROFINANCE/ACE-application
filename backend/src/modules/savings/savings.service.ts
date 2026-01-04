@@ -81,7 +81,7 @@ export class SavingsService {
   // CHANGED: mô tả giao dịch theo hướng tiền, chỉ show code INT
   private getTransactionTitle(trnType: string | null, netAmount: number): string {
     const normalized = (trnType ?? '').trim().toUpperCase();
-    if (normalized === 'INT') return 'Cộng lãi (INT)';
+    if (normalized === 'INT') return 'Lãi tiết kiệm';
     if (netAmount > 0) return 'Chuyển tiền vào';
     if (netAmount < 0) return 'Chuyển tiền ra';
     return 'Giao dịch';

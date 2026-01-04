@@ -163,6 +163,10 @@ const customersSeed: CustomerSeed[] = [
   {
     memberNo: '40004791',
   },
+  {
+    memberNo: '20011728',
+    groupCode: '20000018',
+  },
 ];
 
 const loansSeed: LoanSeed[] = [
@@ -555,287 +559,40 @@ const savingsSeed: SavingsSeed[] = [
 // ================== SEED EVENTS (LỊCH SỰ KIỆN) ================== //
 
 // Giả định ngày "hiện tại" ~ đầu 12/2025 để FE test "upcoming"
+const addDays = (date: Date, days: number) => new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
+const addHours = (date: Date, hours: number) => new Date(date.getTime() + hours * 60 * 60 * 1000);
+const today = new Date();
+const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
 const eventsSeed: EventSeed[] = [
-  // 10011851 - TÒNG THỊ HÉM - THANH YEN - 20000021
   {
-    title: 'Họp nhóm tín dụng tại bản Thanh Yên',
+    title: 'Họp nhóm tín dụng tháng này',
     description:
-      'Cuộc họp nhóm định kỳ để nhắc lịch trả nợ, cập nhật tình hình tiết kiệm và trao đổi khó khăn của thành viên nhóm 20000021.',
+      'Cuộc họp nhóm định kỳ để nhắc lịch trả nợ và cập nhật tình hình tiết kiệm.',
     eventType: 'MEETING',
-    startDate: new Date('2025-12-10T09:00:00'),
-    endDate: new Date('2025-12-10T11:00:00'),
-    scope: 'GROUP',
-    groupCode: '20000021',
-    villageName: 'THANH YEN',
+    startDate: addDays(todayStart, 7),
+    endDate: addHours(addDays(todayStart, 7), 2),
+    scope: 'GLOBAL',
   },
   {
-    title: 'Lớp học đồng ruộng về kỹ thuật trồng ngô',
+    title: 'Tập huấn kỹ thuật canh tác',
     description:
-      'Cán bộ kỹ thuật hướng dẫn cách chọn giống, bón phân và phòng trừ sâu bệnh trên ruộng ngô cho hộ vay tại bản Thanh Yên.',
+      'Buổi tập huấn về kỹ thuật canh tác và chăm sóc cây trồng tại địa phương.',
     eventType: 'FIELD_SCHOOL',
-    startDate: new Date('2025-12-17T08:30:00'),
-    endDate: new Date('2025-12-17T16:30:00'),
-    scope: 'GROUP',
-    groupCode: '20000021',
-    villageName: 'THANH YEN',
+    startDate: addDays(todayStart, 14),
+    endDate: addHours(addDays(todayStart, 14), 4),
+    scope: 'GLOBAL',
   },
   {
-    title: 'Ngày công việc đồng áng: làm cỏ và vun gốc ngô',
-    description:
-      'Các hộ trong nhóm 20000021 cùng hỗ trợ nhau làm cỏ, vun gốc cho ruộng ngô để kịp thời vụ.',
+    title: 'Công việc đồng áng: chăm sóc cây trồng',
+    description: 'Nhắc lịch công việc đồng áng theo khuyến cáo kỹ thuật.',
     eventType: 'FARMING_TASK',
-    startDate: new Date('2026-01-05T06:30:00'),
-    endDate: new Date('2026-01-05T10:30:00'),
-    scope: 'GROUP',
-    groupCode: '20000021',
-    villageName: 'THANH YEN',
-  },
-
-  // 20004454 - LƯỜNG THỊ Luyến - THANH YEN - 20000018
-  {
-    title: 'Họp nhóm tín dụng – nhóm 20000018',
-    description:
-      'Họp nhóm để rà soát lịch trả nợ, nhắc nhở thành viên chuẩn bị tiền gốc và lãi đúng hạn.',
-    eventType: 'MEETING',
-    startDate: new Date('2025-12-11T09:00:00'),
-    endDate: new Date('2025-12-11T11:00:00'),
-    scope: 'GROUP',
-    groupCode: '20000018',
-    villageName: 'THANH YEN',
-  },
-  {
-    title: 'Lớp học đồng ruộng: sử dụng phân bón tiết kiệm',
-    description:
-      'Giới thiệu kỹ thuật bón phân hợp lý cho cây ngô và cây màu, giảm chi phí nhưng vẫn đảm bảo năng suất.',
-    eventType: 'FIELD_SCHOOL',
-    startDate: new Date('2025-12-19T08:30:00'),
-    endDate: new Date('2025-12-19T16:00:00'),
-    scope: 'GROUP',
-    groupCode: '20000018',
-    villageName: 'THANH YEN',
-  },
-  {
-    title: 'Ngày công việc đồng áng: thu gom rơm rạ',
-    description:
-      'Các hộ hỗ trợ nhau thu gom rơm rạ sau thu hoạch, chuẩn bị đất cho vụ sau.',
-    eventType: 'FARMING_TASK',
-    startDate: new Date('2026-01-06T06:30:00'),
-    endDate: new Date('2026-01-06T10:30:00'),
-    scope: 'GROUP',
-    groupCode: '20000018',
-    villageName: 'THANH YEN',
-  },
-
-  // 20003438 - VÌ THỊ LÚN - THANH YEN - 20000025
-  {
-    title: 'Họp nhóm tín dụng – bản Thanh Yên (nhóm 20000025)',
-    description:
-      'Thảo luận tình hình sản xuất, kế hoạch trả nợ và cập nhật các thông tin mới từ dự án.',
-    eventType: 'MEETING',
-    startDate: new Date('2025-12-12T09:00:00'),
-    endDate: new Date('2025-12-12T11:00:00'),
-    scope: 'GROUP',
-    groupCode: '20000025',
-    villageName: 'THANH YEN',
-  },
-  {
-    title: 'Lớp học đồng ruộng về kỹ thuật chăm sóc lúa',
-    description:
-      'Hướng dẫn kỹ thuật chăm sóc lúa nước, quản lý nước và sâu bệnh cho hộ vay trong nhóm 20000025.',
-    eventType: 'FIELD_SCHOOL',
-    startDate: new Date('2025-12-20T08:30:00'),
-    endDate: new Date('2025-12-20T16:00:00'),
-    scope: 'GROUP',
-    groupCode: '20000025',
-    villageName: 'THANH YEN',
-  },
-  {
-    title: 'Ngày công việc đồng áng: nạo vét kênh mương nội đồng',
-    description:
-      'Các hộ trong nhóm cùng làm vệ sinh, nạo vét kênh mương để chuẩn bị nước tưới cho vụ tới.',
-    eventType: 'FARMING_TASK',
-    startDate: new Date('2026-01-07T06:30:00'),
-    endDate: new Date('2026-01-07T10:30:00'),
-    scope: 'GROUP',
-    groupCode: '20000025',
-    villageName: 'THANH YEN',
-  },
-
-  // 20011201 - LƯỜNG THỊ Nhung - THANH YEN - 20000025
-  {
-    title: 'Họp rà soát kế hoạch trả nợ đầu năm',
-    description:
-      'Nhóm 20000025 họp để lên kế hoạch trả nợ đầu năm, trao đổi khó khăn về dòng tiền và mùa vụ.',
-    eventType: 'MEETING',
-    startDate: new Date('2026-01-10T09:00:00'),
-    endDate: new Date('2026-01-10T11:00:00'),
-    scope: 'GROUP',
-    groupCode: '20000025',
-    villageName: 'THANH YEN',
-  },
-  {
-    title: 'Lớp học đồng ruộng: phòng trừ sâu bệnh hại ngô',
-    description:
-      'Chia sẻ kinh nghiệm nhận biết sâu bệnh sớm và cách sử dụng thuốc bảo vệ thực vật an toàn.',
-    eventType: 'FIELD_SCHOOL',
-    startDate: new Date('2026-01-15T08:30:00'),
-    endDate: new Date('2026-01-15T16:00:00'),
-    scope: 'GROUP',
-    groupCode: '20000025',
-    villageName: 'THANH YEN',
-  },
-  {
-    title: 'Ngày công việc đồng áng: gieo trồng vụ mới',
-    description:
-      'Các hộ hỗ trợ nhau gieo trồng vụ mới, đảm bảo kịp khung thời vụ do cán bộ kỹ thuật khuyến cáo.',
-    eventType: 'FARMING_TASK',
-    startDate: new Date('2026-01-18T06:30:00'),
-    endDate: new Date('2026-01-18T11:00:00'),
-    scope: 'GROUP',
-    groupCode: '20000025',
-    villageName: 'THANH YEN',
-  },
-
-  // 20010673 - CÀ THỊ Phong - THANH YEN - 20000025
-  {
-    title: 'Họp nhóm chia sẻ kinh nghiệm sử dụng vốn vay',
-    description:
-      'Thành viên nhóm chia sẻ cách sử dụng vốn vay hiệu quả cho chăn nuôi và trồng trọt.',
-    eventType: 'MEETING',
-    startDate: new Date('2026-01-22T09:00:00'),
-    endDate: new Date('2026-01-22T11:00:00'),
-    scope: 'GROUP',
-    groupCode: '20000025',
-    villageName: 'THANH YEN',
-  },
-  {
-    title: 'Lớp học đồng ruộng: chăn nuôi gia súc an toàn sinh học',
-    description:
-      'Hướng dẫn cách vệ sinh chuồng trại, phòng bệnh cho trâu bò, lợn để giảm rủi ro dịch bệnh.',
-    eventType: 'FIELD_SCHOOL',
-    startDate: new Date('2026-01-25T08:30:00'),
-    endDate: new Date('2026-01-25T16:00:00'),
-    scope: 'GROUP',
-    groupCode: '20000025',
-    villageName: 'THANH YEN',
-  },
-  {
-    title: 'Ngày công việc đồng áng: sửa chữa chuồng trại chăn nuôi',
-    description:
-      'Các hộ hỗ trợ nhau gia cố, sửa chữa chuồng trại trước mùa mưa để bảo vệ đàn vật nuôi.',
-    eventType: 'FARMING_TASK',
-    startDate: new Date('2026-01-28T06:30:00'),
-    endDate: new Date('2026-01-28T10:30:00'),
-    scope: 'GROUP',
-    groupCode: '20000025',
-    villageName: 'THANH YEN',
-  },
-
-  // 20003501 - TRẦN THỊ Anh - THANH YEN - 20000028
-  {
-    title: 'Họp nhóm tín dụng – nhóm 20000028',
-    description:
-      'Trao đổi về tình hình kinh doanh nhỏ lẻ, buôn bán và cách xoay vòng vốn vay trong nhóm.',
-    eventType: 'MEETING',
-    startDate: new Date('2026-02-02T09:00:00'),
-    endDate: new Date('2026-02-02T11:00:00'),
-    scope: 'GROUP',
-    groupCode: '20000028',
-    villageName: 'THANH YEN',
-  },
-  {
-    title: 'Lớp học đồng ruộng: đa dạng hóa cây trồng',
-    description:
-      'Giới thiệu mô hình trồng xen canh rau màu cùng cây ngô để tăng thu nhập cho hộ vay.',
-    eventType: 'FIELD_SCHOOL',
-    startDate: new Date('2026-02-05T08:30:00'),
-    endDate: new Date('2026-02-05T16:00:00'),
-    scope: 'GROUP',
-    groupCode: '20000028',
-    villageName: 'THANH YEN',
-  },
-  {
-    title: 'Ngày công việc đồng áng: thu hoạch rau màu',
-    description:
-      'Các hộ hỗ trợ nhau thu hoạch rau màu, phân loại và chuẩn bị bán ra chợ.',
-    eventType: 'FARMING_TASK',
-    startDate: new Date('2026-02-08T06:30:00'),
-    endDate: new Date('2026-02-08T10:30:00'),
-    scope: 'GROUP',
-    groupCode: '20000028',
-    villageName: 'THANH YEN',
-  },
-
-  // 10011774 - LÒ THỊ PHÁNG - THANH CHAN - 10000140
-  {
-    title: 'Họp nhóm tín dụng bản Thanh Chăn',
-    description:
-      'Nhắc lịch trả nợ, rà soát các khoản tiết kiệm bắt buộc và tự nguyện của thành viên.',
-    eventType: 'MEETING',
-    startDate: new Date('2025-12-13T09:00:00'),
-    endDate: new Date('2025-12-13T11:00:00'),
-    scope: 'GROUP',
-    groupCode: '10000140',
-    villageName: 'THANH CHAN',
-  },
-  {
-    title: 'Lớp học đồng ruộng: cải tạo đất trồng sau nhiều vụ',
-    description:
-      'Hướng dẫn bón phân hữu cơ, luân canh cây trồng để giữ độ màu mỡ của đất.',
-    eventType: 'FIELD_SCHOOL',
-    startDate: new Date('2025-12-21T08:30:00'),
-    endDate: new Date('2025-12-21T16:00:00'),
-    scope: 'GROUP',
-    groupCode: '10000140',
-    villageName: 'THANH CHAN',
-  },
-  {
-    title: 'Ngày công việc đồng áng: dọn vệ sinh bờ ruộng, đường nội đồng',
-    description:
-      'Các hộ cùng phát quang cỏ dại, dọn vệ sinh bờ ruộng và đường nội đồng để đi lại thuận tiện.',
-    eventType: 'FARMING_TASK',
-    startDate: new Date('2026-01-09T06:30:00'),
-    endDate: new Date('2026-01-09T10:30:00'),
-    scope: 'GROUP',
-    groupCode: '10000140',
-    villageName: 'THANH CHAN',
-  },
-
-  // 30000172 - HOÀNG THỊ Thịnh - THANH XUONG - 30000025
-  {
-    title: 'Họp nhóm tín dụng bản Thanh Xuông',
-    description:
-      'Họp nhóm để đánh giá tình hình sử dụng vốn vay, chuẩn bị cho kỳ trả nợ sắp tới.',
-    eventType: 'MEETING',
-    startDate: new Date('2025-12-14T09:00:00'),
-    endDate: new Date('2025-12-14T11:00:00'),
-    scope: 'GROUP',
-    groupCode: '30000025',
-    villageName: 'THANH XUONG',
-  },
-  {
-    title: 'Lớp học đồng ruộng: kỹ thuật trồng cây ăn quả',
-    description:
-      'Giới thiệu mô hình trồng cây ăn quả phù hợp với điều kiện khí hậu địa phương, kết hợp với cây lương thực.',
-    eventType: 'FIELD_SCHOOL',
-    startDate: new Date('2025-12-22T08:30:00'),
-    endDate: new Date('2025-12-22T16:00:00'),
-    scope: 'GROUP',
-    groupCode: '30000025',
-    villageName: 'THANH XUONG',
-  },
-  {
-    title: 'Ngày công việc đồng áng: tỉa cành, bón phân cho vườn cây ăn quả',
-    description:
-      'Các hộ trong nhóm cùng hỗ trợ chăm sóc vườn cây ăn quả, tỉa cành và bón phân đúng kỹ thuật.',
-    eventType: 'FARMING_TASK',
-    startDate: new Date('2026-01-12T06:30:00'),
-    endDate: new Date('2026-01-12T10:30:00'),
-    scope: 'GROUP',
-    groupCode: '30000025',
-    villageName: 'THANH XUONG',
+    startDate: addDays(todayStart, 21),
+    endDate: addHours(addDays(todayStart, 21), 3),
+    scope: 'GLOBAL',
   },
 ];
+
 
 // ================== MAIN SEED ================== //
 
@@ -1005,18 +762,46 @@ async function main() {
     });
   }
 
+  // Shift all seed events to the future so schedule is not empty.
+  const MS_PER_DAY = 24 * 60 * 60 * 1000;
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const minFutureDate = new Date(today.getTime() + 7 * MS_PER_DAY);
+  const earliestStart = eventsSeed.reduce(
+    (min, event) => (event.startDate < min ? event.startDate : min),
+    eventsSeed[0]?.startDate ?? minFutureDate,
+  );
+  const shiftDays =
+    earliestStart < minFutureDate
+      ? Math.ceil((minFutureDate.getTime() - earliestStart.getTime()) / MS_PER_DAY)
+      : 0;
+
   console.log('📅 Seed events (schedule)...');
   for (const e of eventsSeed) {
-    // tránh trùng bằng cách check theo title + eventType + startDate
+    const shiftedStart = shiftDays > 0 ? new Date(e.startDate.getTime() + shiftDays * MS_PER_DAY) : e.startDate;
+    const shiftedEnd = e.endDate ? new Date(e.endDate.getTime() + shiftDays * MS_PER_DAY) : undefined;
+
     const existing = await prisma.event.findFirst({
       where: {
         title: e.title,
         eventType: e.eventType,
-        startDate: e.startDate,
       },
     });
 
     if (existing) {
+      await prisma.event.update({
+        where: { id: existing.id },
+        data: {
+          title: e.title,
+          description: e.description ?? undefined,
+          eventType: e.eventType,
+          startDate: shiftedStart,
+          endDate: shiftedEnd ?? undefined,
+          scope: e.scope ?? 'GLOBAL',
+          groupCode: e.groupCode ?? undefined,
+          villageName: e.villageName ?? undefined,
+        },
+      });
       continue;
     }
 
@@ -1025,8 +810,8 @@ async function main() {
         title: e.title,
         description: e.description ?? undefined,
         eventType: e.eventType,
-        startDate: e.startDate,
-        endDate: e.endDate ?? undefined,
+        startDate: shiftedStart,
+        endDate: shiftedEnd ?? undefined,
         scope: e.scope ?? 'GLOBAL',
         groupCode: e.groupCode ?? undefined,
         villageName: e.villageName ?? undefined,

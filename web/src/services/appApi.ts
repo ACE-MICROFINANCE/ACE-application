@@ -6,12 +6,15 @@ export type LoanCurrentResponse = {
   memberNo?: string; // CHANGED: thêm mã số khách hàng cho màn khoản vay
   loanNo: string;
   disbursementDate?: string;
+  disbursementDateInferred?: string; // CHANGED: ngay giai ngan uoc tinh tu lai ky dau
+  firstInterestDays?: number; // CHANGED: so ngay tinh tu lai ky dau
   loanPaymentTypeLabel?: string | null; // CHANGED: nhãn hình thức trả nợ (tính ở BE)
   termInstallments?: number | null; // CHANGED: tổng số kỳ (BE tính sẵn)
   remainingInstallments?: number | null; // CHANGED: số kỳ còn lại (BE tính sẵn)
   principalAmount: number;
   remainingPrincipal: number;
   interestRate: number;
+  lateAmount?: number; // CHANGED: so tien cham tra tu BE
   loanType?: 'BULLET' | 'DEGRESSIVE' | string; // [BIJLI-LOAN-RULE]
   loanTypeLabel?: string; // [BIJLI-LOAN-RULE]
   nextPayment?: {
@@ -28,6 +31,11 @@ export type LoanCurrentResponse = {
     amount?: number;
   };
 };
+
+export type LoanQrResponse = {
+  qrImageUrl: string;
+  amount: number;
+}; // CHANGED: response tao QR theo so tien
 
 export type SavingsTransactionItem = {
   date: string;
@@ -87,6 +95,10 @@ export type ProfileResponse = {
 export const appApi = {
   getCurrentLoan: async (): Promise<LoanCurrentResponse> => {
     const response = await axiosClient.get<LoanCurrentResponse>('/loan/current');
+    return response.data;
+  },
+  createLoanQr: async (amount: number): Promise<LoanQrResponse> => {
+    const response = await axiosClient.post<LoanQrResponse>('/loan/qr', { amount }); // CHANGED: tao QR theo so tien
     return response.data;
   },
   getSavings: async (): Promise<SavingsItem[]> => {

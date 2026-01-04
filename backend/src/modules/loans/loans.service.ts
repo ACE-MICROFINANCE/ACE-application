@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma, LoanInstallment } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
 import { removeVietnameseAccents } from '../../common/utils/string.utils';
+import { inferDaysFromFirstInterest, inferDisbursementDate } from '../../common/utils/loan-date.utils'; // CHANGED: infer disbursement date
 import { QrPayload } from './dto/qr-payload.dto';
 import { BijliClientService } from './bijli-client.service';
 
@@ -63,6 +64,27 @@ export class LoansService {
     return new Date(Date.UTC(year, month - 1, day));
   }
 
+  private normalizeArray(value: unknown): Record<string, unknown>[] {
+    // CHANGED: normalize BIJLI arrays for collection parsing
+    if (!value) return [];
+    if (Array.isArray(value)) return value as Record<string, unknown>[];
+    if (typeof value === 'object') return [value as Record<string, unknown>];
+    return [];
+  }
+
+  private startOfDayBangkokForDate(date: Date) {
+    // CHANGED: start of day in Asia/Ho_Chi_Minh for a given date
+    const bangkokOffsetMs = 7 * 60 * 60 * 1000;
+    const local = new Date(date.getTime() + bangkokOffsetMs);
+    return new Date(Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate()));
+  }
+
+  private parseAmountNumber(value: unknown): number {
+    // CHANGED: parse Decimal-like values to number safely
+    const decimal = this.parseDecimal(value);
+    return decimal ? Number(decimal) : 0;
+  }
+
   // [BIJLI-LOAN-RULE] loan type mapping from product name
   private getLoanType(productName?: string | null) {
     const name = (productName ?? '').toUpperCase();
@@ -110,6 +132,60 @@ export class LoansService {
     return ratio28 >= 0.6 ? 'Trả gốc lãi hàng kỳ' : 'Trả dần linh hoạt';
   }
 
+  private computeLateAmount(
+    installments: LoanInstallment[] | null | undefined,
+    bijliData?: Record<string, unknown> | null,
+  ) {
+    // CHANGED: compute lateAmount from schedule vs BIJLI collection
+    if (!installments?.length || !bijliData) return 0;
+
+    const now = new Date();
+    const totalDueUntilNow = installments.reduce((sum, inst) => {
+      const dueStart = this.startOfDayBangkokForDate(inst.dueDate);
+      if (dueStart <= now) {
+        const principal = Number(inst.principalDue ?? 0);
+        const interest = Number(inst.interestDue ?? 0);
+        return sum + principal + interest;
+      }
+      return sum;
+    }, 0);
+
+    const rawCollection =
+      (bijliData as Record<string, unknown>).LoanCollection ??
+      (bijliData as Record<string, unknown>).LoanCollections ??
+      (bijliData as Record<string, unknown>).loanCollection ??
+      (bijliData as Record<string, unknown>).loanCollections ??
+      (bijliData as Record<string, unknown>).Collection ??
+      (bijliData as Record<string, unknown>).Collections ??
+      null;
+
+    const collection = this.normalizeArray(rawCollection)
+      .map((item) => {
+        const trnDate = this.parseDateFlexible(String(item.TrnDate ?? item.trnDate ?? ''), true);
+        if (!trnDate) return null;
+        const principal = this.parseAmountNumber(
+          item.Principal ?? item.principal ?? item.PrincipalAmt ?? item.principalAmt,
+        );
+        const interest = this.parseAmountNumber(
+          item.Interest ?? item.interest ?? item.InterestAmt ?? item.interestAmt,
+        );
+        return { trnDate, amount: principal + interest };
+      })
+      .filter(Boolean) as { trnDate: Date; amount: number }[];
+
+    if (!collection.length) return 0;
+
+    collection.sort((a, b) => a.trnDate.getTime() - b.trnDate.getTime()); // CHANGED: sort collection by TrnDate
+
+    const totalPaidUntilNow = collection.reduce((sum, item) => {
+      if (item.trnDate <= now) return sum + item.amount;
+      return sum;
+    }, 0);
+
+    const lateAmount = Math.max(0, totalDueUntilNow - totalPaidUntilNow);
+    return lateAmount;
+  }
+
   // [BIJLI-LOAN] cache stale check
   private isStale(lastSyncedAt?: Date | null) {
     if (!lastSyncedAt) return true;
@@ -119,6 +195,7 @@ export class LoansService {
   private mapLoanResponse(
     loan: Prisma.LoanGetPayload<{ include: { installments: true; customer: true } }>,
     nextInstallment?: LoanInstallment | null,
+    options?: { lateAmount?: number; qrEnabled?: boolean; qrAmount?: number }, // CHANGED: bổ sung lateAmount + QR rule
   ) {
     const remainingPrincipal =
       loan.totalPrincipalOutstanding ?? loan.principalAmount ?? loan.principalAmount;
@@ -154,8 +231,12 @@ export class LoansService {
     const accountNumber = this.configService.get<string>('payment.accountNumber') ?? '';
     const accountName = this.configService.get<string>('payment.accountName') ?? '';
 
+    const lateAmount = options?.lateAmount ?? 0; // CHANGED: lateAmount từ BE
+    const qrEnabled = options?.qrEnabled ?? false; // CHANGED: bật QR theo rule late/đến hạn
+    const qrAmount = options?.qrAmount ?? nextPayment?.totalDue ?? 0; // CHANGED: số tiền QR theo rule mới
+
     let qrPayload: QrPayload | undefined;
-    if (nextPayment) {
+    if (qrEnabled) {
       const normalizedVillageName = removeVietnameseAccents(loan.customer.villageName || '').toUpperCase();
       const normalizedName = removeVietnameseAccents(loan.customer.fullName || '').toUpperCase();
       const description = `${normalizedName} ${normalizedVillageName} ${loan.customer.memberNo} `.trim();
@@ -164,19 +245,48 @@ export class LoansService {
         accountNumber,
         accountName,
         description,
-        amount: nextPayment.totalDue, // [BIJLI-LOAN-RULE] amount uses total due
+        amount: qrAmount, // CHANGED: amount dùng lateAmount hoặc totalDue khi đến hạn
       };
     }
 
     // NOTE: old static QR string kept for reference
     // const qrPayload = nextPayment && `ACE|${loan.loanNo}|${nextPayment.dueDate.toISOString()}|${nextPayment.principalDue}`;
 
-    const loanPaymentTypeLabel = this.getLoanPaymentTypeLabel(loan.productName, loan.installments); // CHANGED: phân loại hình thức trả nợ (DEGRESSIVE)
+    const loanPaymentTypeLabel = this.getLoanPaymentTypeLabel(loan.productName, loan.installments);
+
+    let disbursementDateInferred: Date | null = null;
+    let firstInterestDays: number | null = null;
+    const firstInterestInstallment = loan.installments
+      ?.filter((inst) => Number(inst.interestDue ?? 0) > 0)
+      .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime())[0];
+    if (firstInterestInstallment) {
+      const principalDisbursed = Number(loan.principalAmount ?? 0);
+      const interestFirstPeriod = Number(firstInterestInstallment.interestDue ?? 0);
+      const annualRatePct = Number(loan.interestRate ?? 0);
+      if (principalDisbursed > 0 && interestFirstPeriod > 0 && annualRatePct > 0) {
+        firstInterestDays = inferDaysFromFirstInterest({
+          principalDisbursed,
+          interestFirstPeriod,
+          annualRatePct,
+          basisDate: firstInterestInstallment.dueDate, // CHANGED: use due date for day basis
+          dayCountConvention: 'ACT_365F',
+        }); // CHANGED: infer days from first interest
+        if (firstInterestDays > 0) {
+          disbursementDateInferred = inferDisbursementDate(
+            firstInterestInstallment.dueDate,
+            firstInterestDays,
+          ); // CHANGED: infer disbursement date
+        }
+      }
+    }
+ // CHANGED: phân loại hình thức trả nợ (DEGRESSIVE)
 
     return {
       memberNo: loan.customer?.memberNo, // CHANGED: bổ sung mã số khách hàng cho FE hiển thị
       loanNo: loan.loanNo,
       disbursementDate: loan.disbursementDate,
+      disbursementDateInferred, // CHANGED: inferred disbursement date (runtime only)
+      firstInterestDays, // CHANGED: inferred days from first interest
       principalAmount: Number(loan.principalAmount),
       remainingPrincipal: Number(remainingPrincipal),
       interestRate: Number(loan.interestRate),
@@ -185,6 +295,7 @@ export class LoansService {
       loanPaymentTypeLabel, // CHANGED: nhãn "hình thức trả nợ" để FE chỉ hiển thị
       termInstallments, // CHANGED: tổng số kỳ để FE hiển thị dưới "Hạn tới"
       remainingInstallments, // CHANGED: số kỳ còn lại để FE hiển thị dưới "Hạn tới"
+      lateAmount, // CHANGED: số tiền chậm trả để FE hiển thị
       nextPayment,
       qrPayload,
     };
@@ -203,8 +314,12 @@ export class LoansService {
   }
 
   // [BIJLI-LOAN] Sync loan + schedule from BIJLI
-  private async syncLoanFromBijli(customerId: bigint, memberNo: string) {
-    const data = await this.bijliClientService.fetchMemberInfo(memberNo);
+  private async syncLoanFromBijli(
+    customerId: bigint,
+    memberNo: string,
+    payload?: Record<string, unknown> | null,
+  ) {
+    const data = payload ?? (await this.bijliClientService.fetchMemberInfo(memberNo)); // CHANGED: reuse BIJLI payload when available
     if (!data) return;
 
     const loanNo = String(data.LoanNo ?? '').trim();
@@ -350,12 +465,21 @@ export class LoansService {
       throw new NotFoundException('Customer not found');
     }
 
+    let bijliData: Record<string, unknown> | null = null; // CHANGED: cache BIJLI payload for lateAmount + QR rule
+    try {
+      bijliData = (await this.bijliClientService.fetchMemberInfo(customer.memberNo)) as
+        | Record<string, unknown>
+        | null;
+    } catch {
+      bijliData = null;
+    }
+
     let result = await this.getActiveLoanWithNextInstallment(id);
     const needsSync = !result?.loan || this.isStale(result.loan.lastSyncedAt);
 
     if (needsSync) {
       // [BIJLI-LOAN] sync from BIJLI when missing or stale
-      await this.syncLoanFromBijli(id, customer.memberNo);
+      await this.syncLoanFromBijli(id, customer.memberNo, bijliData); // CHANGED: reuse BIJLI payload when available
       result = await this.getActiveLoanWithNextInstallment(id);
     }
 
@@ -363,7 +487,84 @@ export class LoansService {
       throw new NotFoundException('No active loan found');
     }
 
-    return this.mapLoanResponse(result.loan, result.nextInstallment);
+    const lateAmount = this.computeLateAmount(result.loan.installments, bijliData); // CHANGED: compute lateAmount from schedule vs collection
+    const nextInstallment = result.nextInstallment ?? null;
+    const nextTotalDue = nextInstallment
+      ? Number(nextInstallment.principalDue) + Number(nextInstallment.interestDue)
+      : 0;
+    const nextDueStart = nextInstallment
+      ? this.startOfDayBangkokForDate(nextInstallment.dueDate)
+      : null;
+    const now = new Date();
+    const qrEnabled =
+      lateAmount > 0 || Boolean(nextInstallment && nextDueStart && now >= nextDueStart); // CHANGED: QR rule (late first, else open at 0h dueDate)
+    const qrAmount = lateAmount > 0 ? lateAmount : qrEnabled ? nextTotalDue : 0; // CHANGED: QR amount uses lateAmount or next total due
+
+    return this.mapLoanResponse(result.loan, result.nextInstallment, {
+      lateAmount,
+      qrEnabled,
+      qrAmount,
+    });
+  }
+
+  async createLoanQr(customerId: string | bigint, amount: number) {
+    const id = typeof customerId === 'string' ? BigInt(customerId) : customerId;
+    const result = await this.getActiveLoanWithNextInstallment(id);
+    if (!result) {
+      throw new NotFoundException('No active loan found');
+    }
+
+    let bijliData: Record<string, unknown> | null = null; // CHANGED: fetch BIJLI for lateAmount
+    try {
+      bijliData = (await this.bijliClientService.fetchMemberInfo(
+        result.loan.customer.memberNo,
+      )) as Record<string, unknown> | null;
+    } catch {
+      bijliData = null;
+    }
+
+    const lateAmount = this.computeLateAmount(result.loan.installments, bijliData); // CHANGED: compute lateAmount from schedule vs collection
+    const nextInstallment = result.nextInstallment ?? null;
+    const nextTotalDue = nextInstallment
+      ? Number(nextInstallment.principalDue) + Number(nextInstallment.interestDue)
+      : 0;
+    const nextDueStart = nextInstallment
+      ? this.startOfDayBangkokForDate(nextInstallment.dueDate)
+      : null;
+    const now = new Date();
+    const qrEnabled =
+      lateAmount > 0 || Boolean(nextInstallment && nextDueStart && now >= nextDueStart); // CHANGED: QR rule (late first, else open at 0h dueDate)
+    if (!qrEnabled) {
+      throw new BadRequestException('Bạn hiện chưa đến kỳ thanh toán');
+    }
+
+    const amountDueNow = lateAmount > 0 ? lateAmount : nextTotalDue; // CHANGED: amountDueNow follows rule
+    if (!amountDueNow || amountDueNow <= 0) {
+      throw new BadRequestException('Không có số tiền phải trả');
+    }
+
+    const amountNumber = Number(amount);
+    if (!Number.isFinite(amountNumber) || !Number.isInteger(amountNumber) || amountNumber <= 0) {
+      throw new BadRequestException('Số tiền không hợp lệ');
+    }
+    if (amountNumber < 1000) {
+      throw new BadRequestException('Số tiền tối thiểu là 1.000 VND');
+    }
+    if (amountNumber > amountDueNow) {
+      throw new BadRequestException('Số tiền vượt quá số tiền phải trả hiện tại');
+    }
+
+    const bankBin = this.configService.get<string>('payment.bankBin') ?? '';
+    const accountNumber = this.configService.get<string>('payment.accountNumber') ?? '';
+    const accountName = this.configService.get<string>('payment.accountName') ?? '';
+    const normalizedVillageName = removeVietnameseAccents(result.loan.customer.villageName || '').toUpperCase();
+    const normalizedName = removeVietnameseAccents(result.loan.customer.fullName || '').toUpperCase();
+    const description = `${normalizedName} ${normalizedVillageName} ${result.loan.customer.memberNo} `.trim();
+    const qrImageUrl = `https://img.vietqr.io/image/${bankBin}-${accountNumber}-compact.png?accountName=${encodeURIComponent(
+      accountName,
+    )}&addInfo=${encodeURIComponent(description)}&amount=${Math.round(amountNumber)}`; // CHANGED: VietQR image url with custom amount
+
+    return { qrImageUrl, amount: amountNumber };
   }
 
   async getLoanReminder(customerId: string | bigint) {

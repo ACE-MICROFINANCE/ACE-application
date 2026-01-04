@@ -1,10 +1,15 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common'; // CHANGED: stub validation
+import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
+import { hashPassword } from '../../utils/password.util'; // CHANGED: create stub credential
 
 @Injectable()
 export class CustomersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
+  ) {}
 
   private mapProfile(customer: Prisma.CustomerGetPayload<{ include: { credential: true } }>) {
     return {
@@ -18,6 +23,8 @@ export class CustomersService {
       villageName: customer.villageName,
       groupCode: customer.groupCode,
       groupName: customer.groupName,
+      branchCode: customer.branchCode ?? null, // CHANGED: include branchCode in profile
+      branchName: customer.branchName ?? null, // CHANGED: include branchName in profile
       membershipStartDate: customer.membershipStartDate,
       mustChangePassword: customer.credential?.mustChangePassword ?? true,
     };
@@ -71,5 +78,48 @@ export class CustomersService {
       }
       throw error;
     }
+  }
+
+  async createCustomerStub(memberNo: string, branchCode: string) {
+    if (!branchCode) {
+      throw new BadRequestException('Branch code is required'); // CHANGED: enforce branchCode for stub
+    }
+    const customer = await this.prisma.customer.upsert({
+      where: { memberNo },
+      update: {
+        branchCode, // CHANGED: assign branchCode from staff
+      },
+      create: {
+        memberNo,
+        branchCode, // CHANGED: assign branchCode on stub create
+        isActive: true,
+      },
+      include: { credential: true },
+    });
+
+    if (!customer.credential) {
+      const defaultPassword =
+        this.configService.get<string>('defaults.customerPassword') ?? '123456';
+      const passwordHash = await hashPassword(defaultPassword);
+
+      await this.prisma.customerCredential.create({
+        data: {
+          customerId: customer.id,
+          passwordHash,
+          mustChangePassword: true,
+        },
+      });
+    }
+
+    const refreshed = await this.prisma.customer.findUnique({
+      where: { id: customer.id },
+      include: { credential: true },
+    });
+
+    if (!refreshed) {
+      throw new NotFoundException('Customer not found');
+    }
+
+    return this.mapProfile(refreshed);
   }
 }

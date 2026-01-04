@@ -18,6 +18,8 @@ model Customer {
   villageName         String?                             // Ward/Village
   groupCode           String?
   groupName           String?
+  branchCode          String? // CHANGED: branch code for RBAC filtering
+  branchName          String? // CHANGED: branch display name from group mapping
   membershipStartDate DateTime?
   isActive            Boolean  @default(true)
   createdAt           DateTime @default(now())
@@ -30,6 +32,8 @@ model Customer {
   savings        CustomerSavings[]
   savingsTransactions CustomerSavingsTransaction[] // CHANGED: lưu lịch sử giao dịch tiết kiệm
   feedbacks      Feedback[]
+
+  @@index([branchCode, groupCode]) // CHANGED: optimize branch + group filters
 }
 
 model CustomerCredential {
@@ -51,6 +55,21 @@ model RefreshToken {
   createdAt  DateTime @default(now())
 
   customer Customer @relation(fields: [customerId], references: [id])
+}
+
+// CHANGED: RBAC staff users
+model StaffUser {
+  id           BigInt   @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String
+  role         String
+  branchCode   String?
+  fullName     String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  events Event[] @relation("EventCreatedBy") // CHANGED: staff creator relation
 }
 
 model Loan {
@@ -135,7 +154,29 @@ model Event {
   scope       String   @default("GLOBAL")
   groupCode   String?
   villageName String?
+  branchCode  String   @default("UNKNOWN") // CHANGED: branch ownership for RBAC
+  audienceType String @default("BRANCH_ALL") // CHANGED: BRANCH_ALL | GROUPS
+  locationName String? // CHANGED: event location
+  durationMinutes Int? // CHANGED: duration (minutes)
+  createdByStaffId BigInt? // CHANGED: staff creator id
   importedAt  DateTime @default(now())
+
+  createdByStaff StaffUser? @relation("EventCreatedBy", fields: [createdByStaffId], references: [id]) // CHANGED: staff creator
+  targetGroups   EventTargetGroup[] // CHANGED: audience groups
+}
+
+// CHANGED: event target groups for GROUPS audience
+model EventTargetGroup {
+  id        BigInt @id @default(autoincrement())
+  eventId   BigInt
+  groupCode String
+  groupName String?
+
+  event Event @relation(fields: [eventId], references: [id])
+
+  @@unique([eventId, groupCode])
+  @@index([groupCode])
+  @@index([eventId])
 }
 
 model Feedback {

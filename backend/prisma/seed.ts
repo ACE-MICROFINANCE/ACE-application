@@ -6,6 +6,7 @@ const prisma = new PrismaClient();
 
 // Mật khẩu tạm cho tất cả khách hàng mới nếu chưa có
 const TEMP_PASSWORD = '123456';
+const STAFF_DEFAULT_PASSWORD = '123456'; // CHANGED: mật khẩu seed cho staff/admin
 
 // ================== TYPES ================== //
 
@@ -64,6 +65,13 @@ type EventSeed = {
   scope?: string | null;
   groupCode?: string | null;
   villageName?: string | null;
+};
+
+type StaffSeed = {
+  email: string;
+  role: 'ADMIN' | 'BRANCH_MANAGER';
+  branchCode?: string | null;
+  fullName?: string | null;
 };
 
 // ================== DATA KHÁCH HÀNG / KHOẢN VAY / KỲ TRẢ ================== //
@@ -168,6 +176,41 @@ const customersSeed: CustomerSeed[] = [
     groupCode: '20000018',
   },
 ];
+
+// ================== SEED STAFF USERS (ADMIN + BRANCH MANAGER) ================== //
+
+const staffSeed: StaffSeed[] = [
+  {
+    email: 'admin@ace.vn',
+    role: 'ADMIN',
+    branchCode: null,
+    fullName: 'ACE Admin',
+  },
+  {
+    email: 'staff.area1@ace.vn',
+    role: 'BRANCH_MANAGER',
+    branchCode: '001',
+    fullName: 'Staff Dien Bien 1',
+  },
+  {
+    email: 'staff.area2@ace.vn',
+    role: 'BRANCH_MANAGER',
+    branchCode: '002',
+    fullName: 'Staff Dien Bien 2',
+  },
+  {
+    email: 'staff.area3@ace.vn',
+    role: 'BRANCH_MANAGER',
+    branchCode: '003',
+    fullName: 'Staff Dien Bien 3',
+  },
+  {
+    email: 'staff.area4@ace.vn',
+    role: 'BRANCH_MANAGER',
+    branchCode: '004',
+    fullName: 'Staff Muong Ang',
+  },
+]; // CHANGED: seed admin + 4 staff_area theo branchCode
 
 const loansSeed: LoanSeed[] = [
   {
@@ -599,6 +642,7 @@ const eventsSeed: EventSeed[] = [
 async function main() {
   console.log('🔐 Tạo mật khẩu hash tạm...');
   const passwordHash = await bcrypt.hash(TEMP_PASSWORD, 10);
+  const staffPasswordHash = await bcrypt.hash(STAFF_DEFAULT_PASSWORD, 10); // CHANGED: hash password for staff seed
 
   const memberIdMap = new Map<string, bigint>();
 
@@ -815,6 +859,27 @@ async function main() {
         scope: e.scope ?? 'GLOBAL',
         groupCode: e.groupCode ?? undefined,
         villageName: e.villageName ?? undefined,
+      },
+    });
+  }
+
+  console.log('👥 Seed staff users (ADMIN + BRANCH_MANAGER)...'); // CHANGED: seed staff/admin
+  for (const staff of staffSeed) {
+    await prisma.staffUser.upsert({
+      where: { email: staff.email },
+      update: {
+        role: staff.role,
+        branchCode: staff.branchCode ?? null,
+        fullName: staff.fullName ?? null,
+        isActive: true,
+      },
+      create: {
+        email: staff.email,
+        role: staff.role,
+        branchCode: staff.branchCode ?? null,
+        fullName: staff.fullName ?? null,
+        isActive: true,
+        passwordHash: staffPasswordHash, // CHANGED: set default password on create only
       },
     });
   }

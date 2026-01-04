@@ -19,4 +19,5 @@ export const ConfigValidationSchema = Joi.object({
   PAYMENT_BANK_BIN: Joi.string().required(),
   PAYMENT_BANK_ACCOUNT_NO: Joi.string().required(),
   PAYMENT_BANK_ACCOUNT_NAME: Joi.string().required(),
+  DEFAULT_CUSTOMER_PASSWORD: Joi.string().optional(), // CHANGED: optional stub password
 });

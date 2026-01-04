@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { BijliClientService } from './bijli-client.service';
 import { formatVietnameseName } from '../../common/utils/string.utils';
+import { BranchGroupMapService } from './branch-group-map.service'; // CHANGED: map GroupName -> GroupCode/branch
 
 @Injectable()
 export class BijliCustomerSyncService {
@@ -10,11 +11,15 @@ export class BijliCustomerSyncService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly bijliClientService: BijliClientService,
+    private readonly branchGroupMapService: BranchGroupMapService, // CHANGED: resolve group mapping
   ) {}
 
-  async syncMemberNo(memberNo: string): Promise<boolean> {
+  async syncMemberNo(
+    memberNo: string,
+    payload?: Record<string, unknown> | null,
+  ): Promise<boolean> {
     this.logger.log(`[BIJLI-CUSTOMER] Sync start memberNo=${memberNo}`); // [BIJLI-CUSTOMER] debug start
-    const data = await this.bijliClientService.fetchMemberInfo(memberNo);
+    const data = payload ?? (await this.bijliClientService.fetchMemberInfo(memberNo)); // CHANGED: reuse BIJLI payload
     if (!data) return false;
 
     const mapped = this.mapBijliCustomer(data, memberNo);
@@ -61,9 +66,12 @@ export class BijliCustomerSyncService {
 
     const rawGroupName = this.normalizeString(data.GroupName);
     const groupName = rawGroupName ? this.fixMojibakeUtf8(rawGroupName) : null;
-    const groupCode =
-      this.normalizeString(data.GroupCode) ??
-      this.parseGroupCodeFromGroupName(groupName); // TODO: [BIJLI-CUSTOMER] refine groupCode mapping
+    const resolvedGroup = groupName
+      ? this.branchGroupMapService.resolveGroupName(groupName, { memberNo })
+      : null; // CHANGED: map GroupName from static JSON
+    const groupCode = resolvedGroup?.found ? resolvedGroup.groupCode ?? null : null; // CHANGED: do not fallback to raw GroupCode
+    const branchCode = resolvedGroup?.found ? resolvedGroup.branchId ?? null : null; // CHANGED: map branchId
+    const branchName = resolvedGroup?.found ? resolvedGroup.branchName ?? null : null; // CHANGED: map branchName
 
     const rawVillageName =
       this.normalizeString(data.VillageName) ?? this.normalizeString(data.Village);
@@ -89,6 +97,8 @@ export class BijliCustomerSyncService {
       villageName: villageName ?? null,
       groupCode: groupCode ?? null,
       groupName: groupName ?? null,
+      branchCode: branchCode ?? null, // CHANGED: save branchId from mapping
+      branchName: branchName ?? null, // CHANGED: save branchName from mapping
       membershipStartDate: membershipStartDate ?? null,
       lastSyncedAt: new Date(), // [BIJLI-CUSTOMER] cache sync timestamp
     };
@@ -281,14 +291,15 @@ export class BijliCustomerSyncService {
     }
   }
 
-  private parseGroupCodeFromGroupName(groupName?: string | null): string | null {
-    if (!groupName) return null;
-    const normalized = groupName.trim();
-    if (!normalized) return null;
-    const left = normalized.split(' - ')[0];
-    const firstToken = left.split(' ')[0];
-    return firstToken || null;
-  }
+  // CHANGED: legacy parseGroupCodeFromGroupName removed from active mapping (static JSON now).
+  // private parseGroupCodeFromGroupName(groupName?: string | null): string | null {
+  //   if (!groupName) return null;
+  //   const normalized = groupName.trim();
+  //   if (!normalized) return null;
+  //   const left = normalized.split(' - ')[0];
+  //   const firstToken = left.split(' ')[0];
+  //   return firstToken || null;
+  // }
 
   private parseDateFlexible(value?: string | null, preferDMY = true): Date | null {
     if (!value) return null;

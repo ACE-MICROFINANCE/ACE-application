@@ -29,4 +29,7 @@ export default () => ({
     accountNumber: process.env.PAYMENT_BANK_ACCOUNT_NO,
     accountName: process.env.PAYMENT_BANK_ACCOUNT_NAME,
   },
+  defaults: {
+    customerPassword: process.env.DEFAULT_CUSTOMER_PASSWORD || '123456', // CHANGED: default stub password
+  },
 });

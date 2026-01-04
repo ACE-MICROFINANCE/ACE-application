@@ -12,6 +12,7 @@ import { EventsModule } from './modules/events/events.module';
 import { FeedbackModule } from './modules/feedback/feedback.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { WeatherModule } from './weather/weather.module';
+import { StaffUsersModule } from './modules/staff-users/staff-users.module'; // CHANGED: staff users RBAC
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { WeatherModule } from './weather/weather.module';
     FeedbackModule,
     DashboardModule,
     WeatherModule,
+    StaffUsersModule, // CHANGED: staff users RBAC
   ],
 })
 export class AppModule {}

@@ -507,6 +507,18 @@ export class LoansService {
     });
   }
 
+  async syncLoanByMemberNo(
+    memberNo: string,
+    payload?: Record<string, unknown> | null,
+  ): Promise<boolean> {
+    const customer = await this.prisma.customer.findUnique({ where: { memberNo } });
+    if (!customer) {
+      return false;
+    }
+    await this.syncLoanFromBijli(customer.id, memberNo, payload); // CHANGED: force sync by memberNo
+    return true;
+  }
+
   async createLoanQr(customerId: string | bigint, amount: number) {
     const id = typeof customerId === 'string' ? BigInt(customerId) : customerId;
     const result = await this.getActiveLoanWithNextInstallment(id);

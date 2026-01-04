@@ -27,6 +27,11 @@ export class JwtRefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh'
 
   validate(req: any, payload: JwtPayload) {
     const refreshToken = cookieOrBodyExtractor(req);
-    return { userId: payload.sub, memberNo: payload.memberNo, refreshToken };
+    return {
+      userId: payload.sub,
+      memberNo: payload.memberNo,
+      actorKind: payload.actorKind, // CHANGED: keep actorKind in refresh context
+      refreshToken,
+    };
   }
 }

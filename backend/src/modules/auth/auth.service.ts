@@ -12,6 +12,7 @@ import { NotificationService } from '../notifications/notification.service';
 import { generateNumericPassword } from '../../utils/password.util';
 import { BijliCustomerSyncService } from '../customers/bijli-customer-sync.service';
 import { formatVietnameseName } from '../../common/utils/string.utils';
+import { isNumericString } from '../../utils/numeric-string.util'; // CHANGED: validate memberNo input
 
 @Injectable()
 export class AuthService {
@@ -39,24 +40,43 @@ export class AuthService {
       villageName: customer.villageName,
       groupCode: customer.groupCode,
       groupName: customer.groupName,
+      branchCode: customer.branchCode ?? null, // CHANGED: include branchCode for RBAC
+      branchName: customer.branchName ?? null, // CHANGED: include branchName for profile
       membershipStartDate: customer.membershipStartDate,
       mustChangePassword: customer.credential?.mustChangePassword ?? true,
     };
   }
 
-  private async issueTokens(customer: Prisma.CustomerGetPayload<{ include: { credential: true } }>) {
-    const payload: JwtPayload = {
-      sub: customer.id.toString(),
-      memberNo: customer.memberNo,
+  private toStaffProfile(staff: { email: string; role: string; branchCode?: string | null; fullName?: string | null }) {
+    return {
+      actorKind: 'STAFF',
+      role: staff.role,
+      branchCode: staff.branchCode ?? null,
+      email: staff.email,
+      fullName: staff.fullName ?? null,
     };
+  }
 
+  private async signAccessToken(payload: JwtPayload) {
     const accessExpiresIn = this.getExpiresIn('jwt.accessExpiresIn', '15m') as string | number;
-    const refreshExpiresIn = this.getExpiresIn('jwt.refreshExpiresIn', '7d') as string | number;
-
-    const accessToken = await this.jwtService.signAsync(payload, {
+    return this.jwtService.signAsync(payload, {
       secret: this.configService.getOrThrow<string>('jwt.accessSecret'),
       expiresIn: accessExpiresIn as any,
     });
+  }
+
+  private async issueTokens(customer: Prisma.CustomerGetPayload<{ include: { credential: true } }>) {
+    const payload: JwtPayload = {
+      sub: customer.id.toString(),
+      actorKind: 'CUSTOMER', // CHANGED: mark customer tokens
+      memberNo: customer.memberNo,
+      branchCode: customer.branchCode ?? null, // CHANGED: branchCode in JWT
+      groupCode: customer.groupCode ?? null, // CHANGED: groupCode in JWT
+    };
+
+    const refreshExpiresIn = this.getExpiresIn('jwt.refreshExpiresIn', '7d') as string | number;
+
+    const accessToken = await this.signAccessToken(payload); // CHANGED: reuse access token signer
 
     const refreshToken = await this.jwtService.signAsync(payload, {
       secret: this.configService.getOrThrow<string>('jwt.refreshSecret'),
@@ -83,7 +103,51 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
-    const customer = await this.getCustomerWithCredential({ memberNo: dto.memberNo });
+    const identifier = (dto.identifier ?? dto.memberNo ?? '').trim(); // CHANGED: support identifier/memberNo
+    if (!identifier) {
+      throw new BadRequestException('Thong tin dang nhap khong hop le'); // CHANGED: validate login input
+    }
+
+    if (identifier.includes('@')) {
+      const staff = await this.prisma.staffUser.findUnique({
+        where: { email: identifier.toLowerCase() },
+      }); // CHANGED: staff login by email
+
+      if (!staff || !staff.isActive) {
+        throw new UnauthorizedException('Thong tin dang nhap khong hop le'); // CHANGED: staff login error
+      }
+
+      const validStaff = await comparePassword(dto.password, staff.passwordHash);
+      if (!validStaff) {
+        throw new UnauthorizedException('Thong tin dang nhap khong hop le'); // CHANGED: staff login error
+      }
+
+      const staffRole =
+        staff.role === 'ADMIN' || staff.role === 'BRANCH_MANAGER' ? staff.role : null; // CHANGED: narrow staff role
+      if (!staffRole) {
+        throw new UnauthorizedException('Thong tin dang nhap khong hop le'); // CHANGED: invalid role
+      }
+
+      const staffPayload: JwtPayload = {
+        sub: staff.id.toString(),
+        actorKind: 'STAFF',
+        role: staffRole,
+        branchCode: staff.branchCode ?? null,
+      };
+
+      const accessToken = await this.signAccessToken(staffPayload); // CHANGED: staff access token
+      return {
+        accessToken,
+        profile: this.toStaffProfile({ ...staff, role: staffRole }), // CHANGED: use validated role
+      };
+    }
+
+    if (!isNumericString(identifier)) {
+      throw new BadRequestException('Ma khach hang khong hop le'); // CHANGED: numeric validation for customer
+    }
+
+
+    const customer = await this.getCustomerWithCredential({ memberNo: identifier });
     if (!customer || !customer.isActive || !customer.credential) {
       throw new UnauthorizedException('Thông tin đăng nhập không đúng');
     }
@@ -128,6 +192,15 @@ export class AuthService {
     return {
       ...tokens,
       customer: this.toCustomerResponse(loginCustomer),
+      profile: {
+        actorKind: 'CUSTOMER',
+        memberNo: loginCustomer.memberNo,
+        fullName: loginCustomer.fullName,
+        branchCode: loginCustomer.branchCode ?? null,
+        branchName: loginCustomer.branchName ?? null, // CHANGED: include branchName in profile
+        groupCode: loginCustomer.groupCode ?? null,
+        groupName: loginCustomer.groupName ?? null,
+      }, // CHANGED: include profile payload for RBAC
     };
   }
 

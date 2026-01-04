@@ -1,0 +1,1062 @@
+[
+  {
+    "Branch": "003-DIEN BIEN 3",
+    "GroupCode": "10000006",
+    "GroupName": "NH-BONG B"
+  },
+  {
+    "Branch": "003-DIEN BIEN 3",
+    "GroupCode": "10000005",
+    "GroupName": "NH-BONG A"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "10000045",
+    "GroupName": "TA-NOONG UNG 1(NU1) DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "10000049",
+    "GroupName": "TA-TEN LUONG 2(TL2A) DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "20000021",
+    "GroupName": "TY-DOI 11- BP1 DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "20000041",
+    "GroupName": "TL- BAN HUA PE 1 DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "20000018",
+    "GroupName": "TY-DOI 1A- NV-D1B2 DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "20000033",
+    "GroupName": "TL- BAN BANH(D12A1) DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "20000042",
+    "GroupName": "TL- BAN PE (D8A) DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "20000017",
+    "GroupName": "TY-DOI 14_CD2 DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "20000035",
+    "GroupName": "TL- BAN NOONG(D11A1) DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "20000030",
+    "GroupName": "TY-YEN TRUONG(DC2) DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "10000042",
+    "GroupName": "TA- CHIENG CHUNG 1(CC1) DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "10000040",
+    "GroupName": "TA- SANG2(S2) DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "20000024",
+    "GroupName": "TY-DOI 3- PP1 DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "20000025",
+    "GroupName": "TY-DOI 1A- NV-D1A1 DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "20000020",
+    "GroupName": "TY-DOI 13- NT2 DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "20000022",
+    "GroupName": "TY-DOI 6- H1 DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "30000013",
+    "GroupName": "TN - PHIENG BAN-HOA BAN-DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "20000034",
+    "GroupName": "TL- BAN BANH(D12C1) DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "30000006",
+    "GroupName": "TN - CO PAO- DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "10000139",
+    "GroupName": "TA-DOI CAO- DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "10000048",
+    "GroupName": "TA-TEN LUONG(TL1A) DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "20000026",
+    "GroupName": "TY-BANH 1 DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "20000027",
+    "GroupName": "TY-BOI 2 DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "10000047",
+    "GroupName": "TA-CO CHAI(BCC1) DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "20000038",
+    "GroupName": "TL- BAN PE NOI(D10A1) DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "20000031",
+    "GroupName": "TL- BAN LO(D6A1) DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "20000036",
+    "GroupName": "TL- BAN NGUU(D15A1) DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "20000043",
+    "GroupName": "TL- BAN LE(D4A1) DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "30000022",
+    "GroupName": "TX-D14 HI VONG- DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "20000040",
+    "GroupName": "TL- BAN PE (D8D1) DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "20000039",
+    "GroupName": "TL- BAN PE NOI(D10B1) DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "20000028",
+    "GroupName": "TY-PHU YEN(10A) DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "30000026",
+    "GroupName": "TX-D6-CE CHAN NUOI-DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "30000009",
+    "GroupName": "TN - HUA NA-DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "30000011",
+    "GroupName": "TN - ON - DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "10000141",
+    "GroupName": "TC - NA KHUA"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "30000007",
+    "GroupName": "TN - HA- KHOAI LANG - DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "30000027",
+    "GroupName": "TX-DOI 13 - ACE - DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "10000140",
+    "GroupName": "TC- PA LECH"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "30000029",
+    "GroupName": "TX-THON C17 - DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "30000025",
+    "GroupName": "TX-D4B BAN TEN - DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "10000046",
+    "GroupName": "TA-CO CHAI(BCC2) DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "10000137",
+    "GroupName": "TX- ÐOI 3 HOA HONG- DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "10000041",
+    "GroupName": "TA- MOI 1(M1) DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "10000043",
+    "GroupName": "TA- PHIENG BAN1(PB1) DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "30000005",
+    "GroupName": "TN - CO KE - GIANG - DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "30000023",
+    "GroupName": "TX-D15 PA CAU-DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "30000010",
+    "GroupName": "TN - NA LOM - DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "30000024",
+    "GroupName": "TX-D17 TEN BUA PT-DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "10000053",
+    "GroupName": "TA-CHIENG AN(CA1) DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "20000019",
+    "GroupName": "TY-DOI 13- NT1 DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "30000020",
+    "GroupName": "TX-C9 SEN CU - DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "20000023",
+    "GroupName": "TY-DOI 6- H2 DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "20000032",
+    "GroupName": "TL- BAN LONG TONG(D9A1) DK"
+  },
+  {
+    "Branch": "001-DIEN BIEN 1",
+    "GroupCode": "30000028",
+    "GroupName": "TX-HOA BAN PT - DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000010",
+    "GroupName": "MP-CO MAN 2 DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000070",
+    "GroupName": "PK - KEO A DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000051",
+    "GroupName": "NT-NA LUONG 3 (NL3) DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000069",
+    "GroupName": "PK-XOM1A DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000055",
+    "GroupName": "NT-NA TAU 5 (NT5) DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000077",
+    "GroupName": "NN-NA NOI 1 DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000009",
+    "GroupName": "MP-CO MAN 1 DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000089",
+    "GroupName": "NT-NA TAU 1+2 (NT1+2) DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000061",
+    "GroupName": "PK-TEN DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000058",
+    "GroupName": "PK-DONG MET 1 DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000008",
+    "GroupName": "MP-BUA DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000007",
+    "GroupName": "MP-KHA DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000048",
+    "GroupName": "NT-XOM1(X1) DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000049",
+    "GroupName": "NT-NA LAO(NL1) DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000062",
+    "GroupName": "PK-NGUU 1 DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000050",
+    "GroupName": "NT-HONG LIU(HL) DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000014",
+    "GroupName": "MP-CHE CAN 1 DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000053",
+    "GroupName": "NT-TA CANG 1 (TC1) DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000060",
+    "GroupName": "PK-XOM DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000064",
+    "GroupName": "PK-CO THON DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000066",
+    "GroupName": "PK-VANG 1 DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000063",
+    "GroupName": "PK-KEO DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000056",
+    "GroupName": "NT-HOA DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000013",
+    "GroupName": "MP-YEN 3 DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000047",
+    "GroupName": "NT-LAN YEN(LY1) DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000004",
+    "GroupName": "MP-CANG 1+2 DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000065",
+    "GroupName": "PK-XOM 2 DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000002",
+    "GroupName": "MP-TAN BINH DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000091",
+    "GroupName": "PK- PA TRA- DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000045",
+    "GroupName": "NT-NA LUONG 2(NL2) DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000067",
+    "GroupName": "PK-VANG 2 DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000046",
+    "GroupName": "NT-XOM 2(X2) DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000006",
+    "GroupName": "MP-CO LUONG DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000012",
+    "GroupName": "MP-CO KHO DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000001",
+    "GroupName": "MP-PHANG1 DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000005",
+    "GroupName": "MP-CANG 3+4 DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000044",
+    "GroupName": "NT-CANG 1 DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000076",
+    "GroupName": "PK-HA DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000011",
+    "GroupName": "MP-BANH DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000074",
+    "GroupName": "NN-NA NGAM 1 DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000054",
+    "GroupName": "NT-NA CAI 1 (NC1) DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000088",
+    "GroupName": "NN- TAU PUNG 1 DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000080",
+    "GroupName": "NN-TAU PUNG DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000052",
+    "GroupName": "NT-TA CANG 3 (TC3) DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000057",
+    "GroupName": "NT- NA LUONG 2A DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000083",
+    "GroupName": "NN-HUOI HE DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000081",
+    "GroupName": "NN-NA NHAN 1 DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000075",
+    "GroupName": "NN-NA NGAM 2 DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000094",
+    "GroupName": "NN-NA NGAM 2A DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000092",
+    "GroupName": "PK- SANG - DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000082",
+    "GroupName": "NN-NA NHAN 2 DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000090",
+    "GroupName": "NT- NA TAU 1- DK"
+  },
+  {
+    "Branch": "002-DIEN BIEN 2",
+    "GroupCode": "20000068",
+    "GroupName": "PK-PU SUNG DK"
+  },
+  {
+    "Branch": "003-DIEN BIEN 3",
+    "GroupCode": "10000032",
+    "GroupName": "NL-DOI 1A -BAN NOM"
+  },
+  {
+    "Branch": "003-DIEN BIEN 3",
+    "GroupCode": "10000010",
+    "GroupName": "NH-BAN LE"
+  },
+  {
+    "Branch": "003-DIEN BIEN 3",
+    "GroupCode": "10000064",
+    "GroupName": "HM - BAN HE MUONG"
+  },
+  {
+    "Branch": "003-DIEN BIEN 3",
+    "GroupCode": "10000034",
+    "GroupName": "NL-DOI 09B - BAN LUN - DK"
+  },
+  {
+    "Branch": "003-DIEN BIEN 3",
+    "GroupCode": "10000014",
+    "GroupName": "NH- NOONG HET A"
+  },
+  {
+    "Branch": "003-DIEN BIEN 3",
+    "GroupCode": "10000002",
+    "GroupName": "NH-PHIENG CA"
+  },
+  {
+    "Branch": "003-DIEN BIEN 3",
+    "GroupCode": "10000030",
+    "GroupName": "NL-DOI 21 -BAN ON A"
+  },
+  {
+    "Branch": "003-DIEN BIEN 3",
+    "GroupCode": "10000037",
+    "GroupName": "NL-BAN CO LUONG"
+  },
+  {
+    "Branch": "003-DIEN BIEN 3",
+    "GroupCode": "10000018",
+    "GroupName": "NN-PA NGAM 2A DK"
+  },
+  {
+    "Branch": "003-DIEN BIEN 3",
+    "GroupCode": "10000036",
+    "GroupName": "NL-DOI 06 -THANH XUAN"
+  },
+  {
+    "Branch": "003-DIEN BIEN 3",
+    "GroupCode": "10000035",
+    "GroupName": "NL-DOI 08 - LIENG"
+  },
+  {
+    "Branch": "003-DIEN BIEN 3",
+    "GroupCode": "30000017",
+    "GroupName": "SM-LOONG QUAN -DK"
+  },
+  {
+    "Branch": "003-DIEN BIEN 3",
+    "GroupCode": "10000026",
+    "GroupName": "NL-DOI 16 - PHIENG QUAI"
+  },
+  {
+    "Branch": "003-DIEN BIEN 3",
+    "GroupCode": "10000059",
+    "GroupName": "HM - LONG SOT"
+  },
+  {
+    "Branch": "003-DIEN BIEN 3",
+    "GroupCode": "10000008",
+    "GroupName": "NH-BAN PHU"
+  },
+  {
+    "Branch": "003-DIEN BIEN 3",
+    "GroupCode": "10000003",
+    "GroupName": "NH-PUNG KHAU"
+  },
+  {
+    "Branch": "003-DIEN BIEN 3",
+    "GroupCode": "10000033",
+    "GroupName": "NL-DOI 07 - NA MEN"
+  },
+  {
+    "Branch": "003-DIEN BIEN 3",
+    "GroupCode": "10000024",
+    "GroupName": "NN-PA NGAM 2B- DK"
+  },
+  {
+    "Branch": "003-DIEN BIEN 3",
+    "GroupCode": "10000019",
+    "GroupName": "NN-TEN NUA A"
+  },
+  {
+    "Branch": "003-DIEN BIEN 3",
+    "GroupCode": "30000019",
+    "GroupName": "SM-YEN CANG 2 -DK"
+  },
+  {
+    "Branch": "003-DIEN BIEN 3",
+    "GroupCode": "10000022",
+    "GroupName": "NN-PHU NGAM - DK"
+  },
+  {
+    "Branch": "003-DIEN BIEN 3",
+    "GroupCode": "10000016",
+    "GroupName": "NN- NA SANG 1B"
+  },
+  {
+    "Branch": "003-DIEN BIEN 3",
+    "GroupCode": "10000025",
+    "GroupName": "NN-TEN NUA B"
+  },
+  {
+    "Branch": "003-DIEN BIEN 3",
+    "GroupCode": "10000012",
+    "GroupName": "NH-HUOI LE"
+  },
+  {
+    "Branch": "003-DIEN BIEN 3",
+    "GroupCode": "10000055",
+    "GroupName": "HM - NA DON"
+  },
+  {
+    "Branch": "003-DIEN BIEN 3",
+    "GroupCode": "10000015",
+    "GroupName": "NN-NA SANG 1A"
+  },
+  {
+    "Branch": "003-DIEN BIEN 3",
+    "GroupCode": "10000058",
+    "GroupName": "HM - HE 2"
+  },
+  {
+    "Branch": "003-DIEN BIEN 3",
+    "GroupCode": "10000020",
+    "GroupName": "NN-PA BONG DK"
+  },
+  {
+    "Branch": "003-DIEN BIEN 3",
+    "GroupCode": "10000061",
+    "GroupName": "HM - CONG BINH"
+  },
+  {
+    "Branch": "003-DIEN BIEN 3",
+    "GroupCode": "10000021",
+    "GroupName": "NN-PA NGAM 1 DK"
+  },
+  {
+    "Branch": "003-DIEN BIEN 3",
+    "GroupCode": "30000016",
+    "GroupName": "SM-LOONG DOM -DK"
+  },
+  {
+    "Branch": "003-DIEN BIEN 3",
+    "GroupCode": "30000035",
+    "GroupName": "NN-PA BONG B"
+  },
+  {
+    "Branch": "003-DIEN BIEN 3",
+    "GroupCode": "10000056",
+    "GroupName": "HM -TA LET"
+  },
+  {
+    "Branch": "003-DIEN BIEN 3",
+    "GroupCode": "10000038",
+    "GroupName": "NL-BAN ON B"
+  },
+  {
+    "Branch": "003-DIEN BIEN 3",
+    "GroupCode": "30000018",
+    "GroupName": "SM-YEN BINH -DK"
+  },
+  {
+    "Branch": "003-DIEN BIEN 3",
+    "GroupCode": "10000009",
+    "GroupName": "NH-HOANG CONG CHAT"
+  },
+  {
+    "Branch": "003-DIEN BIEN 3",
+    "GroupCode": "10000027",
+    "GroupName": "NL-DOI 15 - NOONG LUONG"
+  },
+  {
+    "Branch": "003-DIEN BIEN 3",
+    "GroupCode": "10000031",
+    "GroupName": "NL-DOI 17- U VA"
+  },
+  {
+    "Branch": "003-DIEN BIEN 3",
+    "GroupCode": "30000015",
+    "GroupName": "SM-LOONG BON - DK"
+  },
+  {
+    "Branch": "003-DIEN BIEN 3",
+    "GroupCode": "30000014",
+    "GroupName": "SM-CHIENG XOM -DK"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000024",
+    "GroupName": "AN-CANG 1 DK"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000011",
+    "GroupName": "AC-SANG"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000012",
+    "GroupName": "AC-KEO 1"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000010",
+    "GroupName": "AC-NOONG HANG DK"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000098",
+    "GroupName": "AC-HUOI SUA 2"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000078",
+    "GroupName": "NL-TEN 1 DK"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000007",
+    "GroupName": "AC-HONG SOT DK"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000035",
+    "GroupName": "BL-XUAN MON"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000034",
+    "GroupName": "AN- CANG 3 DK"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000032",
+    "GroupName": "AN- HAN 2 DK"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000023",
+    "GroupName": "AN-CU DK"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000005",
+    "GroupName": "AC-GIANG"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000062",
+    "GroupName": "XL-KHEN"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000008",
+    "GroupName": "AC-HUOI SUA"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000013",
+    "GroupName": "AC-HUA NA DK"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000037",
+    "GroupName": "BL-XUAN TRE 1 DK"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000053",
+    "GroupName": "XL-KEOXL DK"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000002",
+    "GroupName": "AC-COI DK"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000001",
+    "GroupName": "AC-BANH 1 DK"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000009",
+    "GroupName": "AC-HUA NGUONG 1"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000085",
+    "GroupName": "AN - BO MAY"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000025",
+    "GroupName": "AN-LE DK"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000075",
+    "GroupName": "NL-LICH NUA 1 DK"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000076",
+    "GroupName": "NL-LICH TO"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000003",
+    "GroupName": "AC-CO EN DK"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000074",
+    "GroupName": "NL-LICH CANG 1 DK"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000036",
+    "GroupName": "BL-XUAN TRE 2 DK"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000052",
+    "GroupName": "BL- XUAN TRE 3 DK"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000018",
+    "GroupName": "AN-TIN TOC 1 DK"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000026",
+    "GroupName": "AN-MOI DK"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000091",
+    "GroupName": "BL-HUOI CAM 2"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000084",
+    "GroupName": "AC - NONG HANG 2 DK"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000014",
+    "GroupName": "AC-BANH 2 DK"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000015",
+    "GroupName": "AC- KEO 2"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000043",
+    "GroupName": "BL-BUNG 2 DK"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000021",
+    "GroupName": "AN-CO HAM 1 DK"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000077",
+    "GroupName": "NL-IT NOI 1 DK"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000019",
+    "GroupName": "AN-NA LUONG DK"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000031",
+    "GroupName": "AN-CO HAM 2 DK"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000016",
+    "GroupName": "AC- HUA NGUONG 2"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000045",
+    "GroupName": "BL-HONG SOT BL"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000099",
+    "GroupName": "AN - MOI 2 DK"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000040",
+    "GroupName": "BL-PA TONG"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000065",
+    "GroupName": "XL-CO HON 1 DK"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000020",
+    "GroupName": "AN-CO SANG1 DK"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000038",
+    "GroupName": "BL-QUYET TIEN 1 DK"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000054",
+    "GroupName": "XL-MON HA DK"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000050",
+    "GroupName": "BL-KEO NANH"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000086",
+    "GroupName": "AC - MANH DANH DK"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000051",
+    "GroupName": "BL-HUOI CAM DK"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000017",
+    "GroupName": "AN- HAN 1 DK"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000083",
+    "GroupName": "AN - CU 2 DK"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000033",
+    "GroupName": "AN- TIN TOC 2 DK"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000066",
+    "GroupName": "XL-CO HON 2 DK"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000004",
+    "GroupName": "AC-CO SAN DK"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000057",
+    "GroupName": "XL-PHAY DK"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000030",
+    "GroupName": "AN-CO SANG 2 DK"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000092",
+    "GroupName": "AT-HUOI HOM"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000093",
+    "GroupName": "AT-BUA 2"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000095",
+    "GroupName": "AT-CHA CUONG"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000097",
+    "GroupName": "AT-TO CUONG"
+  },
+  {
+    "Branch": "004-MUONG ANG",
+    "GroupCode": "40000096",
+    "GroupName": "AT-PA CHA"
+  }
+]

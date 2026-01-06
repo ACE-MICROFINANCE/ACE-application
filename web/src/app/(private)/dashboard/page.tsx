@@ -27,12 +27,17 @@ const daysUntil = (date: Date) =>
   Math.ceil((date.getTime() - startOfToday().getTime()) / MS_PER_DAY);
 
 const DashboardContent = () => {
-  const { customer, isAuthenticated, isInitializing, mustChangePassword, logout } = useAuth();
+  const { customer, profile, isAuthenticated, isInitializing, mustChangePassword, logout } = useAuth(); // CHANGED: read profile for staff/admin
   const router = useRouter();
   const searchParams = useSearchParams();
   const showAccount = searchParams.get('tab') === 'account';
+  const isStaffActor = profile?.actorKind === 'STAFF'; // CHANGED: staff/admin dashboard mode
+  const welcomeTitle = isStaffActor ? 'Chào mừng Anh/Chị' : 'Chào mừng';
+  const welcomeName = isStaffActor
+    ? (profile?.fullName ?? profile?.email ?? 'Nhân viên ACE')
+    : (customer?.fullName ?? 'Nguyễn Văn A');
 
-  const [profile, setProfile] = useState<ProfileResponse | null>(null);
+  const [profileData, setProfileData] = useState<ProfileResponse | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -42,6 +47,7 @@ const DashboardContent = () => {
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const prevMustChangeRef = useRef(mustChangePassword);
   const hasFetchedProfile = useRef(false);
+  const isStaffAccount = (profileData?.actorKind ?? profile?.actorKind) === 'STAFF'; // CHANGED: staff profile mode
 
   const [scheduleEvents, setScheduleEvents] = useState<ScheduleItem[]>([]);
   const [loan, setLoan] = useState<LoanCurrentResponse | null>(null);
@@ -69,7 +75,7 @@ const DashboardContent = () => {
     setProfileError(null);
     try {
       const data = await appApi.getProfile();
-      setProfile(data);
+      setProfileData(data);
     } catch (err) {
       setProfileError('Không tải được thông tin tài khoản. Vui lòng thử lại.');
     } finally {
@@ -144,7 +150,7 @@ const DashboardContent = () => {
       placement="center"
       backdrop="blur"
       classNames={{ backdrop: 'bg-black/30 backdrop-blur-sm' }}
-      hideCloseButton={mustChangePassword}
+      hideCloseButton // CHANGED: ẩn nút close mặc định để không có dấu "x" bên trái
     >
       <ModalContent className="mx-4 w-[92vw] max-w-md overflow-hidden rounded-[28px] border border-black/5 bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)]">
         <ModalHeader className="relative flex items-center justify-center border-b border-black/5 px-6 py-5">
@@ -178,7 +184,11 @@ const DashboardContent = () => {
         <div className="mx-auto flex w-full max-w-md flex-col space-y-4">
           <AceCard className="space-y-4">
             <div className="text-center">
-              <h2 className="text-lg font-semibold text-[#333]">Thông tin đối tác</h2>
+              {/* TODO: replaced by ACE Farmer implementation */}
+              {/* <h2 className="text-lg font-semibold text-[#333]">Th?ng tin ??i t?c</h2> */}
+              <h2 className="text-lg font-semibold text-[#333]">
+                {isStaffAccount ? 'Thông tin nhân viên' : 'Thông tin bà con'}
+              </h2>
               {/* <p className="text-sm text-[#666]">Cập nhật từ hồ sơ khách hàng ACE Farmer</p> */}
             </div>
 
@@ -189,46 +199,86 @@ const DashboardContent = () => {
                 <p className="text-sm text-red-500">{profileError}</p>
                 <AceButton onClick={loadProfile}>Thử lại</AceButton>
               </div>
+            ) : isStaffAccount ? ( // CHANGED: staff/admin profile display
+              <div className="space-y-2 text-sm text-[#333]">
+                <div className="flex justify-between">
+                  <span className="text-[#555]">Họ tên</span>
+                  <span className="font-semibold">
+                    {profileData?.fullName ?? profile?.fullName ?? '-'}
+                  </span>
+                </div>
+
+                <div className="flex justify-between">
+                  <span className="text-[#555]">Email</span>
+                  <span className="font-semibold">
+                    {profileData?.email ?? profile?.email ?? '-'}
+                  </span>
+                </div>
+
+                <div className="flex justify-between">
+                  <span className="text-[#555]">Vai trò</span>
+                  <span className="font-semibold">
+                    {profileData?.role ?? profile?.role ?? '-'}
+                  </span>
+                </div>
+
+                <div className="flex justify-between">
+                  <span className="text-[#555]">Chi nhánh</span>
+                  <span className="font-semibold">
+                    {profileData?.branchName ??
+                      profileData?.branchCode ??
+                      profile?.branchName ??
+                      profile?.branchCode ??
+                      '-'}
+                  </span>
+                </div>
+              </div>
             ) : (
               <div className="space-y-2 text-sm text-[#333]">
                 <div className="flex justify-between">
                   <span className="text-[#555]">Họ tên</span>
-                  <span className="font-semibold">{profile?.fullName ?? customer?.fullName ?? '—'}</span>
+                  <span className="font-semibold">
+                    {profileData?.fullName ?? customer?.fullName ?? '-'}
+                  </span>
                 </div>
 
                 <div className="flex justify-between">
                   <span className="text-[#555]">Mã thành viên</span>
                   <span className="font-semibold">
-                    {profile?.memberNo ?? (customer as any)?.memberNo ?? '—'}
+                    {profileData?.memberNo ?? (customer as any)?.memberNo ?? '-'}
                   </span>
                 </div>
 
                 <div className="flex justify-between">
                   <span className="text-[#555]">Số CMT/CCCD</span>
-                  <span className="font-semibold">{profile?.idCardNumber ?? '—'}</span>
+                  <span className="font-semibold">{profileData?.idCardNumber ?? '-'}</span>
                 </div>
 
                 <div className="flex justify-between">
                   <span className="text-[#555]">Điện thoại</span>
-                  <span className="font-semibold">{profile?.phoneNumber ?? '—'}</span>
+                  <span className="font-semibold">{profileData?.phoneNumber ?? '-'}</span>
                 </div>
 
                 <div className="flex justify-between">
                   <span className="text-[#555]">Nhóm/Vùng</span>
-                  <span className="font-semibold">{profile?.groupName ?? profile?.groupCode ?? '—'}</span>
+                  <span className="font-semibold">
+                    {profileData?.groupName ?? profileData?.groupCode ?? '-'}
+                  </span>
                 </div>
 
                 <div className="flex justify-between">
                   <span className="text-[#555]">Vòng vay</span>
                   <span className="font-semibold">
-                    {profile?.loanCycle !== null && profile?.loanCycle !== undefined ? `${profile.loanCycle}` : ''}
+                    {profileData?.loanCycle !== null && profileData?.loanCycle !== undefined
+                      ? `${profileData.loanCycle}`
+                      : ''}
                   </span>
                 </div>
 
                 <div className="flex justify-between">
                   <span className="text-[#555]">Ngày tham gia</span>
                   <span className="font-semibold">
-                    {formatDate(profile?.membershipStartDate ?? null)}
+                    {formatDate(profileData?.membershipStartDate ?? null)}
                   </span>
                 </div>
               </div>
@@ -248,9 +298,12 @@ const DashboardContent = () => {
                 Gửi góp ý
               </AceButton>
 
-              <AceButton className="bg-[#10b981] hover:bg-[#0f9c6f]" onClick={handleCallCCO}>
+                            {!isStaffAccount ? (
+                <AceButton className="bg-[#10b981] hover:bg-[#0f9c6f]" onClick={handleCallCCO}>
                 Liên hệ CCO
               </AceButton>
+              ) : null} 
+
 
               <AceButton
                 className="bg-[#ef4444] hover:bg-[#dc2626]"
@@ -272,9 +325,7 @@ const DashboardContent = () => {
                 aria-label="Đóng"
                 onClick={() => setFeedbackOpen(false)}
                 className="absolute right-3 top-3 text-[#666] hover:text-[#111]"
-              >
-                ✕
-              </button>
+              >×</button>
 
               <h3 className="mb-3 text-center text-lg font-semibold text-[#333]">Gửi phản hồi</h3>
 
@@ -298,7 +349,9 @@ const DashboardContent = () => {
                 </AceButton>
               </div>
 
-              {feedbackMessage ? <p className="mt-2 text-sm text-[#2f855a]">{feedbackMessage}</p> : null}
+              {feedbackMessage ? (
+                <p className="mt-2 text-sm text-[#2f855a]">{feedbackMessage}</p>
+              ) : null}
             </div>
           </div>
         ) : null}
@@ -312,14 +365,12 @@ const DashboardContent = () => {
     <div className="min-h-screen px-4 pb-28 pt-8">
       <div className="mx-auto flex w-full max-w-md flex-col space-y-4">
         <AceCard className="space-y-2">
-          <h1 className="text-center text-xl font-semibold text-[#333]">Chào mừng khách hàng</h1>
-          <p className="text-center text-4xl font-bold text-[#2b6cb0] md:text-xl">
-            {customer?.fullName ?? 'Nguyễn Văn A'}
-          </p>
+          <h1 className="text-center text-xl font-semibold text-[#333]">{welcomeTitle}</h1>
+          <p className="text-center text-4xl font-bold text-[#2b6cb0] md:text-xl">{welcomeName}</p>
         </AceCard>
 
         <WeatherCard />
-        <DashboardRemindersCard />
+        <DashboardRemindersCard includeLoanReminder={!isStaffActor} /> {/* CHANGED: hide loan card for staff/admin */}
         {renderChangePasswordModal()}
       </div>
     </div>
@@ -333,3 +384,10 @@ export default function DashboardPage() {
     </Suspense>
   );
 }
+
+
+
+
+
+
+

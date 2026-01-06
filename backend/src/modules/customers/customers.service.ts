@@ -3,17 +3,20 @@ import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
 import { hashPassword } from '../../utils/password.util'; // CHANGED: create stub credential
+import { BranchGroupMapService } from './branch-group-map.service'; // CHANGED: map group for staff dropdown
 
 @Injectable()
 export class CustomersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
+    private readonly branchGroupMapService: BranchGroupMapService, // CHANGED: branch group mapping
   ) {}
 
   private mapProfile(customer: Prisma.CustomerGetPayload<{ include: { credential: true } }>) {
     return {
       id: Number(customer.id),
+      actorKind: 'CUSTOMER', // CHANGED: return actorKind for /me response
       memberNo: customer.memberNo,
       fullName: customer.fullName,
       gender: customer.gender,
@@ -27,6 +30,25 @@ export class CustomersService {
       branchName: customer.branchName ?? null, // CHANGED: include branchName in profile
       membershipStartDate: customer.membershipStartDate,
       mustChangePassword: customer.credential?.mustChangePassword ?? true,
+    };
+  }
+
+  private mapStaffProfile(staff: {
+    id: bigint;
+    email: string;
+    role: string;
+    branchCode?: string | null;
+    fullName?: string | null;
+    isActive: boolean;
+  }) {
+    return {
+      id: Number(staff.id),
+      actorKind: 'STAFF', // CHANGED: staff profile for /me
+      email: staff.email,
+      fullName: staff.fullName ?? null,
+      role: staff.role,
+      branchCode: staff.branchCode ?? null,
+      isActive: staff.isActive,
     };
   }
 
@@ -51,6 +73,34 @@ export class CustomersService {
       ...this.mapProfile(customer),
       loanCycle: activeLoan?.loanCycle ?? null, // CHANGED: trả về loanCycle để FE hiển thị ở tab account
     };
+  }
+
+  async getActorProfile(user: {
+    userId: string;
+    actorKind?: 'CUSTOMER' | 'STAFF';
+  }) {
+    if (user.actorKind === 'STAFF') {
+      const staffId = BigInt(user.userId);
+      const staff = await this.prisma.staffUser.findUnique({
+        where: { id: staffId },
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          branchCode: true,
+          fullName: true,
+          isActive: true,
+        },
+      }); // CHANGED: load staff profile for /me
+
+      if (!staff) {
+        throw new NotFoundException('Staff user not found'); // CHANGED: staff not found
+      }
+
+      return this.mapStaffProfile(staff); // CHANGED: return staff profile
+    }
+
+    return this.getProfile(user.userId); // CHANGED: default customer profile
   }
 
   async createCustomer(
@@ -121,5 +171,12 @@ export class CustomersService {
     }
 
     return this.mapProfile(refreshed);
+  }
+
+  async getGroupsForBranch(branchCode: string | null | undefined) {
+    if (!branchCode) {
+      throw new BadRequestException('Branch code is required'); // CHANGED: staff must have branch
+    }
+    return this.branchGroupMapService.listGroupsByBranchCode(branchCode); // CHANGED: map groups by branch
   }
 }

@@ -11,6 +11,7 @@ import {
 import {
   authService,
   type ChangePasswordResponse,
+  type AuthProfile, // CHANGED: profile for staff/customer
   type Customer,
   type LoginRequest,
   type LoginResponse,
@@ -18,6 +19,7 @@ import {
 
 type StoredAuth = {
   customer: Customer | null;
+  profile?: AuthProfile | null; // CHANGED: store profile for staff/customer
   accessToken?: string;
   refreshToken?: string;
   mustChangePassword?: boolean;
@@ -25,6 +27,7 @@ type StoredAuth = {
 
 type AuthState = {
   customer: Customer | null;
+  profile?: AuthProfile | null; // CHANGED: expose profile
   accessToken?: string;
   refreshToken?: string;
   mustChangePassword: boolean;
@@ -105,10 +108,11 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 const normalizeAuthState = (auth: StoredAuth | null): AuthState => ({
   customer: auth?.customer ?? null,
+  profile: auth?.profile ?? null, // CHANGED: normalize profile
   accessToken: auth?.accessToken,
   refreshToken: auth?.refreshToken,
   mustChangePassword: Boolean(auth?.mustChangePassword),
-  isAuthenticated: Boolean(auth?.accessToken && auth?.customer),
+  isAuthenticated: Boolean(auth?.accessToken), // CHANGED: allow staff auth without customer
   isInitializing: false,
 });
 
@@ -130,9 +134,10 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     payload: LoginResponse | ChangePasswordResponse,
   ) => {
     const nextAuth: StoredAuth = {
-      customer: payload.customer,
+      customer: payload.customer ?? null, // CHANGED: staff login has no customer
+      profile: 'profile' in payload ? payload.profile ?? null : null, // CHANGED: store profile when available
       accessToken: payload.accessToken,
-      refreshToken: payload.refreshToken,
+      refreshToken: payload.refreshToken, // CHANGED: optional for staff
       mustChangePassword: Boolean(payload.customer?.mustChangePassword),
     };
 

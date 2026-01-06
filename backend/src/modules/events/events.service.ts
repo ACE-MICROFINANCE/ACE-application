@@ -4,16 +4,25 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { addMinutes } from 'date-fns';
+import { addDays, addMinutes, differenceInCalendarDays, differenceInMinutes } from 'date-fns';
 import { PrismaService } from '../../database/prisma.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
+import { getNextMeetingStart } from './utils/meeting-recurrence';
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
 type StaffContext = {
   userId: string;
   branchCode?: string | null;
+};
+
+type ActorContext = {
+  userId: string;
+  actorKind?: 'CUSTOMER' | 'STAFF' | string; // CHANGED: support schedule by actorKind
+  branchCode?: string | null;
+  groupCode?: string | null;
+  role?: 'ADMIN' | 'BRANCH_MANAGER' | string | null; // CHANGED: allow admin schedule
 };
 
 type StaffEventFilters = {
@@ -58,14 +67,39 @@ export class EventsService {
     }));
   }
 
-  private mapStaffEvent(event: any) {
+  private getEffectiveEventDates(
+    event: { eventType: string; startDate: Date; endDate?: Date | null; durationMinutes?: number | null },
+    now: Date = new Date(),
+  ) {
+    const effectiveStart =
+      event.eventType === 'MEETING'
+        ? getNextMeetingStart(event.startDate, now) // CHANGED: normalize meeting start by 28-day recurrence
+        : event.startDate;
+
+    const durationMinutes = event.durationMinutes ?? null;
+    let effectiveEnd = event.endDate ?? null;
+
+    if (durationMinutes !== null) {
+      effectiveEnd = addMinutes(effectiveStart, durationMinutes); // CHANGED: recompute endDate from duration
+    } else if (effectiveEnd) {
+      const diffMinutes = differenceInMinutes(effectiveEnd, event.startDate);
+      if (diffMinutes > 0) {
+        effectiveEnd = addMinutes(effectiveStart, diffMinutes); // CHANGED: shift endDate by same duration
+      }
+    }
+
+    return { startDate: effectiveStart, endDate: effectiveEnd };
+  }
+
+  private mapStaffEvent(event: any, now: Date = new Date()) {
+    const effectiveDates = this.getEffectiveEventDates(event, now); // CHANGED: normalize meeting dates
     return {
       id: Number(event.id),
       title: event.title,
       description: event.description,
       eventType: event.eventType,
-      startDate: event.startDate,
-      endDate: event.endDate,
+      startDate: effectiveDates.startDate,
+      endDate: effectiveDates.endDate,
       durationMinutes: event.durationMinutes,
       locationName: event.locationName,
       audienceType: event.audienceType,
@@ -151,7 +185,9 @@ export class EventsService {
       orderBy: { startDate: 'desc' },
     });
 
-    return events.map((event) => this.mapStaffEvent(event));
+    const now = new Date();
+    const mapped = events.map((event) => this.mapStaffEvent(event, now)); // CHANGED: normalize meeting dates
+    return mapped.sort((a, b) => a.startDate.getTime() - b.startDate.getTime()); // CHANGED: sort by effective startDate
   }
 
   async updateStaffEvent(staff: StaffContext, id: string, dto: UpdateEventDto) {
@@ -277,23 +313,35 @@ export class EventsService {
     const events = await this.prisma.event.findMany({
       where: {
         branchCode: customer.branchCode,
-        startDate: { gte: this.startOfToday() },
         OR: orFilters,
+        AND: [
+          {
+            OR: [
+              { startDate: { gte: this.startOfToday() } },
+              { eventType: 'MEETING' }, // CHANGED: always include meeting for next occurrence
+            ],
+          },
+        ],
       },
       orderBy: { startDate: 'asc' },
     });
 
-    return events.map((event) => ({
-      id: Number(event.id),
-      title: event.title,
-      eventType: event.eventType,
-      startDate: event.startDate,
-      endDate: event.endDate,
-      description: event.description,
-      locationName: event.locationName,
-      durationMinutes: event.durationMinutes,
-      audienceType: event.audienceType,
-    }));
+    const now = new Date();
+    const mapped = events.map((event) => {
+      const effectiveDates = this.getEffectiveEventDates(event, now); // CHANGED: normalize meeting dates
+      return {
+        id: Number(event.id),
+        title: event.title,
+        eventType: event.eventType,
+        startDate: effectiveDates.startDate,
+        endDate: effectiveDates.endDate,
+        description: event.description,
+        locationName: event.locationName,
+        durationMinutes: event.durationMinutes,
+        audienceType: event.audienceType,
+      };
+    });
+    return mapped.sort((a, b) => a.startDate.getTime() - b.startDate.getTime()); // CHANGED: sort by effective startDate
   }
 
   async getUpcomingEvents(customerId: string | bigint) {
@@ -320,40 +368,121 @@ export class EventsService {
     const events = await this.prisma.event.findMany({
       where: {
         branchCode: customer.branchCode, // CHANGED: branch filter for customer
-        startDate: { gte: this.startOfToday() },
         OR: orFilters, // CHANGED: branch all or group targeting
+        AND: [
+          {
+            OR: [
+              { startDate: { gte: this.startOfToday() } },
+              { eventType: 'MEETING' }, // CHANGED: always include meeting for next occurrence
+            ],
+          },
+        ],
       },
       orderBy: { startDate: 'asc' },
     });
 
-    return events.map((event) => ({
-      id: Number(event.id),
-      title: event.title,
-      eventType: event.eventType,
-      startDate: event.startDate,
-      daysUntilEvent: this.daysUntil(event.startDate),
-    }));
+    const now = new Date();
+    const mapped = events.map((event) => {
+      const effectiveDates = this.getEffectiveEventDates(event, now); // CHANGED: normalize meeting dates
+      return {
+        id: Number(event.id),
+        title: event.title,
+        eventType: event.eventType,
+        startDate: effectiveDates.startDate,
+        daysUntilEvent: this.daysUntil(effectiveDates.startDate),
+      };
+    });
+    return mapped.sort((a, b) => a.startDate.getTime() - b.startDate.getTime()); // CHANGED: sort by effective startDate
+  }
+
+  async getUpcomingEventsForBranch(branchCode?: string | null) {
+    if (!branchCode) {
+      return [];
+    }
+
+    const events = await this.prisma.event.findMany({
+      where: {
+        branchCode,
+        OR: [
+          { startDate: { gte: this.startOfToday() } },
+          { eventType: 'MEETING' }, // CHANGED: always include meeting for next occurrence
+        ],
+      },
+      orderBy: { startDate: 'asc' },
+    });
+
+    const now = new Date();
+    const mapped = events.map((event) => {
+      const effectiveDates = this.getEffectiveEventDates(event, now); // CHANGED: normalize meeting dates
+      return {
+        id: Number(event.id),
+        title: event.title,
+        eventType: event.eventType,
+        startDate: effectiveDates.startDate,
+        daysUntilEvent: this.daysUntil(effectiveDates.startDate),
+      };
+    });
+    return mapped.sort((a, b) => a.startDate.getTime() - b.startDate.getTime()); // CHANGED: sort by effective startDate
+  } // CHANGED: staff schedule by branch
+
+  async getUpcomingEventsForAdmin() {
+    const events = await this.prisma.event.findMany({
+      where: {
+        OR: [
+          { startDate: { gte: this.startOfToday() } },
+          { eventType: 'MEETING' }, // CHANGED: always include meeting for next occurrence
+        ],
+      },
+      orderBy: { startDate: 'asc' },
+    });
+
+    const now = new Date();
+    const mapped = events.map((event) => {
+      const effectiveDates = this.getEffectiveEventDates(event, now); // CHANGED: normalize meeting dates
+      return {
+        id: Number(event.id),
+        title: event.title,
+        eventType: event.eventType,
+        startDate: effectiveDates.startDate,
+        daysUntilEvent: this.daysUntil(effectiveDates.startDate),
+      };
+    });
+    return mapped.sort((a, b) => a.startDate.getTime() - b.startDate.getTime()); // CHANGED: sort by effective startDate
+  } // CHANGED: admin schedule sees all branches
+
+  async getScheduleForActor(actor: ActorContext) {
+    if (actor?.actorKind === 'STAFF') {
+      if (actor.role === 'ADMIN') {
+        return this.getUpcomingEventsForAdmin(); // CHANGED: admin sees all upcoming events
+      }
+      return this.getUpcomingEventsForBranch(actor.branchCode); // CHANGED: staff sees branch schedule
+    }
+    return this.getUpcomingEvents(actor.userId); // CHANGED: customer schedule
   }
 
   async getEventDetail(id: string | number) {
     const eventId = typeof id === 'number' ? BigInt(id) : BigInt(id);
     const event = await this.prisma.event.findUnique({
       where: { id: eventId },
+      include: { targetGroups: true }, // CHANGED: include target groups for detail
     });
 
     if (!event) {
       throw new NotFoundException('Event not found');
     }
 
+    const effectiveDates = this.getEffectiveEventDates(event); // CHANGED: normalize meeting dates
     return {
       id: Number(event.id),
       title: event.title,
       eventType: event.eventType,
-      startDate: event.startDate,
-      endDate: event.endDate,
+      startDate: effectiveDates.startDate,
+      endDate: effectiveDates.endDate,
       description: event.description,
       locationName: event.locationName,
       durationMinutes: event.durationMinutes,
+      audienceType: event.audienceType, // CHANGED: expose audience type
+      targetGroups: this.mapTargetGroups(event.targetGroups ?? []), // CHANGED: expose target groups
     };
   }
 }

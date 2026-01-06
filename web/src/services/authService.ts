@@ -17,15 +17,27 @@ export interface Customer {
 }
 
 export interface LoginRequest {
-  memberNo: string;
+  identifier: string; // CHANGED: support email or memberNo
   password: string;
 }
 
+export type AuthProfile = {
+  actorKind: 'CUSTOMER' | 'STAFF'; // CHANGED: RBAC profile
+  role?: 'ADMIN' | 'BRANCH_MANAGER';
+  branchCode?: string | null;
+  branchName?: string | null;
+  groupCode?: string | null;
+  groupName?: string | null;
+  memberNo?: string;
+  email?: string;
+  fullName?: string | null;
+};
+
 export interface LoginResponse {
   accessToken: string;
-  refreshToken: string;
-  mustChangePassword: boolean;
-  customer: Customer;
+  refreshToken?: string; // CHANGED: staff login may not return refresh token
+  customer?: Customer; // CHANGED: staff login has no customer payload
+  profile?: AuthProfile; // CHANGED: staff/customer profile
 }
 
 export interface ChangePasswordRequest {

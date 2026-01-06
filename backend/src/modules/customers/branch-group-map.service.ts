@@ -68,6 +68,43 @@ export class BranchGroupMapService {
     };
   }
 
+  listGroupsByBranchCode(branchCode: string | null | undefined) {
+    if (!branchCode) return []; // CHANGED: no branch to resolve
+    const normalizedBranchCode = branchCode.trim();
+    if (!normalizedBranchCode) return []; // CHANGED: guard empty branch code
+    const branchIdInput = normalizedBranchCode.includes('-')
+      ? normalizedBranchCode.split('-')[0].trim()
+      : normalizedBranchCode; // CHANGED: accept "003" or "003-DIEN BIEN 3"
+
+    const index = this.ensureLoaded();
+    const uniqueGroups = new Map<
+      string,
+      { groupCode: string; groupName: string; branchId: string; branchName: string | null }
+    >(); // CHANGED: de-dup by groupCode
+
+    for (const records of index.values()) {
+      for (const record of records) {
+        const { branchId, branchName } = this.parseBranch(record.Branch);
+        if (!branchId || branchId !== branchIdInput) continue;
+        const groupCode = String(record.GroupCode ?? '').trim();
+        const groupName = String(record.GroupName ?? '').trim();
+        if (!groupCode || !groupName) continue;
+        if (!uniqueGroups.has(groupCode)) {
+          uniqueGroups.set(groupCode, {
+            groupCode,
+            groupName,
+            branchId,
+            branchName,
+          });
+        }
+      }
+    }
+
+    return Array.from(uniqueGroups.values()).sort((a, b) =>
+      a.groupName.localeCompare(b.groupName),
+    ); // CHANGED: stable order by groupName
+  }
+
   normalizeGroupName(value?: string | null): string | null {
     if (!value) return null;
     return value.trim().replace(/\s+/g, ' ');

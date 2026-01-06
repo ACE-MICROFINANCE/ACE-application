@@ -22,7 +22,11 @@ const startOfToday = () => {
 const daysUntil = (date: Date) =>
   Math.ceil((date.getTime() - startOfToday().getTime()) / MS_PER_DAY);
 
-export const DashboardRemindersCard = () => {
+export const DashboardRemindersCard = ({
+  includeLoanReminder = true, // CHANGED: hide loan reminder for staff/admin
+}: {
+  includeLoanReminder?: boolean;
+}) => {
   const [loan, setLoan] = useState<LoanCurrentResponse | null>(null);
   const [events, setEvents] = useState<ScheduleItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,7 +37,7 @@ export const DashboardRemindersCard = () => {
     const load = async () => {
       try {
         const [loanData, scheduleData] = await Promise.all([
-          appApi.getCurrentLoan().catch(() => null),
+          includeLoanReminder ? appApi.getCurrentLoan().catch(() => null) : Promise.resolve(null), // CHANGED: skip loan for staff/admin
           appApi.getSchedule().catch(() => [] as ScheduleItem[]),
         ]);
 
@@ -50,18 +54,13 @@ export const DashboardRemindersCard = () => {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [includeLoanReminder]); // CHANGED: refresh when flag changes
 
   const reminders = useMemo<ReminderItem[]>(() => {
     if (loading) {
-      return [
+      const loadingItems: ReminderItem[] = [
         {
           imageUrl: '/img/farming-plant-rice.png',
-          alt: 'Đang tải',
-          text: 'Đang tải...',
-        },
-        {
-          imageUrl: '/img/loan-payment.png',
           alt: 'Đang tải',
           text: 'Đang tải...',
         },
@@ -71,12 +70,22 @@ export const DashboardRemindersCard = () => {
           text: 'Đang tải...',
         },
       ];
+
+      if (includeLoanReminder) {
+        loadingItems.splice(1, 0, {
+          imageUrl: '/img/loan-payment.png',
+          alt: 'Đang tải',
+          text: 'Đang tải...',
+        }); // CHANGED: only show loan placeholder when enabled
+      }
+
+      return loadingItems;
     }
 
     const safeEvents = Array.isArray(events) ? events : [];
     const items: ReminderItem[] = [];
 
-    // 🌾 Nhiệm vụ canh tác
+    // Nhiệm vụ canh tác
     const farming = findNearest(safeEvents, 'FARMING_TASK');
     if (farming) {
       const diff = daysUntil(new Date(farming.startDate));
@@ -92,8 +101,8 @@ export const DashboardRemindersCard = () => {
       });
     }
 
-    // 💰 Nhắc thanh toán
-    if (loan?.nextPayment?.dueDate) {
+    // Nhắc thanh toán
+    if (includeLoanReminder && loan?.nextPayment?.dueDate) { // CHANGED: hide loan reminder for staff/admin
       const due = new Date(loan.nextPayment.dueDate);
       const diff = daysUntil(due);
 
@@ -122,7 +131,7 @@ export const DashboardRemindersCard = () => {
       });
     }
 
-    // 👥 Họp nhóm
+    // Họp nhóm
     const meeting = findNearest(safeEvents, 'MEETING');
     if (meeting) {
       const diff = daysUntil(new Date(meeting.startDate));
@@ -139,7 +148,7 @@ export const DashboardRemindersCard = () => {
     }
 
     return items;
-  }, [events, loan, loading]);
+  }, [events, loan, loading, includeLoanReminder]); // CHANGED: include flag in memo
 
   if (!reminders.length) return null;
 

@@ -114,7 +114,7 @@ export const WeatherCard = () => {
                 {weather.current.description}
               </div>
               <div className="text-xs text-slate-500">
-                H {weather.current.max}° · L {weather.current.min}°
+                Cao {weather.current.max}° · Thấp {weather.current.min}°
               </div>
             </div>
 
@@ -128,8 +128,8 @@ export const WeatherCard = () => {
               const date = new Date(day.date);
               const label =
                 index === 0
-                  ? 'Today'
-                  : date.toLocaleDateString('en-US', {
+                  ? 'Hôm nay'
+                  : date.toLocaleDateString('vi-VN', {
                       weekday: 'short',
                       day: 'numeric',
                     });

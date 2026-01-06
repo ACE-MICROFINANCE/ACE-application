@@ -52,7 +52,7 @@ export class EventsController {
   @UseGuards(JwtAccessGuard)
   @Get('schedule')
   async getSchedule(@Req() req: any) {
-    return this.eventsService.getUpcomingEvents(req.user.userId);
+    return this.eventsService.getScheduleForActor(req.user); // CHANGED: support staff/customer schedule
   }
 
   @UseGuards(JwtAccessGuard)

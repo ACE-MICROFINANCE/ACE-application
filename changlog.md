@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-01-06 10:20
+- Add staff branch group list endpoint `GET /staff/groups` (mapped from branch-group-map.json).
+- Include `audienceType` and `targetGroups` in schedule detail response.
+
 ## 2025-11-30 04:32
 - Khởi tạo Prisma schema và nền tảng database ban đầu.
 

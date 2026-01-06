@@ -5,10 +5,11 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import clsx from 'clsx';
 import { motion } from 'framer-motion';
+import { useAuth } from '@/hooks/useAuth';
 
 type NavKey = 'home' | 'loans' | 'saving' | 'schedule' | 'info' | 'account';
 
-const navItems: { key: NavKey; label: string; iconSrc: string; href: string }[] = [
+const CUSTOMER_NAV_ITEMS: { key: NavKey; label: string; iconSrc: string; href: string }[] = [
   { key: 'loans', label: 'Khoản vay', iconSrc: '/img/loan_icon.jpg', href: '/dashboard/loan' },
   { key: 'saving', label: 'Tiết kiệm', iconSrc: '/img/saving_icon.jpg', href: '/dashboard/saving' },
   { key: 'schedule', label: 'Họp Nhóm và Tập Huấn', iconSrc: '/img/Schedule_icon.png', href: '/dashboard/schedule' },
@@ -16,18 +17,41 @@ const navItems: { key: NavKey; label: string; iconSrc: string; href: string }[] 
   { key: 'account', label: 'Tài khoản', iconSrc: '/img/account_icon.jpg', href: '/dashboard?tab=account' },
 ];
 
+const STAFF_NAV_ITEMS: { key: NavKey; label: string; iconSrc: string; href: string }[] = [
+  {
+    key: 'schedule',
+    label: 'Họp Nhóm và Tập Huấn',
+    iconSrc: '/img/Schedule_icon.png',
+    href: '/dashboard/schedule',
+  },
+  {
+    key: 'account',
+    label: 'Tài khoản',
+    iconSrc: '/img/account_icon.jpg',
+    href: '/dashboard?tab=account',
+  },
+];
+
 export const BottomNav = () => {
+  const { profile } = useAuth(); // CHANGED: tách bottom bar theo role
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
+  const navRef = useRef<HTMLDivElement | null>(null); // CHANGED: đo chiều cao bottom nav
 
   const [clickedKey, setClickedKey] = useState<NavKey | null>(null);
   const popTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isStaff = profile?.actorKind === 'STAFF'; // CHANGED: staff/admin chỉ dùng 2 tab
+  const navItems = isStaff ? STAFF_NAV_ITEMS : CUSTOMER_NAV_ITEMS; // CHANGED: chọn nav theo role
 
   const activeKey = useMemo<NavKey>(() => {
     if (pathname.startsWith('/dashboard/loan')) return 'loans';
     if (pathname.startsWith('/dashboard/saving')) return 'saving';
-    if (pathname.startsWith('/dashboard/schedule')) return 'schedule';
+    if (
+      pathname.startsWith('/dashboard/schedule') ||
+      pathname.startsWith('/dashboard/staff/schedule')
+    )
+      return 'schedule';
     if (pathname.startsWith('/dashboard/info')) return 'info';
     if (searchParams.get('tab') === 'account') return 'account';
     return 'home';
@@ -36,6 +60,37 @@ export const BottomNav = () => {
   useEffect(() => {
     return () => {
       if (popTimeoutRef.current) clearTimeout(popTimeoutRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const fallback = 98;
+
+    const updateNavHeight = () => {
+      if (!navRef.current) {
+        root.style.setProperty('--ace-bottom-nav-h', `${fallback}px`);
+        return;
+      }
+      const rect = navRef.current.getBoundingClientRect();
+      const heightFromBottom = Math.round(window.innerHeight - rect.top);
+      const nextValue = heightFromBottom || Math.round(rect.height) || fallback;
+      root.style.setProperty('--ace-bottom-nav-h', `${nextValue}px`);
+    };
+
+    updateNavHeight();
+
+    let observer: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined' && navRef.current) {
+      observer = new ResizeObserver(() => updateNavHeight());
+      observer.observe(navRef.current);
+    }
+
+    window.addEventListener('resize', updateNavHeight);
+
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', updateNavHeight);
     };
   }, []);
 
@@ -59,7 +114,13 @@ export const BottomNav = () => {
 
   return (
     <div className="fixed inset-x-0 bottom-4 flex justify-center">
-      <div className="flex w-full max-w-md items-center justify-between rounded-2xl bg-white px-3 py-2 shadow-lg overflow-visible">
+      <div
+        ref={navRef}
+        className={clsx(
+          'flex w-full max-w-md items-center rounded-2xl bg-white px-3 py-2 shadow-lg overflow-visible',
+          isStaff ? 'justify-center gap-6' : 'justify-between',
+        )}
+      >
         {navItems.map((item) => {
           const isActive = activeKey === item.key;
           const isClicked = clickedKey === item.key;

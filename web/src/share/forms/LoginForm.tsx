@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
@@ -14,18 +14,25 @@ import { routes } from '@/lib/routes';
 import { useAuth } from '@/hooks/useAuth';
 
 type LoginFormValues = {
-  memberNo: string;
+  identifier: string; // CHANGED: allow email or memberNo
   password: string;
 };
 
 const schema = yup.object({
-  memberNo: yup
+  identifier: yup
     .string()
-    .required('Mã khách hàng bắt buộc')
-    .matches(/^[0-9]+$/, 'Mã khách hàng chỉ gồm chữ số.'),
+    .required('Mã khách hàng hoặc email là bắt buộc') // CHANGED: label thong nhat
+    .test('is-identifier', 'Mã khách hàng hoặc email không hợp lệ', (value) => {
+      if (!value) return false;
+      const trimmed = value.trim();
+      if (trimmed.includes('@')) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
+      }
+      return /^[0-9]+$/.test(trimmed);
+    }), // CHANGED: accept email or numeric memberNo
   password: yup
     .string()
-    .required('Mật khẩu bắt buộc')
+    .required('Mật khẩu bắt buộc') // CHANGED: Vietnamese text without accents
     .matches(/^[0-9]+$/, 'Mật khẩu chỉ gồm chữ số.')
     .min(6, 'Mật khẩu phải tối thiểu 6 số'),
 });
@@ -47,7 +54,7 @@ export const LoginForm = () => {
   const onSubmit = async (values: LoginFormValues) => {
     setSubmitError('');
     try {
-      const result = await login({ memberNo: values.memberNo, password: values.password });
+      const result = await login({ identifier: values.identifier, password: values.password }); // CHANGED: send identifier
       if (result.customer?.mustChangePassword) {
         router.replace(`${routes.dashboard}?tab=account`);
       } else {
@@ -65,18 +72,17 @@ export const LoginForm = () => {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
       <div className="space-y-2">
-        <label htmlFor="memberNo" className="text-sm font-medium text-[#333]">
-          Mã khách hàng
+        <label htmlFor="identifier" className="text-sm font-medium text-[#333]">
+          Mã khách hàng 
         </label>
         <AceInput
-          id="memberNo"
+          id="identifier"
           placeholder="Nhập mã khách hàng"
-          inputMode="numeric"
-          pattern="[0-9]*"
-          error={Boolean(errors.memberNo)}
-          {...register('memberNo')}
+          inputMode="text"
+          error={Boolean(errors.identifier)}
+          {...register('identifier')}
         />
-        <FormErrorText>{errors.memberNo?.message}</FormErrorText>
+        <FormErrorText>{errors.identifier?.message}</FormErrorText>
       </div>
 
       <div className="space-y-2">
@@ -121,5 +127,5 @@ export const LoginForm = () => {
     </form>
   );
 
-  // NOTE: replaced bản tiếng Anh bằng tiếng Việt đầy đủ.
+  // NOTE: replaced ban tieng Anh bang tieng Viet day du.
 };

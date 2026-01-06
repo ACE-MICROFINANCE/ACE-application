@@ -54,14 +54,14 @@ export const ChangePasswordForm = () => {
       });
     }
     return yup.object({
-        oldPassword: yup
-          .string()
-          .required('Mật khẩu hiện tại bắt buộc')
-          .matches(/^[0-9]+$/, numericMsg)
-          .min(6, minMsg),
-        newPassword: baseNew,
-        confirmNewPassword: confirm,
-      });
+      oldPassword: yup
+        .string()
+        .required('Mật khẩu hiện tại bắt buộc')
+        .matches(/^[0-9]+$/, numericMsg)
+        .min(6, minMsg),
+      newPassword: baseNew,
+      confirmNewPassword: confirm,
+    });
   }, [isForceMode]);
 
   const {

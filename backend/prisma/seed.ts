@@ -1,4 +1,4 @@
-/* prisma/seed.ts */
+﻿/* prisma/seed.ts */
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 
 // Mật khẩu tạm cho tất cả khách hàng mới nếu chưa có
 const TEMP_PASSWORD = '123456';
-const STAFF_DEFAULT_PASSWORD = '123456'; // CHANGED: mật khẩu seed cho staff/admin
+const STAFF_DEFAULT_PASSWORD = '123456'; // CHANGED: máº­t kháº©u seed cho staff/admin
 
 // ================== TYPES ================== //
 
@@ -65,6 +65,8 @@ type EventSeed = {
   scope?: string | null;
   groupCode?: string | null;
   villageName?: string | null;
+  branchCode?: string | null;
+  audienceType?: 'BRANCH_ALL' | 'GROUPS' | null;
 };
 
 type StaffSeed = {
@@ -74,13 +76,13 @@ type StaffSeed = {
   fullName?: string | null;
 };
 
-// ================== DATA KHÁCH HÀNG / KHOẢN VAY / KỲ TRẢ ================== //
+// ================== DATA KHÃCH HÃ€NG / KHOáº¢N VAY / Ká»² TRáº¢ ================== //
 
 const customersSeed: CustomerSeed[] = [
   {
     memberNo: '10011851',
-    fullName: 'TÒNG THỊ HÉM',
-    gender: 'Nữ',
+    fullName: 'TÃ’NG THá»Š HÃ‰M',
+    gender: 'Ná»¯',
     idCardNumber: '11183002883',
     phoneNumber: '379635954',
     locationType: 'Rural',
@@ -90,8 +92,8 @@ const customersSeed: CustomerSeed[] = [
   },
   {
     memberNo: '20004454',
-    fullName: 'LƯỜNG THỊ Luyến',
-    gender: 'Nữ',
+    fullName: 'LÆ¯á»œNG THá»Š Luyáº¿n',
+    gender: 'Ná»¯',
     idCardNumber: '11178003951',
     phoneNumber: '335367335',
     locationType: 'Rural',
@@ -101,8 +103,8 @@ const customersSeed: CustomerSeed[] = [
   },
   {
     memberNo: '20003438',
-    fullName: 'VÌ THỊ LÚN',
-    gender: 'Nữ',
+    fullName: 'VÃŒ THá»Š LÃšN',
+    gender: 'Ná»¯',
     idCardNumber: '11164004300',
     phoneNumber: '386683112',
     locationType: 'Rural',
@@ -112,8 +114,8 @@ const customersSeed: CustomerSeed[] = [
   },
   {
     memberNo: '20011201',
-    fullName: 'LƯỜNG THỊ Nhung',
-    gender: 'Nữ',
+    fullName: 'LÆ¯á»œNG THá»Š Nhung',
+    gender: 'Ná»¯',
     idCardNumber: '11186006738',
     phoneNumber: '383629966',
     locationType: 'Rural',
@@ -123,8 +125,8 @@ const customersSeed: CustomerSeed[] = [
   },
   {
     memberNo: '20010673',
-    fullName: 'CÀ THỊ Phong',
-    gender: 'Nữ',
+    fullName: 'CÃ€ THá»Š Phong',
+    gender: 'Ná»¯',
     idCardNumber: '11182006740',
     phoneNumber: '393380578',
     locationType: 'Rural',
@@ -134,8 +136,8 @@ const customersSeed: CustomerSeed[] = [
   },
   {
     memberNo: '20003501',
-    fullName: 'TRẦN THỊ Anh',
-    gender: 'Nữ',
+    fullName: 'TRáº¦N THá»Š Anh',
+    gender: 'Ná»¯',
     idCardNumber: '34169019591',
     phoneNumber: '906188335',
     locationType: 'Rural',
@@ -145,8 +147,8 @@ const customersSeed: CustomerSeed[] = [
   },
   {
     memberNo: '10011774',
-    fullName: 'LÒ THỊ PHÁNG',
-    gender: 'Nữ',
+    fullName: 'LÃ’ THá»Š PHÃNG',
+    gender: 'Ná»¯',
     idCardNumber: '11172001603',
     phoneNumber: '398310135',
     locationType: 'Rural',
@@ -156,8 +158,8 @@ const customersSeed: CustomerSeed[] = [
   },
   {
     memberNo: '30000172',
-    fullName: 'HOÀNG THỊ Thịnh',
-    gender: 'Nữ',
+    fullName: 'HOÃ€NG THá»Š Thá»‹nh',
+    gender: 'Ná»¯',
     idCardNumber: '11162000395',
     phoneNumber: '392063204',
     locationType: 'Rural',
@@ -217,7 +219,7 @@ const loansSeed: LoanSeed[] = [
     memberNo: '10011851',
     loanNo: '001-0044355',
     externalLoanId: '865',
-    productName: 'Gói cơ bản - dư nợ giảm dần',
+    productName: 'GÃ³i cÆ¡ báº£n - dÆ° ná»£ giáº£m dáº§n',
     loanCycle: 3,
     principalAmount: 15000000,
     interestRate: 16.8,
@@ -231,7 +233,7 @@ const loansSeed: LoanSeed[] = [
     memberNo: '20004454',
     loanNo: '001-0044356',
     externalLoanId: '866',
-    productName: 'Gói cơ bản - dư nợ giảm dần',
+    productName: 'GÃ³i cÆ¡ báº£n - dÆ° ná»£ giáº£m dáº§n',
     loanCycle: 12,
     principalAmount: 15000000,
     interestRate: 16.8,
@@ -245,7 +247,7 @@ const loansSeed: LoanSeed[] = [
     memberNo: '20003438',
     loanNo: '001-0044357',
     externalLoanId: '867',
-    productName: 'Gói cơ bản - trả gốc cuối kỳ',
+    productName: 'GÃ³i cÆ¡ báº£n - tráº£ gá»‘c cuá»‘i ká»³',
     loanCycle: 13,
     principalAmount: 10000000,
     interestRate: 16.8,
@@ -259,7 +261,7 @@ const loansSeed: LoanSeed[] = [
     memberNo: '20011201',
     loanNo: '001-0044358',
     externalLoanId: '868',
-    productName: 'Gói tăng dần - dư nợ giảm dần',
+    productName: 'GÃ³i tÄƒng dáº§n - dÆ° ná»£ giáº£m dáº§n',
     loanCycle: 6,
     principalAmount: 20000000,
     interestRate: 16.8,
@@ -273,7 +275,7 @@ const loansSeed: LoanSeed[] = [
     memberNo: '20010673',
     loanNo: '001-0044359',
     externalLoanId: '869',
-    productName: 'Gói tăng dần - dư nợ giảm dần',
+    productName: 'GÃ³i tÄƒng dáº§n - dÆ° ná»£ giáº£m dáº§n',
     loanCycle: 7,
     principalAmount: 20000000,
     interestRate: 16.8,
@@ -287,7 +289,7 @@ const loansSeed: LoanSeed[] = [
     memberNo: '20003501',
     loanNo: '001-0044360',
     externalLoanId: '870',
-    productName: 'Gói tăng dần - dư nợ giảm dần',
+    productName: 'GÃ³i tÄƒng dáº§n - dÆ° ná»£ giáº£m dáº§n',
     loanCycle: 12,
     principalAmount: 25000000,
     interestRate: 16.8,
@@ -301,7 +303,7 @@ const loansSeed: LoanSeed[] = [
     memberNo: '10011774',
     loanNo: '001-0044361',
     externalLoanId: '871',
-    productName: 'Gói cơ bản - trả gốc cuối kỳ',
+    productName: 'GÃ³i cÆ¡ báº£n - tráº£ gá»‘c cuá»‘i ká»³',
     loanCycle: 3,
     principalAmount: 15000000,
     interestRate: 16.8,
@@ -315,7 +317,7 @@ const loansSeed: LoanSeed[] = [
     memberNo: '30000172',
     loanNo: '001-0044362',
     externalLoanId: '872',
-    productName: 'Gói tăng dần - dư nợ giảm dần',
+    productName: 'GÃ³i tÄƒng dáº§n - dÆ° ná»£ giáº£m dáº§n',
     loanCycle: 11,
     principalAmount: 20000000,
     interestRate: 16.8,
@@ -438,7 +440,7 @@ const installmentsSeed: InstallmentSeed[] = [
     dueDate: new Date('2026-06-01'),
   },
 
-  // 001-0044362 (1–8)
+  // 001-0044362 (1â€“8)
   {
     memberNo: '30000172',
     loanNo: '001-0044362',
@@ -505,10 +507,10 @@ const installmentsSeed: InstallmentSeed[] = [
   },
 ];
 
-// ================== SEED SAVINGS (BẮT BUỘC / TỰ NGUYỆN) ================== //
+// ================== SEED SAVINGS (Báº®T BUá»˜C / Tá»° NGUYá»†N) ================== //
 
 const savingsSeed: SavingsSeed[] = [
-  // mỗi khách tối đa 2 dòng: COMPULSORY + VOLUNTARY
+  // má»—i khÃ¡ch tá»‘i Ä‘a 2 dÃ²ng: COMPULSORY + VOLUNTARY
   {
     memberNo: '10011851',
     type: 'COMPULSORY',
@@ -601,7 +603,7 @@ const savingsSeed: SavingsSeed[] = [
 
 // ================== SEED EVENTS (LỊCH SỰ KIỆN) ================== //
 
-// Giả định ngày "hiện tại" ~ đầu 12/2025 để FE test "upcoming"
+// Giả định ngày "hiện tại" để FE test "upcoming"
 const addDays = (date: Date, days: number) => new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
 const addHours = (date: Date, hours: number) => new Date(date.getTime() + hours * 60 * 60 * 1000);
 const today = new Date();
@@ -616,6 +618,8 @@ const eventsSeed: EventSeed[] = [
     startDate: addDays(todayStart, 7),
     endDate: addHours(addDays(todayStart, 7), 2),
     scope: 'GLOBAL',
+    branchCode: '001',
+    audienceType: 'BRANCH_ALL',
   },
   {
     title: 'Tập huấn kỹ thuật canh tác',
@@ -625,6 +629,8 @@ const eventsSeed: EventSeed[] = [
     startDate: addDays(todayStart, 14),
     endDate: addHours(addDays(todayStart, 14), 4),
     scope: 'GLOBAL',
+    branchCode: '001',
+    audienceType: 'BRANCH_ALL',
   },
   {
     title: 'Công việc đồng áng: chăm sóc cây trồng',
@@ -633,6 +639,8 @@ const eventsSeed: EventSeed[] = [
     startDate: addDays(todayStart, 21),
     endDate: addHours(addDays(todayStart, 21), 3),
     scope: 'GLOBAL',
+    branchCode: '001',
+    audienceType: 'BRANCH_ALL',
   },
 ];
 
@@ -640,13 +648,13 @@ const eventsSeed: EventSeed[] = [
 // ================== MAIN SEED ================== //
 
 async function main() {
-  console.log('🔐 Tạo mật khẩu hash tạm...');
+  console.log('ðŸ” Táº¡o máº­t kháº©u hash táº¡m...');
   const passwordHash = await bcrypt.hash(TEMP_PASSWORD, 10);
   const staffPasswordHash = await bcrypt.hash(STAFF_DEFAULT_PASSWORD, 10); // CHANGED: hash password for staff seed
 
   const memberIdMap = new Map<string, bigint>();
 
-  console.log('👤 Upsert customers + credentials (KHÔNG xóa dữ liệu cũ)...');
+  console.log('ðŸ‘¤ Upsert customers + credentials (KHÃ”NG xÃ³a dá»¯ liá»‡u cÅ©)...');
   for (const c of customersSeed) {
     const customer = await prisma.customer.upsert({
       where: { memberNo: c.memberNo },
@@ -659,7 +667,7 @@ async function main() {
         villageName: c.villageName ?? undefined,
         groupCode: c.groupCode ?? undefined,
         groupName: c.groupName ?? undefined,
-        // membershipStartDate: giữ nguyên nếu đã có trong DB
+        // membershipStartDate: giá»¯ nguyÃªn náº¿u Ä‘Ã£ cÃ³ trong DB
       },
       create: {
         memberNo: c.memberNo,
@@ -681,7 +689,7 @@ async function main() {
     await prisma.customerCredential.upsert({
       where: { customerId: customer.id },
       update: {
-        // Nếu muốn reset mật khẩu mỗi lần seed, bỏ comment 2 dòng dưới:
+        // Náº¿u muá»‘n reset máº­t kháº©u má»—i láº§n seed, bá» comment 2 dÃ²ng dÆ°á»›i:
         // passwordHash,
         // mustChangePassword: true,
       },
@@ -693,12 +701,12 @@ async function main() {
     });
   }
 
-  console.log('💰 Upsert loans + installments...');
+  console.log('ðŸ’° Upsert loans + installments...');
   for (const loan of loansSeed) {
     const customerId = memberIdMap.get(loan.memberNo);
     if (!customerId) {
       console.warn(
-        `⚠️ Không tìm thấy customer cho memberNo=${loan.memberNo}, bỏ qua loan ${loan.loanNo}`,
+        `âš ï¸ KhÃ´ng tÃ¬m tháº¥y customer cho memberNo=${loan.memberNo}, bá» qua loan ${loan.loanNo}`,
       );
       continue;
     }
@@ -770,12 +778,12 @@ async function main() {
     }
   }
 
-  console.log('🏦 Upsert savings (CustomerSavings)...');
+  console.log('ðŸ¦ Upsert savings (CustomerSavings)...');
   for (const s of savingsSeed) {
     const customerId = memberIdMap.get(s.memberNo);
     if (!customerId) {
       console.warn(
-        `⚠️ Không tìm thấy customer cho memberNo=${s.memberNo}, bỏ qua savings ${s.type}`,
+        `âš ï¸ KhÃ´ng tÃ¬m tháº¥y customer cho memberNo=${s.memberNo}, bá» qua savings ${s.type}`,
       );
       continue;
     }
@@ -820,7 +828,7 @@ async function main() {
       ? Math.ceil((minFutureDate.getTime() - earliestStart.getTime()) / MS_PER_DAY)
       : 0;
 
-  console.log('📅 Seed events (schedule)...');
+  console.log('ðŸ“… Seed events (schedule)...');
   for (const e of eventsSeed) {
     const shiftedStart = shiftDays > 0 ? new Date(e.startDate.getTime() + shiftDays * MS_PER_DAY) : e.startDate;
     const shiftedEnd = e.endDate ? new Date(e.endDate.getTime() + shiftDays * MS_PER_DAY) : undefined;
@@ -844,6 +852,8 @@ async function main() {
           scope: e.scope ?? 'GLOBAL',
           groupCode: e.groupCode ?? undefined,
           villageName: e.villageName ?? undefined,
+          branchCode: e.branchCode ?? '001',
+          audienceType: e.audienceType ?? 'BRANCH_ALL',
         },
       });
       continue;
@@ -859,11 +869,13 @@ async function main() {
         scope: e.scope ?? 'GLOBAL',
         groupCode: e.groupCode ?? undefined,
         villageName: e.villageName ?? undefined,
+        branchCode: e.branchCode ?? '001',
+        audienceType: e.audienceType ?? 'BRANCH_ALL',
       },
     });
   }
 
-  console.log('👥 Seed staff users (ADMIN + BRANCH_MANAGER)...'); // CHANGED: seed staff/admin
+  console.log('ðŸ‘¥ Seed staff users (ADMIN + BRANCH_MANAGER)...'); // CHANGED: seed staff/admin
   for (const staff of staffSeed) {
     await prisma.staffUser.upsert({
       where: { email: staff.email },
@@ -884,7 +896,7 @@ async function main() {
     });
   }
 
-  console.log('✅ Seed xong! Temp password mặc định là:', TEMP_PASSWORD);
+  console.log('âœ… Seed xong! Temp password máº·c Ä‘á»‹nh lÃ :', TEMP_PASSWORD);
 }
 
 main()
@@ -895,3 +907,4 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+

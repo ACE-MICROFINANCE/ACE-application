@@ -110,6 +110,12 @@ Update staff account.
 ### POST /staff-users/:id/reset-password
 Reset staff password.
 
+## Staff Groups (BRANCH_MANAGER)
+All endpoints require JWT + `@Roles('BRANCH_MANAGER')`.
+
+### GET /staff/groups
+Returns group list mapped from the static `branch-group-map.json` for the staff branch.
+
 ## Events (BRANCH_MANAGER only)
 All endpoints require JWT + `@Roles('BRANCH_MANAGER')`.
 

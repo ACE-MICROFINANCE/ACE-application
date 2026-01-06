@@ -12,7 +12,7 @@ export class CustomersController {
   @UseGuards(JwtAccessGuard)
   @Get('me')
   async me(@Req() req: any) {
-    return this.customersService.getProfile(req.user.userId);
+    return this.customersService.getActorProfile(req.user); // CHANGED: return profile by actorKind
   }
 
   @UseGuards(JwtAccessGuard, RolesGuard)
@@ -21,5 +21,12 @@ export class CustomersController {
   async createStub(@Req() req: any, @Body() dto: CreateCustomerStubDto) {
     const branchCode = req.user?.branchCode;
     return this.customersService.createCustomerStub(dto.memberNo, branchCode);
+  }
+
+  @UseGuards(JwtAccessGuard, RolesGuard)
+  @Roles('BRANCH_MANAGER')
+  @Get('staff/groups')
+  async listStaffGroups(@Req() req: any) {
+    return this.customersService.getGroupsForBranch(req.user?.branchCode); // CHANGED: list groups by staff branch
   }
 }

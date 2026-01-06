@@ -65,6 +65,7 @@ export type ScheduleItem = {
   eventType: 'MEETING' | 'FIELD_SCHOOL' | 'FARMING_TASK' | 'OTHER' | string;
   startDate: string;
   daysUntilEvent: number;
+  scope?: string | null; // CHANGED: hỗ trợ phân biệt GLOBAL/LOCAL khi hiển thị
 };
 
 export type ScheduleDetail = {
@@ -74,13 +75,50 @@ export type ScheduleDetail = {
   startDate: string;
   endDate?: string | null;
   description?: string | null;
+  scope?: string | null; // CHANGED: hỗ trợ phân biệt GLOBAL/LOCAL khi chỉnh sửa
+  audienceType?: 'BRANCH_ALL' | 'GROUPS' | string | null; // CHANGED: hỗ trợ staff edit
+  targetGroups?: Array<{ groupCode: string; groupName?: string | null }>; // CHANGED: hỗ trợ staff edit
 };
+
+export type ScheduleUpdatePayload = {
+  title?: string;
+  description?: string;
+  eventType?: string;
+  startDate?: string;
+  durationMinutes?: number;
+  locationName?: string;
+  audienceType?: 'BRANCH_ALL' | 'GROUPS'; // CHANGED: hỗ trợ patch audienceType
+  targetGroups?: Array<{ groupCode: string; groupName?: string }>; // CHANGED: hỗ trợ patch targetGroups
+}; // CHANGED: payload update schedule for staff
+
+export type ScheduleCreatePayload = {
+  title: string;
+  description?: string;
+  eventType: string;
+  startDate: string;
+  durationMinutes?: number;
+  locationName?: string;
+  audienceType: 'BRANCH_ALL' | 'GROUPS';
+  targetGroups?: Array<{ groupCode: string; groupName?: string }>;
+}; // CHANGED: payload create schedule for staff
+
+export type StaffGroupItem = {
+  groupCode: string;
+  groupName: string;
+  branchId?: string;
+  branchName?: string | null;
+}; // CHANGED: nhóm theo chi nhánh staff
 
 export type ProfileResponse = {
   id: number;
-  memberNo: string;
-  fullName: string;
-  loanCycle?: number | null; // CHANGED: vòng quay (LoanCycle) lấy từ khoản vay ACTIVE
+  actorKind?: 'CUSTOMER' | 'STAFF' | string; // CHANGED: support staff profile from /me
+  memberNo?: string | null; // CHANGED: optional for staff
+  email?: string | null; // CHANGED: staff email
+  role?: 'ADMIN' | 'BRANCH_MANAGER' | string; // CHANGED: staff role
+  branchCode?: string | null; // CHANGED: staff/customer branch
+  branchName?: string | null; // CHANGED: staff/customer branch name
+  fullName?: string | null;
+  loanCycle?: number | null; //
   gender?: string | null;
   idCardNumber?: string | null;
   phoneNumber?: string | null;
@@ -113,6 +151,28 @@ export const appApi = {
     const response = await axiosClient.get<ScheduleDetail>(`/schedule/${id}`);
     return response.data;
   },
+  updateSchedule: async (id: number, payload: ScheduleUpdatePayload) => {
+    const response = await axiosClient.patch(`/events/${id}`, payload); // CHANGED: staff update schedule
+    return response.data;
+  },
+  createSchedule: async (payload: ScheduleCreatePayload) => {
+    const response = await axiosClient.post('/events', payload); // CHANGED: staff create schedule
+    return response.data;
+  },
+  getStaffGroups: async (): Promise<StaffGroupItem[]> => {
+    const response = await axiosClient.get<StaffGroupItem[]>('/staff/groups'); // CHANGED: lấy nhóm theo chi nhánh staff
+    return response.data;
+  },
+  createEvent: async (payload: ScheduleCreatePayload) => {
+    // return await axiosClient.post('/events', payload); // TODO: replaced by createEvent wrapper // CHANGED
+    const response = await axiosClient.post('/events', payload); // CHANGED: tạo lịch cho staff
+    return response.data;
+  },
+  deleteEvent: async (id: number) => {
+    const response = await axiosClient.delete(`/events/${id}`); // CHANGED: xóa lịch cho staff
+    return response.data;
+  },
+
   getProfile: async (): Promise<ProfileResponse> => {
     const response = await axiosClient.get<ProfileResponse>('/me');
     return response.data;
@@ -128,3 +188,4 @@ export const appApi = {
 };
 
 /* NOTE: Mở rộng SavingsItem để nhận lịch sử giao dịch từ BE. */
+

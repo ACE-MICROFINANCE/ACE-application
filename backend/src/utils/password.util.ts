@@ -13,9 +13,9 @@ export const comparePassword = async (
 };
 
 /**
- * Generates a random numeric password with length between minLength and maxLength.
+ * Generates a random numeric password (default fixed 6 digits).
  */
-export const generateNumericPassword = (minLength = 6, maxLength = 8): string => {
+export const generateNumericPassword = (minLength = 6, maxLength = 6): string => {
   const length =
     minLength + Math.floor(Math.random() * (maxLength - minLength + 1));
   let result = '';

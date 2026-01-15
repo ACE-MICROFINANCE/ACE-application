@@ -4,7 +4,7 @@ export class CreateCustomerDto {
   @IsString()
   @IsNotEmpty()
   @MinLength(6)
-  @Matches(/^[0-9]+$/, { message: 'memberNo must contain digits only' })
+  @Matches(/^[0-9]+$/, { message: 'Mã khách hàng chỉ được chứa chữ số.' })
   memberNo!: string;
 
   @IsString()

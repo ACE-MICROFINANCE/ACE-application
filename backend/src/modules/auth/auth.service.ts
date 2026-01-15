@@ -13,6 +13,7 @@ import { generateNumericPassword } from '../../utils/password.util';
 import { BijliCustomerSyncService } from '../customers/bijli-customer-sync.service';
 import { formatVietnameseName } from '../../common/utils/string.utils';
 import { isNumericString } from '../../utils/numeric-string.util'; // CHANGED: validate memberNo input
+import { TempPasswordCryptoService } from '../../common/services/temp-password-crypto.service'; // CHANGED: temp password crypto
 
 @Injectable()
 export class AuthService {
@@ -22,6 +23,7 @@ export class AuthService {
     private readonly configService: ConfigService,
     private readonly notificationService: NotificationService,
     private readonly bijliCustomerSyncService: BijliCustomerSyncService, // [BIJLI-CUSTOMER] sync profile on login
+    private readonly tempPasswordCryptoService: TempPasswordCryptoService, // CHANGED: temp password crypto
   ) {}
 
   private getExpiresIn(key: string, fallback: string): string | number {
@@ -47,7 +49,12 @@ export class AuthService {
     };
   }
 
-  private toStaffProfile(staff: { email: string; role: string; branchCode?: string | null; fullName?: string | null }) {
+  private toStaffProfile(staff: {
+    email: string;
+    role: 'ADMIN' | 'BRANCH_MANAGER';
+    branchCode?: string | null;
+    fullName?: string | null;
+  }) {
     return {
       actorKind: 'STAFF',
       role: staff.role,
@@ -105,7 +112,7 @@ export class AuthService {
   async login(dto: LoginDto) {
     const identifier = (dto.identifier ?? dto.memberNo ?? '').trim(); // CHANGED: support identifier/memberNo
     if (!identifier) {
-      throw new BadRequestException('Thong tin dang nhap khong hop le'); // CHANGED: validate login input
+      throw new BadRequestException('Thông tin đăng nhập không hợp lệ.');
     }
 
     if (identifier.includes('@')) {
@@ -114,18 +121,18 @@ export class AuthService {
       }); // CHANGED: staff login by email
 
       if (!staff || !staff.isActive) {
-        throw new UnauthorizedException('Thong tin dang nhap khong hop le'); // CHANGED: staff login error
+        throw new UnauthorizedException('Thông tin đăng nhập không đúng.');
       }
 
       const validStaff = await comparePassword(dto.password, staff.passwordHash);
       if (!validStaff) {
-        throw new UnauthorizedException('Thong tin dang nhap khong hop le'); // CHANGED: staff login error
+        throw new UnauthorizedException('Thông tin đăng nhập không đúng.');
       }
 
       const staffRole =
         staff.role === 'ADMIN' || staff.role === 'BRANCH_MANAGER' ? staff.role : null; // CHANGED: narrow staff role
       if (!staffRole) {
-        throw new UnauthorizedException('Thong tin dang nhap khong hop le'); // CHANGED: invalid role
+        throw new UnauthorizedException('Thông tin đăng nhập không đúng.');
       }
 
       const staffPayload: JwtPayload = {
@@ -143,18 +150,17 @@ export class AuthService {
     }
 
     if (!isNumericString(identifier)) {
-      throw new BadRequestException('Ma khach hang khong hop le'); // CHANGED: numeric validation for customer
+      throw new BadRequestException('Mã khách hàng không hợp lệ.');
     }
-
 
     const customer = await this.getCustomerWithCredential({ memberNo: identifier });
     if (!customer || !customer.isActive || !customer.credential) {
-      throw new UnauthorizedException('Thông tin đăng nhập không đúng');
+      throw new UnauthorizedException('Thông tin đăng nhập không đúng.');
     }
 
     const isValid = await comparePassword(dto.password, customer.credential.passwordHash);
     if (!isValid) {
-      throw new UnauthorizedException('Thông tin đăng nhập không đúng');
+      throw new UnauthorizedException('Thông tin đăng nhập không đúng.');
     }
 
     await this.prisma.customerCredential.update({
@@ -183,7 +189,7 @@ export class AuthService {
             include: { credential: true },
           });
         } catch {
-          // Khong chan login neu cap nhat ten that bai.
+          // Không chặn login nếu cập nhật tên thất bại.
         }
       }
     }
@@ -206,25 +212,25 @@ export class AuthService {
 
   async changePassword(userId: string, dto: ChangePasswordDto) {
     if (dto.confirmPassword && dto.newPassword !== dto.confirmPassword) {
-      throw new BadRequestException('Mật khẩu mới và xác nhận không khớp');
+      throw new BadRequestException('Mật khẩu mới và xác nhận không khớp.');
     }
     const id = BigInt(userId);
     const customer = await this.getCustomerWithCredential({ id });
     if (!customer || !customer.credential || !customer.isActive) {
-      throw new UnauthorizedException('Tài khoản không tồn tại hoặc đã bị khóa');
+      throw new UnauthorizedException('Tài khoản không tồn tại hoặc đã bị khóa.');
     }
 
     const mustChangeNow = customer.credential?.mustChangePassword === true;
     if (!mustChangeNow) {
       if (!dto.oldPassword) {
-        throw new BadRequestException('Cần nhập mật khẩu hiện tại');
+        throw new BadRequestException('Cần nhập mật khẩu hiện tại.');
       }
       if (dto.newPassword === dto.oldPassword) {
-        throw new BadRequestException('Mật khẩu mới phải khác mật khẩu hiện tại');
+        throw new BadRequestException('Mật khẩu mới phải khác mật khẩu hiện tại.');
       }
       const validOld = await comparePassword(dto.oldPassword, customer.credential.passwordHash);
       if (!validOld) {
-        throw new BadRequestException('Mật khẩu hiện tại không đúng');
+        throw new BadRequestException('Mật khẩu hiện tại không đúng.');
       }
     }
 
@@ -236,6 +242,8 @@ export class AuthService {
         passwordHash: newHash,
         mustChangePassword: false,
         passwordUpdatedAt: new Date(),
+        tempPasswordEncrypted: null, // CHANGED: clear temp password after change
+        tempPasswordIssuedAt: null, // CHANGED: clear temp password issued time
       },
     });
 
@@ -246,7 +254,7 @@ export class AuthService {
 
     const refreshedCustomer = await this.getCustomerWithCredential({ id });
     if (!refreshedCustomer) {
-      throw new UnauthorizedException('Tài khoản không tồn tại');
+      throw new UnauthorizedException('Tài khoản không tồn tại.');
     }
 
     const tokens = await this.issueTokens(refreshedCustomer);
@@ -269,7 +277,7 @@ export class AuthService {
     });
 
     if (!tokenRecord || tokenRecord.expiresAt < new Date()) {
-      throw new UnauthorizedException('Refresh token không hợp lệ hoặc đã hết hạn');
+      throw new UnauthorizedException('Refresh token không hợp lệ hoặc đã hết hạn.');
     }
 
     await this.prisma.refreshToken.update({
@@ -279,7 +287,7 @@ export class AuthService {
 
     const customer = await this.getCustomerWithCredential({ id });
     if (!customer || !customer.isActive || !customer.credential) {
-      throw new UnauthorizedException('Tài khoản không tồn tại hoặc đã bị khóa');
+      throw new UnauthorizedException('Tài khoản không tồn tại hoặc đã bị khóa.');
     }
 
     const tokens = await this.issueTokens(customer);
@@ -307,13 +315,20 @@ export class AuthService {
       return;
     }
 
-    const tempPassword = generateNumericPassword(6, 8);
+    const tempPassword = generateNumericPassword(6, 6); // CHANGED: fixed 6-digit temp password
     const passwordHash = await hashPassword(tempPassword);
+    const encryptedTempPassword = this.tempPasswordCryptoService.encrypt(tempPassword); // CHANGED: encrypt temp password
+    const issuedAt = new Date(); // CHANGED: temp password issue time
 
     if (customer.credential) {
       await this.prisma.customerCredential.update({
         where: { customerId: customer.id },
-        data: { passwordHash, mustChangePassword: true },
+        data: {
+          passwordHash,
+          mustChangePassword: true,
+          tempPasswordEncrypted: encryptedTempPassword, // CHANGED: store encrypted temp password
+          tempPasswordIssuedAt: issuedAt, // CHANGED: store issued time
+        },
       });
     } else {
       await this.prisma.customerCredential.create({
@@ -321,6 +336,8 @@ export class AuthService {
           customerId: customer.id,
           passwordHash,
           mustChangePassword: true,
+          tempPasswordEncrypted: encryptedTempPassword, // CHANGED: store encrypted temp password
+          tempPasswordIssuedAt: issuedAt, // CHANGED: store issued time
         },
       });
     }

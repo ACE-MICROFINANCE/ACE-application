@@ -32,4 +32,7 @@ export default () => ({
   defaults: {
     customerPassword: process.env.DEFAULT_CUSTOMER_PASSWORD || '123456', // CHANGED: default stub password
   },
+  security: {
+    tempPasswordEncKey: process.env.TEMP_PASSWORD_ENC_KEY, // CHANGED: AES-GCM key for temp password
+  },
 });

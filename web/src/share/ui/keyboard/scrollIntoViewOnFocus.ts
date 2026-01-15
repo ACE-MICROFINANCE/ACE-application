@@ -3,6 +3,10 @@ import type { FocusEvent } from 'react';
 export const scrollIntoViewOnFocus = (event: FocusEvent<HTMLElement>) => {
   const element = event.currentTarget;
   setTimeout(() => {
-    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, 250);
+    try {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } catch {
+      element.scrollIntoView();
+    }
+  }, 400);
 };

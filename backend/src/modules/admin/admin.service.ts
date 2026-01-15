@@ -4,10 +4,14 @@ import { PrismaService } from '../../database/prisma.service';
 import { hashPassword, generateNumericPassword } from '../../utils/password.util';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { formatVietnameseName } from '../../common/utils/string.utils';
+import { TempPasswordCryptoService } from '../../common/services/temp-password-crypto.service'; // CHANGED: temp password crypto
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly tempPasswordCryptoService: TempPasswordCryptoService, // CHANGED: temp password crypto
+  ) {}
 
   private mapCustomer(customer: Prisma.CustomerGetPayload<{ include: { credential: true } }>) {
     return {
@@ -27,8 +31,10 @@ export class AdminService {
   }
 
   async createCustomer(dto: CreateCustomerDto) {
-    const tempPassword = generateNumericPassword();
+    const tempPassword = generateNumericPassword(6, 6); // CHANGED: fixed 6-digit temp password
     const passwordHash = await hashPassword(tempPassword);
+    const issuedAt = new Date(); // CHANGED: temp password issued time
+    const encryptedTempPassword = this.tempPasswordCryptoService.encrypt(tempPassword); // CHANGED: encrypt temp password
     const normalizedFullName = formatVietnameseName(dto.fullName);
 
     try {
@@ -48,6 +54,9 @@ export class AdminService {
             create: {
               passwordHash,
               mustChangePassword: true,
+              isActive: true, // CHANGED: ensure account active on create
+              tempPasswordEncrypted: encryptedTempPassword, // CHANGED: store encrypted temp password
+              tempPasswordIssuedAt: issuedAt, // CHANGED: store issued time
             },
           },
         },
@@ -60,7 +69,7 @@ export class AdminService {
       };
     } catch (error: any) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-        throw new ConflictException('memberNo must be unique');
+        throw new ConflictException('Mã khách hàng đã tồn tại.');
       }
       throw error;
     }
@@ -73,11 +82,13 @@ export class AdminService {
     });
 
     if (!existing) {
-      throw new NotFoundException('Customer not found');
+      throw new NotFoundException('Không tìm thấy khách hàng.');
     }
 
-    const tempPassword = generateNumericPassword();
+    const tempPassword = generateNumericPassword(6, 6); // CHANGED: fixed 6-digit temp password
     const passwordHash = await hashPassword(tempPassword);
+    const issuedAt = new Date(); // CHANGED: temp password issued time
+    const encryptedTempPassword = this.tempPasswordCryptoService.encrypt(tempPassword); // CHANGED: encrypt temp password
 
     await this.prisma.customerCredential.upsert({
       where: { customerId },
@@ -85,11 +96,16 @@ export class AdminService {
         customerId,
         passwordHash,
         mustChangePassword: true,
+        isActive: true, // CHANGED: ensure account active after reset
+        tempPasswordEncrypted: encryptedTempPassword, // CHANGED: store encrypted temp password
+        tempPasswordIssuedAt: issuedAt, // CHANGED: store issued time
       },
       update: {
         passwordHash,
         mustChangePassword: true,
         passwordUpdatedAt: new Date(),
+        tempPasswordEncrypted: encryptedTempPassword, // CHANGED: store encrypted temp password
+        tempPasswordIssuedAt: issuedAt, // CHANGED: store issued time
       },
     });
 

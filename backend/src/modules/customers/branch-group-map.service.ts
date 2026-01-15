@@ -105,6 +105,40 @@ export class BranchGroupMapService {
     ); // CHANGED: stable order by groupName
   }
 
+  listBranches() {
+    const index = this.ensureLoaded();
+    const branches = new Map<string, { branchCode: string; branchName: string | null; displayName: string }>();
+
+    for (const records of index.values()) {
+      for (const record of records) {
+        const { branchId, branchName } = this.parseBranch(record.Branch);
+        if (!branchId) continue;
+        if (!branches.has(branchId)) {
+          const displayName = branchName ? `${branchId}-${branchName}` : branchId;
+          branches.set(branchId, {
+            branchCode: branchId,
+            branchName,
+            displayName,
+          }); // CHANGED: build unique branch list for staff management
+        }
+      }
+    }
+
+    return Array.from(branches.values()).sort((a, b) =>
+      a.displayName.localeCompare(b.displayName),
+    ); // CHANGED: stable order by display name
+  }
+
+  resolveBranchByCode(branchCode?: string | null) {
+    if (!branchCode) return null;
+    const normalized = branchCode.trim();
+    if (!normalized) return null;
+    const branchId = normalized.includes('-') ? normalized.split('-')[0].trim() : normalized;
+    const branches = this.listBranches();
+    const match = branches.find((branch) => branch.branchCode === branchId);
+    return match ?? null; // CHANGED: resolve branch info for staff responses
+  }
+
   normalizeGroupName(value?: string | null): string | null {
     if (!value) return null;
     return value.trim().replace(/\s+/g, ' ');

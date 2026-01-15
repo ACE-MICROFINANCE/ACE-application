@@ -1,6 +1,6 @@
 ﻿import clsx from 'clsx';
-import type { FocusEventHandler } from 'react'; // CHANGED: hỗ trợ focus handler
-import { Select, SelectItem } from '@heroui/react'; // CHANGED: dùng HeroUI Select kiểu iOS
+import type { FocusEventHandler } from 'react'; // CHANGED: supports focus handler
+import { Select, SelectItem } from '@heroui/react'; // CHANGED: use HeroUI Select for iOS style
 // import { ChevronDown } from 'lucide-react';
 
 type AceSelectOption = {
@@ -16,7 +16,7 @@ type AceSelectIOSProps = {
   placeholder?: string;
   disabled?: boolean;
   error?: string | null;
-  onFocus?: FocusEventHandler<HTMLElement>; // CHANGED: hỗ trợ scrollIntoView
+  onFocus?: FocusEventHandler; // CHANGED: supports scrollIntoView
 };
 
 export const AceSelectIOS = ({
@@ -48,7 +48,7 @@ export const AceSelectIOS = ({
           value={value ?? ''}
           onChange={(event) => onChange(event.target.value)}
           disabled={disabled}
-          onFocus={onFocus} // CHANGED: hỗ trợ focus handler
+          onFocus={onFocus} // CHANGED: support focus handler
         >
           <option value="" disabled hidden>
             {placeholder}
@@ -73,13 +73,14 @@ export const AceSelectIOS = ({
         placeholder={placeholder}
         isDisabled={disabled}
         onFocus={onFocus}
+        selectorIcon={<span aria-hidden="true" />}
         classNames={{
           trigger: clsx(
             'rounded-2xl border border-black/5 bg-white px-4 py-3 shadow-sm min-h-[52px]',
             disabled && 'opacity-60',
           ),
           value: 'text-[16px] text-[#111]',
-          selectorIcon: 'hidden', // CHANGED: đảm bảo ẩn icon mặc định
+          selectorIcon: 'hidden', // CHANGED: hide default selector icon
           popoverContent:
             'rounded-3xl border border-black/5 bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)] overflow-hidden',
           listbox: 'p-2',

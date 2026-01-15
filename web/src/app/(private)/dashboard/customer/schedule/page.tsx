@@ -279,7 +279,7 @@ export default function SchedulePage() {
   }, [events, isLoading, error, expandedId, detailsById, loadingById, errorById]);
 
   return (
-    <div className="min-h-screen bg-[#F2F2F7] px-4 pb-[calc(72px+24px+env(safe-area-inset-bottom))] pt-8">
+    <div className="min-h-screen bg-[#F2F2F7] px-4 pb-[calc(var(--ace-bottom-nav-h,98px)+24px+env(safe-area-inset-bottom))] pt-8">
       <div className="mx-auto flex w-full max-w-md flex-col space-y-4">
         <AceCard className="bg-[#DFF5D1] shadow-md px-6 py-4 rounded-2xl text-center">
           <h1 className="text-xl md:text-2xl font-semibold text-slate-900">

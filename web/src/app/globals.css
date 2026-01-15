@@ -15,3 +15,13 @@ body {
 a {
   @apply text-primary hover:text-primaryHover transition-colors;
 }
+
+/* iOS Safari: prevent auto-zoom on inputs */
+@supports (-webkit-touch-callout: none) {
+  input,
+  textarea,
+  select,
+  button {
+    font-size: 16px;
+  }
+}

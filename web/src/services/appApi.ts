@@ -74,6 +74,7 @@ export type ScheduleDetail = {
   eventType: string;
   startDate: string;
   endDate?: string | null;
+  locationName?: string | null;
   description?: string | null;
   scope?: string | null; // CHANGED: hỗ trợ phân biệt GLOBAL/LOCAL khi chỉnh sửa
   audienceType?: 'BRANCH_ALL' | 'GROUPS' | string | null; // CHANGED: hỗ trợ staff edit
@@ -108,6 +109,72 @@ export type StaffGroupItem = {
   branchId?: string;
   branchName?: string | null;
 }; // CHANGED: nhóm theo chi nhánh staff
+
+export type StaffUserItem = {
+  id: number;
+  email: string;
+  role: 'ADMIN' | 'BRANCH_MANAGER' | string;
+  branchCode?: string | null;
+  branchName?: string | null;
+  fullName?: string | null;
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type StaffBranchItem = {
+  branchCode: string;
+  branchName: string;
+  displayName: string;
+};
+
+export type StaffCustomerItem = {
+  memberNo: string;
+  fullName: string;
+  phoneNumber?: string | null;
+  groupName?: string | null;
+  branchName?: string | null;
+  isActive?: boolean | null;
+  accessibilityEnabled?: boolean | null;
+};
+
+export type StaffCustomerDetail = {
+  memberNo: string;
+  fullName: string;
+  phoneNumber?: string | null;
+  groupName?: string | null;
+  branchName?: string | null;
+  accessibilityEnabled?: boolean | null;
+  credential?: {
+    isActive: boolean;
+    mustChangePassword: boolean;
+    tempPassword?: string | null;
+  } | null;
+};
+
+export type CreateCustomerAccountPayload = {
+  memberNo: string;
+  initialPassword: string;
+};
+
+export type ResetCustomerPasswordPayload = {
+  newPassword: string;
+};
+
+export type CreateStaffUserPayload = {
+  email: string;
+  password: string;
+  role: 'ADMIN' | 'BRANCH_MANAGER' | string;
+  branchCode?: string | null;
+  fullName?: string;
+};
+
+export type UpdateStaffUserPayload = {
+  email?: string;
+  role?: 'ADMIN' | 'BRANCH_MANAGER' | string;
+  branchCode?: string | null;
+  fullName?: string;
+};
 
 export type ProfileResponse = {
   id: number;
@@ -161,6 +228,82 @@ export const appApi = {
   },
   getStaffGroups: async (): Promise<StaffGroupItem[]> => {
     const response = await axiosClient.get<StaffGroupItem[]>('/staff/groups'); // CHANGED: lấy nhóm theo chi nhánh staff
+    return response.data;
+  },
+  getStaffUsers: async (q?: string): Promise<StaffUserItem[]> => {
+    const response = await axiosClient.get<StaffUserItem[]>('/staff-users', {
+      params: q ? { q } : undefined,
+    });
+    return response.data;
+  },
+  createStaffUser: async (payload: CreateStaffUserPayload): Promise<StaffUserItem> => {
+    const response = await axiosClient.post<StaffUserItem>('/staff-users', payload);
+    return response.data;
+  },
+  updateStaffUser: async (id: number, payload: UpdateStaffUserPayload): Promise<StaffUserItem> => {
+    const response = await axiosClient.patch<StaffUserItem>(`/staff-users/${id}`, payload);
+    return response.data;
+  },
+  lockStaffUser: async (id: number, locked: boolean): Promise<StaffUserItem> => {
+    const response = await axiosClient.patch<StaffUserItem>(`/staff-users/${id}/lock`, { locked });
+    return response.data;
+  },
+  resetStaffPassword: async (id: number, newPassword: string) => {
+    const response = await axiosClient.post(`/staff-users/${id}/reset-password`, { newPassword });
+    return response.data;
+  },
+  deleteStaffUser: async (id: number) => {
+    const response = await axiosClient.delete(`/staff-users/${id}`);
+    return response.data;
+  },
+  getStaffBranches: async (): Promise<StaffBranchItem[]> => {
+    const response = await axiosClient.get<StaffBranchItem[]>('/staff-users/branches');
+    return response.data;
+  },
+  getStaffCustomers: async (q?: string): Promise<StaffCustomerItem[]> => {
+    const response = await axiosClient.get<StaffCustomerItem[]>('/staff/customers', {
+      params: q ? { q } : undefined,
+    });
+    return response.data;
+  },
+  getStaffCustomerDetail: async (memberNo: string): Promise<StaffCustomerDetail> => {
+    const response = await axiosClient.get<StaffCustomerDetail>(`/staff/customers/${memberNo}`);
+    return response.data;
+  },
+  createCustomerAccountForStaff: async (
+    payload: CreateCustomerAccountPayload,
+  ): Promise<{ success: boolean }> => {
+    const response = await axiosClient.post<{ success: boolean }>('/staff/customers/accounts', payload);
+    return response.data;
+  },
+  resetCustomerPasswordForStaff: async (
+    memberNo: string,
+    payload: ResetCustomerPasswordPayload,
+  ): Promise<{ success: boolean; temporaryPassword?: string }> => {
+    const response = await axiosClient.post<{ success: boolean; temporaryPassword?: string }>(
+      `/staff/customers/${memberNo}/reset-password`,
+      payload,
+    );
+    return response.data;
+  },
+  lockCustomerForStaff: async (
+    memberNo: string,
+    locked: boolean,
+  ): Promise<{ success: boolean }> => {
+    const response = await axiosClient.patch<{ success: boolean }>(
+      `/staff/customers/${memberNo}/lock`,
+      { locked },
+    );
+    return response.data;
+  },
+  setCustomerAccessibilityForStaff: async (
+    memberNo: string,
+    enabled: boolean,
+  ): Promise<{ success: boolean }> => {
+    const response = await axiosClient.patch<{ success: boolean }>(
+      `/staff/customers/${memberNo}/accessibility`,
+      { enabled },
+    );
     return response.data;
   },
   createEvent: async (payload: ScheduleCreatePayload) => {

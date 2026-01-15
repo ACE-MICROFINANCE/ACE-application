@@ -54,7 +54,7 @@ export class BijliCustomerSyncService {
         this.normalizeString(data.FirstNm),
       ) ??
       memberNo;
-    const fullNameRaw = this.fixMojibakeUtf8(rawFullName);
+    const fullNameRaw = this.repairUtf8Mojibake(rawFullName); // CHANGED: repair mojibake before formatting
     const fullName = formatVietnameseName(fullNameRaw);
 
     const gender = this.mapGender(this.normalizeString(data.Gender));
@@ -281,14 +281,40 @@ export class BijliCustomerSyncService {
     return null;
   }
 
-  private fixMojibakeUtf8(value: string): string {
-    if (!value) return value;
-    if (!/[\u00c3\u00c2]/.test(value)) return value;
+  private repairUtf8Mojibake(value?: string | null): string {
+    if (!value) return '';
+    const original = value;
+    const repaired = this.tryLatin1ToUtf8(original);
+    const originalScore = this.scoreVietnameseText(original);
+    const repairedScore = this.scoreVietnameseText(repaired);
+    if (repairedScore > originalScore) return repaired;
+    if (this.hasMojibakePattern(original) && repairedScore === originalScore) return repaired;
+    return original;
+  }
+
+  private tryLatin1ToUtf8(value: string): string {
     try {
       return Buffer.from(value, 'latin1').toString('utf8');
     } catch {
       return value;
     }
+  }
+
+  private hasMojibakePattern(value: string): boolean {
+    return /[\u00C3\u00C2\u00C4\u00C6\u00D8\u00DE]|\u00E1\u00BB|\uFFFD/.test(value);
+  }
+
+  private scoreVietnameseText(value: string): number {
+    const nonAscii = (value.match(/[^\x00-\x7F]/g) ?? []).length;
+    const bad =
+      (value.match(/[\u00C3\u00C2\u00C4\u00C6\u00D8\u00DE]/g) ?? []).length +
+      (value.match(/\u00E1\u00BB/g) ?? []).length +
+      (value.match(/\uFFFD/g) ?? []).length;
+    return nonAscii - bad;
+  }
+
+  private fixMojibakeUtf8(value: string): string {
+    return this.repairUtf8Mojibake(value); // CHANGED: share mojibake repair logic
   }
 
   // CHANGED: legacy parseGroupCodeFromGroupName removed from active mapping (static JSON now).

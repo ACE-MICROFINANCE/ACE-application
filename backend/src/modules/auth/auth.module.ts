@@ -9,6 +9,7 @@ import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
 import { PrismaModule } from '../../database/prisma.module';
 import { NotificationModule } from '../notifications/notification.module';
 import { CustomersModule } from '../customers/customers.module';
+import { TempPasswordCryptoService } from '../../common/services/temp-password-crypto.service'; // CHANGED: temp password crypto
 
 @Module({
   imports: [
@@ -29,7 +30,7 @@ import { CustomersModule } from '../customers/customers.module';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtAccessStrategy, JwtRefreshStrategy],
+  providers: [AuthService, JwtAccessStrategy, JwtRefreshStrategy, TempPasswordCryptoService], // CHANGED: provide crypto service
   exports: [AuthService],
 })
 export class AuthModule {}

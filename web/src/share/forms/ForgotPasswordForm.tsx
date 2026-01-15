@@ -9,6 +9,7 @@ import { AceInput } from '@/share/ui/AceInput';
 import { AceButton } from '@/share/ui/AceButton';
 import { FormErrorText } from '@/share/ui/FormErrorText';
 import { appApi } from '@/services/appApi';
+import { blurActiveElement } from '@/share/ui/keyboard/blurActiveElement';
 
 type ForgotPasswordFormValues = {
   memberNo: string;
@@ -36,6 +37,7 @@ export const ForgotPasswordForm = () => {
 
   const onSubmit = async (values: ForgotPasswordFormValues) => {
     setError(null);
+    blurActiveElement();
     try {
       await appApi.requestPasswordReset(values.memberNo.trim());
       setInfo(
@@ -63,7 +65,7 @@ export const ForgotPasswordForm = () => {
           inputMode="numeric"
           pattern="[0-9]*"
           error={Boolean(errors.memberNo)}
-          {...register('memberNo')}
+          {...register('memberNo', { onBlur: () => blurActiveElement() })}
         />
         <FormErrorText>{errors.memberNo?.message}</FormErrorText>
       </div>

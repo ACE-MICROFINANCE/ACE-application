@@ -9,6 +9,7 @@ import { EventsModule } from '../events/events.module'; // CHANGED: debug snapsh
 import { AdminDebugController } from './admin-debug.controller'; // CHANGED: debug endpoints
 import { MemberDebugSyncService } from './member-debug-sync.service'; // CHANGED: debug sync service
 import { RolesGuard } from '../../common/guards/roles.guard'; // CHANGED: guard for admin debug
+import { TempPasswordCryptoService } from '../../common/services/temp-password-crypto.service'; // CHANGED: temp password crypto
 
 @Module({
   imports: [PrismaModule, CustomersModule, LoansModule, EventsModule], // CHANGED: add modules for debug sync
@@ -18,6 +19,7 @@ import { RolesGuard } from '../../common/guards/roles.guard'; // CHANGED: guard 
     AdminApiKeyGuard,
     MemberDebugSyncService,
     RolesGuard, // CHANGED: provide RolesGuard
+    TempPasswordCryptoService, // CHANGED: provide crypto service
   ], // CHANGED: register debug service
 })
 export class AdminModule {}

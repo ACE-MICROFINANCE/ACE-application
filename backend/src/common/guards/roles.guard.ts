@@ -19,11 +19,11 @@ export class RolesGuard implements CanActivate {
     const user = request?.user;
 
     if (!user || user.actorKind !== 'STAFF') {
-      throw new ForbiddenException('Staff role required'); // CHANGED: restrict staff-only routes
+      throw new ForbiddenException('Chỉ nhân viên mới được truy cập.'); // CHANGED: Vietnamese message
     }
 
     if (!user.role || !requiredRoles.includes(user.role)) {
-      throw new ForbiddenException('Insufficient role'); // CHANGED: enforce staff roles
+      throw new ForbiddenException('Bạn không có quyền thực hiện thao tác này.'); // CHANGED: Vietnamese message
     }
 
     return true;

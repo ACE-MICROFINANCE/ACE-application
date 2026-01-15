@@ -9,6 +9,8 @@ import axios from 'axios';
 import { AceInput } from '@/share/ui/AceInput';
 import { AceButton } from '@/share/ui/AceButton';
 import { FormErrorText } from '@/share/ui/FormErrorText';
+import { scrollIntoViewOnFocus } from '@/share/ui/keyboard/scrollIntoViewOnFocus';
+import { blurActiveElement } from '@/share/ui/keyboard/blurActiveElement';
 import { authService } from '@/services/authService';
 import { useAuth } from '@/hooks/useAuth';
 import { routes } from '@/lib/routes';
@@ -76,6 +78,7 @@ export const ChangePasswordForm = () => {
   const onSubmit = async (values: ChangePasswordFormValues) => {
     setSubmitError('');
     setSuccessMessage('');
+    blurActiveElement();
 
     try {
       const payload = isForceMode
@@ -120,7 +123,8 @@ export const ChangePasswordForm = () => {
             pattern="[0-9]*"
             minLength={6}
             error={Boolean(errors.oldPassword)}
-            {...register('oldPassword')}
+            onFocus={scrollIntoViewOnFocus}
+            {...register('oldPassword', { onBlur: () => blurActiveElement() })}
           />
           <FormErrorText>{errors.oldPassword?.message}</FormErrorText>
         </div>
@@ -138,7 +142,8 @@ export const ChangePasswordForm = () => {
           pattern="[0-9]*"
           minLength={6}
           error={Boolean(errors.newPassword)}
-          {...register('newPassword')}
+          onFocus={scrollIntoViewOnFocus}
+          {...register('newPassword', { onBlur: () => blurActiveElement() })}
         />
         <FormErrorText>{errors.newPassword?.message}</FormErrorText>
       </div>
@@ -155,7 +160,8 @@ export const ChangePasswordForm = () => {
           pattern="[0-9]*"
           minLength={6}
           error={Boolean(errors.confirmNewPassword)}
-          {...register('confirmNewPassword')}
+          onFocus={scrollIntoViewOnFocus}
+          {...register('confirmNewPassword', { onBlur: () => blurActiveElement() })}
         />
         <FormErrorText>{errors.confirmNewPassword?.message}</FormErrorText>
       </div>

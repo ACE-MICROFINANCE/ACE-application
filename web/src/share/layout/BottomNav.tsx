@@ -7,12 +7,17 @@ import clsx from 'clsx';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
 
-type NavKey = 'home' | 'loans' | 'saving' | 'schedule' | 'info' | 'account';
+type NavKey = 'home' | 'loans' | 'saving' | 'schedule' | 'info' | 'account' | 'manage' | 'customer-manage'; // CHANGED
 
 const CUSTOMER_NAV_ITEMS: { key: NavKey; label: string; iconSrc: string; href: string }[] = [
   { key: 'loans', label: 'Khoản vay', iconSrc: '/img/loan_icon.jpg', href: '/dashboard/loan' },
   { key: 'saving', label: 'Tiết kiệm', iconSrc: '/img/saving_icon.jpg', href: '/dashboard/saving' },
-  { key: 'schedule', label: 'Họp Nhóm và Tập Huấn', iconSrc: '/img/Schedule_icon.png', href: '/dashboard/schedule' },
+  {
+    key: 'schedule',
+    label: 'Họp Nhóm và Tập Huấn',
+    iconSrc: '/img/Schedule_icon.png',
+    href: '/dashboard/schedule',
+  },
   { key: 'info', label: 'Thông tin', iconSrc: '/img/infomation_icon.jpg', href: '/dashboard/info' },
   { key: 'account', label: 'Tài khoản', iconSrc: '/img/account_icon.jpg', href: '/dashboard?tab=account' },
 ];
@@ -25,6 +30,34 @@ const STAFF_NAV_ITEMS: { key: NavKey; label: string; iconSrc: string; href: stri
     href: '/dashboard/schedule',
   },
   {
+    key: 'customer-manage',
+    label: 'Quản lý khách hàng',
+    iconSrc: '/img/staff_management_icon.jpg',
+    href: '/dashboard/admin/customer-management',
+  },
+  {
+    key: 'account',
+    label: 'Tài khoản',
+    iconSrc: '/img/account_icon.jpg',
+    href: '/dashboard?tab=account',
+  },
+];
+
+// CHANGED: admin tab quản lý
+const ADMIN_NAV_ITEMS: { key: NavKey; label: string; iconSrc: string; href: string }[] = [
+   {
+    key: 'customer-manage',
+    label: 'Quản lý khách hàng',
+    iconSrc: '/img/staff_management_icon.jpg',
+    href: '/dashboard/admin/customer-management',
+  },
+  {
+    key: 'manage',
+    label: 'Quản lý',
+    iconSrc: '/img/contact_sso.png',
+    href: '/dashboard/admin/staff-management',
+  },
+  {
     key: 'account',
     label: 'Tài khoản',
     iconSrc: '/img/account_icon.jpg',
@@ -33,25 +66,36 @@ const STAFF_NAV_ITEMS: { key: NavKey; label: string; iconSrc: string; href: stri
 ];
 
 export const BottomNav = () => {
-  const { profile } = useAuth(); // CHANGED: tách bottom bar theo role
+  const { profile } = useAuth(); // giữ nguyên
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const navRef = useRef<HTMLDivElement | null>(null); // CHANGED: đo chiều cao bottom nav
+  const navRef = useRef<HTMLDivElement | null>(null);
 
   const [clickedKey, setClickedKey] = useState<NavKey | null>(null);
   const popTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isStaff = profile?.actorKind === 'STAFF'; // CHANGED: staff/admin chỉ dùng 2 tab
-  const navItems = isStaff ? STAFF_NAV_ITEMS : CUSTOMER_NAV_ITEMS; // CHANGED: chọn nav theo role
+
+  const isStaff = profile?.actorKind === 'STAFF';
+  const isAdmin = isStaff && profile?.role === 'ADMIN'; // CHANGED
+
+  // CHANGED: chọn nav theo role
+  const navItems = isAdmin ? ADMIN_NAV_ITEMS : isStaff ? STAFF_NAV_ITEMS : CUSTOMER_NAV_ITEMS;
 
   const activeKey = useMemo<NavKey>(() => {
+    // CHANGED: admin staff-management active
+    if (pathname.startsWith('/dashboard/admin/staff-management')) return 'manage';
+    if (pathname.startsWith('/dashboard/admin/customer-management')) return 'customer-manage'; // CHANGED: staff customer-management
+
     if (pathname.startsWith('/dashboard/loan')) return 'loans';
     if (pathname.startsWith('/dashboard/saving')) return 'saving';
+
     if (
       pathname.startsWith('/dashboard/schedule') ||
-      pathname.startsWith('/dashboard/staff/schedule')
+      pathname.startsWith('/dashboard/staff/schedule') ||
+      pathname.startsWith('/staff/dashboard/schedule') // CHANGED: thêm để chắc ăn, không phá logic
     )
       return 'schedule';
+
     if (pathname.startsWith('/dashboard/info')) return 'info';
     if (searchParams.get('tab') === 'account') return 'account';
     return 'home';
@@ -63,9 +107,11 @@ export const BottomNav = () => {
     };
   }, []);
 
+  // giữ nguyên: đo chiều cao bottom nav để dùng cho FAB/spacing nếu cần
   useEffect(() => {
     const root = document.documentElement;
     const fallback = 98;
+    const getViewportHeight = () => window.visualViewport?.height ?? window.innerHeight; // CHANGED: use visualViewport when available
 
     const updateNavHeight = () => {
       if (!navRef.current) {
@@ -73,7 +119,7 @@ export const BottomNav = () => {
         return;
       }
       const rect = navRef.current.getBoundingClientRect();
-      const heightFromBottom = Math.round(window.innerHeight - rect.top);
+      const heightFromBottom = Math.round(getViewportHeight() - rect.top); // CHANGED: align with visual viewport
       const nextValue = heightFromBottom || Math.round(rect.height) || fallback;
       root.style.setProperty('--ace-bottom-nav-h', `${nextValue}px`);
     };
@@ -86,10 +132,15 @@ export const BottomNav = () => {
       observer.observe(navRef.current);
     }
 
+    const vv = window.visualViewport; // CHANGED: track visual viewport changes (iOS)
+    vv?.addEventListener('resize', updateNavHeight);
+    vv?.addEventListener('scroll', updateNavHeight);
     window.addEventListener('resize', updateNavHeight);
 
     return () => {
       observer?.disconnect();
+      vv?.removeEventListener('resize', updateNavHeight);
+      vv?.removeEventListener('scroll', updateNavHeight);
       window.removeEventListener('resize', updateNavHeight);
     };
   }, []);
@@ -102,13 +153,12 @@ export const BottomNav = () => {
     if (popTimeoutRef.current) clearTimeout(popTimeoutRef.current);
     popTimeoutRef.current = setTimeout(() => setClickedKey(null), 160);
 
-    // NEW: đang active thì về /dashboard
+    // đang active thì về /dashboard
     if (isActive) {
       router.push('/dashboard');
       return;
     }
 
-    // không active thì đi tới trang đó
     router.push(item.href);
   };
 

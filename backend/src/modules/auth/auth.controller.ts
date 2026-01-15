@@ -22,7 +22,8 @@ export class AuthController {
     await this.authService.requestPasswordReset(dto.memberNo);
     return {
       success: true,
-      message: 'If this member number exists, staff will contact the customer to reset password.',
+      message:
+        'Nếu mã khách hàng tồn tại, nhân viên ACE sẽ liên hệ để hỗ trợ cấp lại mật khẩu.',
     };
   }
 

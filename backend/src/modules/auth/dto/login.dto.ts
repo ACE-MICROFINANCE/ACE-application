@@ -1,23 +1,22 @@
-﻿import { IsNotEmpty, IsOptional, IsString, Matches, MinLength, ValidateIf } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, Matches, MinLength, ValidateIf } from 'class-validator';
 
 export class LoginDto {
   @ValidateIf((o) => !o.memberNo)
   @IsString()
   @IsNotEmpty()
-  identifier!: string; // CHANGED: email (staff) or memberNo (customer)
+  identifier!: string; // email (staff) or memberNo (customer)
 
   @ValidateIf((o) => !o.identifier)
   @IsString()
   @IsNotEmpty()
   @IsOptional()
   @MinLength(6)
-  @Matches(/^[0-9]+$/, { message: 'Ma khach hang chi gom chu so' })
-  memberNo?: string; // CHANGED: backward-compatible input
+  @Matches(/^[0-9]+$/, { message: 'Mã khách hàng chỉ được chứa chữ số.' })
+  memberNo?: string;
 
   @IsString()
   @IsNotEmpty()
   @MinLength(6)
-  @Matches(/^[0-9]+$/, { message: 'Mat khau chi gom chu so va toi thieu 6 ky tu' })
+  @Matches(/^[0-9]+$/, { message: 'Mật khẩu chỉ được chứa chữ số và tối thiểu 6 ký tự.' })
   password!: string;
 }
-

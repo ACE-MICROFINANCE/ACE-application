@@ -265,7 +265,7 @@ export default function LoanPage() {
                   <span className="font-semibold">
                     {loan.nextPayment?.dueDate ? (
                       <div className="mt-0.5 inline-block text-right">
-                        <div className="text-[#555] whitespace-nowrap">
+                        <div className="whitespace-nowrap font-semibold">
                           {formatDate(loan.nextPayment.dueDate)}
                         </div>
 
@@ -281,6 +281,8 @@ export default function LoanPage() {
                   </span>
                 </div>
 
+                {/* // CHANGED: Thay d?ng "S? ti?n ph?i tr? ti?p theo" th?nh 3 d?ng chi ti?t; gi? block c? ?? ??i chi?u */}
+                {false && (
                 <div className="grid grid-cols-[1fr_auto] items-start gap-3 text-[#555]">
                   <span>Số tiền phải trả tiếp theo</span>
 
@@ -307,6 +309,21 @@ export default function LoanPage() {
                       </div>
                     ) : null}
                   </div>
+                </div>
+
+                )}
+
+                <div className="flex justify-between">
+                  <span className="text-[#555]">Gốc kì tiếp theo</span>
+                  <span className="font-semibold">{formatCurrencyVND(loan.nextPayment?.principalDue ?? 0)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[#555]">Lãi kỳ tiếp theo</span>
+                  <span className="font-semibold">{formatCurrencyVND(loan.nextPayment?.interestDue ?? 0)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[#555]">Tổng phải trả</span>
+                  <span className="font-semibold">{formatCurrencyVND(loan.nextPayment?.totalDue ?? loan.nextPayment?.principalDue ?? 0)}</span>
                 </div>
 
                 {/* [BIJLI-LOAN-RULE] next payment total due */}

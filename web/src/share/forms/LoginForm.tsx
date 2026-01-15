@@ -12,6 +12,7 @@ import { AceButton } from '@/share/ui/AceButton';
 import { FormErrorText } from '@/share/ui/FormErrorText';
 import { routes } from '@/lib/routes';
 import { useAuth } from '@/hooks/useAuth';
+import { blurActiveElement } from '@/share/ui/keyboard/blurActiveElement';
 
 type LoginFormValues = {
   identifier: string; // CHANGED: allow email or memberNo
@@ -53,6 +54,7 @@ export const LoginForm = () => {
 
   const onSubmit = async (values: LoginFormValues) => {
     setSubmitError('');
+    blurActiveElement();
     try {
       const result = await login({ identifier: values.identifier, password: values.password }); // CHANGED: send identifier
       if (result.customer?.mustChangePassword) {
@@ -80,7 +82,7 @@ export const LoginForm = () => {
           placeholder="Nhập mã khách hàng"
           inputMode="text"
           error={Boolean(errors.identifier)}
-          {...register('identifier')}
+          {...register('identifier', { onBlur: () => blurActiveElement() })}
         />
         <FormErrorText>{errors.identifier?.message}</FormErrorText>
       </div>
@@ -97,7 +99,7 @@ export const LoginForm = () => {
           pattern="[0-9]*"
           minLength={6}
           error={Boolean(errors.password)}
-          {...register('password')}
+          {...register('password', { onBlur: () => blurActiveElement() })}
         />
         <div className="text-xs text-[#777] leading-relaxed">
           Mật khẩu lần đầu do nhân viên ACE cung cấp. Sau khi đăng nhập, ứng dụng sẽ yêu cầu bạn đổi

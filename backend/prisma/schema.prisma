@@ -22,6 +22,7 @@ model Customer {
   branchName          String? // CHANGED: branch display name from group mapping
   membershipStartDate DateTime?
   isActive            Boolean  @default(true)
+  accessibilityEnabled Boolean @default(false) // CHANGED: trợ năng
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
   lastSyncedAt        DateTime? // [BIJLI-CUSTOMER] cache sync timestamp
@@ -39,7 +40,10 @@ model Customer {
 model CustomerCredential {
   customerId         BigInt  @id
   passwordHash       String
+  isActive           Boolean @default(true) // CHANGED: khóa/mở tài khoản
   mustChangePassword Boolean @default(true)
+  tempPasswordEncrypted String? // CHANGED: AES-GCM temp password
+  tempPasswordIssuedAt DateTime? // CHANGED: temp password issued time
   passwordUpdatedAt  DateTime?
   lastLoginAt        DateTime?
 

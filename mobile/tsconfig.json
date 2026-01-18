@@ -8,7 +8,9 @@
       "@services/*": ["./src/services/*"],
       "@contexts/*": ["./src/contexts/*"],
       "@navigation/*": ["./src/navigation/*"],
-      "@lib/*": ["./src/lib/*"]
+      "@lib/*": ["./src/lib/*"],
+      "@store/*": ["./src/store/*"],
+      "@hooks/*": ["./src/hooks/*"]
     }
   }
 }

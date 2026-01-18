@@ -16,14 +16,17 @@ export const ChangePasswordForm = ({ onSuccess }: { onSuccess: () => void }) => 
       Yup.object().shape({
         oldPassword: mustChangePassword
           ? Yup.string()
-          : Yup.string().required('Current password is required'),
+          : Yup.string()
+              .matches(/^[0-9]+$/, 'Mật khẩu chỉ gồm số')
+              .min(6, 'Tối thiểu 6 ký tự')
+              .required('Vui lòng nhập mật khẩu hiện tại'),
         newPassword: Yup.string()
-          .min(8, 'At least 8 characters')
-          .matches(/^(?=.*[A-Za-z])(?=.*\d).+$/, 'Must include letters and numbers')
-          .required('New password is required'),
+          .matches(/^[0-9]+$/, 'Mật khẩu chỉ gồm số')
+          .min(6, 'Tối thiểu 6 ký tự')
+          .required('Vui lòng nhập mật khẩu mới'),
         confirmNewPassword: Yup.string()
-          .oneOf([Yup.ref('newPassword')], 'Passwords must match')
-          .required('Please confirm the new password'),
+          .oneOf([Yup.ref('newPassword')], 'Mật khẩu nhập lại không khớp')
+          .required('Vui lòng nhập lại mật khẩu mới'),
       }),
     [mustChangePassword],
   );
@@ -36,11 +39,12 @@ export const ChangePasswordForm = ({ onSuccess }: { onSuccess: () => void }) => 
         setError(null);
         setSuccess(null);
         try {
-          await changePassword(values.oldPassword || '', values.newPassword);
-          setSuccess('Password updated successfully.');
+          const oldVal = mustChangePassword ? '' : values.oldPassword;
+          await changePassword(oldVal, values.newPassword);
+          setSuccess('Đổi mật khẩu thành công.');
           onSuccess();
         } catch (e: any) {
-          setError(e?.response?.data?.message || 'Unable to change password');
+          setError(e?.response?.data?.message || 'Không thể đổi mật khẩu');
         } finally {
           setSubmitting(false);
         }
@@ -50,9 +54,11 @@ export const ChangePasswordForm = ({ onSuccess }: { onSuccess: () => void }) => 
         <View className="w-full">
           {!mustChangePassword && (
             <TextInputField
-              label="Current password"
+              label="Mật khẩu hiện tại"
+              placeholder="Nhập mật khẩu hiện tại (6 số)"
               secureTextEntry
               secureToggle
+              keyboardType="numeric"
               onChangeText={handleChange('oldPassword')}
               onBlur={handleBlur('oldPassword')}
               value={values.oldPassword}
@@ -60,18 +66,22 @@ export const ChangePasswordForm = ({ onSuccess }: { onSuccess: () => void }) => 
             />
           )}
           <TextInputField
-            label="New password"
+            label="Mật khẩu mới"
+            placeholder="Nhập mật khẩu mới (6 số)"
             secureTextEntry
             secureToggle
+            keyboardType="numeric"
             onChangeText={handleChange('newPassword')}
             onBlur={handleBlur('newPassword')}
             value={values.newPassword}
             error={touched.newPassword ? errors.newPassword : undefined}
           />
           <TextInputField
-            label="Confirm new password"
+            label="Nhập lại mật khẩu mới"
+            placeholder="Nhập lại mật khẩu mới"
             secureTextEntry
             secureToggle
+            keyboardType="numeric"
             onChangeText={handleChange('confirmNewPassword')}
             onBlur={handleBlur('confirmNewPassword')}
             value={values.confirmNewPassword}
@@ -79,7 +89,7 @@ export const ChangePasswordForm = ({ onSuccess }: { onSuccess: () => void }) => 
           />
           {error && <Text className="text-sm text-red-500 mb-2">{error}</Text>}
           {success && <Text className="text-sm text-emerald-600 mb-2">{success}</Text>}
-          <AppButton title="Save password" onPress={handleSubmit as any} loading={isSubmitting} />
+          <AppButton title="Đổi mật khẩu" onPress={handleSubmit as any} loading={isSubmitting} />
         </View>
       )}
     </Formik>

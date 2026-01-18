@@ -5,12 +5,14 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { queryClient } from '@lib/queryClient';
 import { AuthProvider, useAuth } from '@contexts/AuthContext';
 import { AuthNavigator } from '@navigation/AuthNavigator';
 import { MainTabNavigator } from '@navigation/MainTabNavigator';
-import ChangePasswordScreen from '@screens/ChangePasswordScreen';
 import { View, Text } from 'react-native';
+import { BootGate } from '@screens/BootGate';
+import ForceChangePasswordScreen from '@screens/ForceChangePasswordScreen';
 
 const RootStack = createNativeStackNavigator();
 
@@ -36,7 +38,7 @@ const RootNavigation = () => {
       {isAuthenticated ? (
         <RootStack.Navigator screenOptions={{ headerShown: false }}>
           {mustChangePassword ? (
-            <RootStack.Screen name="ChangePassword" component={ChangePasswordScreen} />
+            <RootStack.Screen name="ForceChangePassword" component={ForceChangePasswordScreen} />
           ) : (
             <RootStack.Screen name="MainTabs" component={MainTabNavigator} />
           )}
@@ -51,10 +53,14 @@ const RootNavigation = () => {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <RootNavigation />
-        <StatusBar style="dark" />
-      </AuthProvider>
+      <SafeAreaProvider>
+        <AuthProvider>
+          <BootGate>
+            <RootNavigation />
+            <StatusBar style="dark" />
+          </BootGate>
+        </AuthProvider>
+      </SafeAreaProvider>
     </QueryClientProvider>
   );
 }

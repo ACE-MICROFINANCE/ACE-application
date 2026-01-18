@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import * as SecureStore from 'expo-secure-store';
 import { authService, AuthResponse } from '@services/authService';
+import { tokenStore } from '@lib/tokenStore';
+import { useAuthStore } from '@store/authStore';
+import { useProfileStore } from '@store/profileStore';
 
 type AuthContextType = {
   customer: any;
@@ -8,7 +10,7 @@ type AuthContextType = {
   refreshToken: string | null;
   mustChangePassword: boolean;
   isLoading: boolean;
-  login: (customerId: string, password: string) => Promise<AuthResponse>;
+  login: (identifier: string, password: string) => Promise<AuthResponse>;
   changePassword: (oldPassword: string, newPassword: string) => Promise<AuthResponse>;
   logout: () => Promise<void>;
 };
@@ -21,59 +23,53 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [refreshToken, setRefreshToken] = useState<string | null>(null);
   const [mustChangePassword, setMustChangePassword] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(true);
+  const authStore = useAuthStore();
+  const profileStore = useProfileStore();
 
   useEffect(() => {
     const bootstrap = async () => {
-      const storedAccess = await SecureStore.getItemAsync('ace_access_token');
-      const storedRefresh = await SecureStore.getItemAsync('ace_refresh_token');
-      const storedFlag = (await SecureStore.getItemAsync('ace_must_change')) === 'true';
-      setAccessToken(storedAccess);
-      setRefreshToken(storedRefresh);
-      setMustChangePassword(storedFlag);
-
-      if (storedAccess) {
-        try {
-          const profile = await authService.getMe();
-          setCustomer(profile);
-        } catch (e) {
-          await logout();
-        }
+      await authStore.hydrate();
+      setAccessToken(authStore.accessToken);
+      setRefreshToken(authStore.refreshToken);
+      setMustChangePassword(authStore.mustChangePassword);
+      if (authStore.accessToken) {
+        await profileStore.refreshProfile();
+        setCustomer(profileStore.profile);
       }
       setIsLoading(false);
     };
-
     bootstrap();
-  }, []);
+  }, [authStore, profileStore]);
 
   const persistTokens = async (payload: AuthResponse) => {
-    await SecureStore.setItemAsync('ace_access_token', payload.accessToken);
-    await SecureStore.setItemAsync('ace_refresh_token', payload.refreshToken);
     const flag = payload.mustChangePassword ?? payload.customer?.mustChangePassword ?? false;
-    await SecureStore.setItemAsync('ace_must_change', String(flag));
+    await authStore.setTokens(payload.accessToken, payload.refreshToken, flag);
     setAccessToken(payload.accessToken);
     setRefreshToken(payload.refreshToken);
     setMustChangePassword(flag);
   };
 
-  const login = async (customerId: string, password: string) => {
-    const response = await authService.login(customerId, password);
+  // CHANGED: login dùng identifier (email hoặc mã KH) giống web
+  const login = async (identifier: string, password: string) => {
+    const response = await authService.login(identifier, password);
     await persistTokens(response);
     setCustomer(response.customer);
+    await profileStore.refreshProfile();
+    setCustomer(profileStore.profile ?? response.customer);
     return response;
   };
 
-  const changePassword = async (oldPassword: string, newPassword: string) => {
+  const changePassword = async (oldPassword: string | undefined, newPassword: string) => {
     const response = await authService.changePassword(oldPassword, newPassword);
     await persistTokens(response);
     setMustChangePassword(false);
-    setCustomer(response.customer);
+    await profileStore.refreshProfile();
+    setCustomer(profileStore.profile ?? response.customer);
     return response;
   };
 
   const logout = async () => {
-    await SecureStore.deleteItemAsync('ace_access_token');
-    await SecureStore.deleteItemAsync('ace_refresh_token');
-    await SecureStore.deleteItemAsync('ace_must_change');
+    await authStore.clear();
     setAccessToken(null);
     setRefreshToken(null);
     setCustomer(null);

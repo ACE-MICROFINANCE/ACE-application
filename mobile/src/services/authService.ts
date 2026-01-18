@@ -13,16 +13,21 @@ export interface AuthResponse {
 }
 
 export const authService = {
-  login: async (customerId: string, password: string): Promise<AuthResponse> => {
-    const { data } = await apiClient.post('/auth/login', { customerId, password });
+  // CHANGED: cho phép đăng nhập bằng identifier (email hoặc mã KH) giống web
+  login: async (identifier: string, password: string): Promise<AuthResponse> => {
+    const { data } = await apiClient.post('/auth/login', { identifier, password });
     return data;
   },
-  changePassword: async (oldPassword: string, newPassword: string): Promise<AuthResponse> => {
-    const { data } = await apiClient.post('/auth/change-password', { oldPassword, newPassword });
+  // CHANGED: oldPassword optional để mode bắt buộc không gửi trường này
+  changePassword: async (oldPassword: string | undefined, newPassword: string): Promise<AuthResponse> => {
+    const payload: Record<string, any> = { newPassword };
+    if (oldPassword) payload.oldPassword = oldPassword;
+    const { data } = await apiClient.post('/auth/change-password', payload);
     return data;
   },
+  // CHANGED: thêm timeout để tránh treo "Loading session..." trên web khi không truy cập được backend
   getMe: async () => {
-    const { data } = await apiClient.get('/auth/me');
+    const { data } = await apiClient.get('/auth/me', { timeout: 7000 });
     return data;
   },
   refreshToken: async (refreshToken: string) => {
@@ -30,3 +35,4 @@ export const authService = {
     return data;
   },
 };
+

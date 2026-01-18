@@ -4,87 +4,59 @@ import * as Yup from 'yup';
 import { Text, View } from 'react-native';
 import { AppButton } from '@components/ui/AppButton';
 import { TextInputField } from '@components/ui/TextInputField';
+import apiClient from '@lib/apiClient';
 
 const ForgotSchema = Yup.object().shape({
-  customerId: Yup.string().matches(/^[0-9]+$/, 'Customer ID must be numeric').required('Customer ID is required'),
-  otp: Yup.string().when('showOtp', {
-    is: true,
-    then: (schema) => schema.required('OTP is required'),
-  }),
-  newPassword: Yup.string().when('showOtp', {
-    is: true,
-    then: (schema) =>
-      schema.min(8, 'At least 8 characters').matches(/^(?=.*[A-Za-z])(?=.*\d).+$/, 'Must include letters and numbers'),
-  }),
-  confirmNewPassword: Yup.string().when('showOtp', {
-    is: true,
-    then: (schema) => schema.oneOf([Yup.ref('newPassword')], 'Passwords must match'),
-  }),
+  memberNo: Yup.string()
+    .matches(/^[0-9]+$/, 'Mã khách hàng phải là số')
+    .required('Vui lòng nhập mã khách hàng'),
 });
 
 export const ForgotPasswordForm = () => {
-  const [showOtp, setShowOtp] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   return (
     <Formik
-      initialValues={{ customerId: '', otp: '', newPassword: '', confirmNewPassword: '', showOtp: false }}
+      initialValues={{ memberNo: '' }}
       validationSchema={ForgotSchema}
-      onSubmit={(values, { setSubmitting }) => {
-        setMessage('This feature is under development.');
-        setSubmitting(false);
+      onSubmit={async (values, { setSubmitting, resetForm }) => {
+        setError(null);
+        setInfo(null);
+        try {
+          await apiClient.post('/auth/request-password-reset', { memberNo: values.memberNo.trim() });
+          setInfo(
+            'Yêu cầu đặt lại mật khẩu đã được gửi tới nhân viên ACE. Nhân viên sẽ liên hệ và cấp mật khẩu tạm cho bạn.',
+          );
+          resetForm();
+        } catch (e: any) {
+          setError('Không thể gửi yêu cầu lúc này, vui lòng thử lại.');
+        } finally {
+          setSubmitting(false);
+        }
       }}
     >
-      {({ handleChange, handleBlur, handleSubmit, values, errors, touched, isSubmitting, setFieldValue }) => (
-        <View className="w-full">
+      {({ handleChange, handleBlur, handleSubmit, values, errors, touched, isSubmitting }) => (
+        <View className="w-full space-y-3">
           <TextInputField
-            label="Customer ID"
+            label="Mã khách hàng (memberNo)"
             keyboardType="numeric"
-            onChangeText={handleChange('customerId')}
-            onBlur={handleBlur('customerId')}
-            value={values.customerId}
-            error={touched.customerId ? errors.customerId : undefined}
+            placeholder="Nhập mã khách hàng"
+            onChangeText={handleChange('memberNo')}
+            onBlur={handleBlur('memberNo')}
+            value={values.memberNo}
+            error={touched.memberNo ? errors.memberNo : undefined}
           />
-          {!showOtp && (
-            <AppButton
-              title="Send OTP (demo)"
-              onPress={() => {
-                setShowOtp(true);
-                setFieldValue('showOtp', true);
-                setMessage('OTP demo only. SMS integration is pending.');
-              }}
-            />
-          )}
-          {showOtp && (
-            <>
-              <TextInputField
-                label="OTP"
-                keyboardType="numeric"
-                onChangeText={handleChange('otp')}
-                onBlur={handleBlur('otp')}
-                value={values.otp}
-                error={touched.otp ? errors.otp : undefined}
-              />
-              <TextInputField
-                label="New password"
-                secureTextEntry
-                onChangeText={handleChange('newPassword')}
-                onBlur={handleBlur('newPassword')}
-                value={values.newPassword}
-                error={touched.newPassword ? errors.newPassword : undefined}
-              />
-              <TextInputField
-                label="Confirm new password"
-                secureTextEntry
-                onChangeText={handleChange('confirmNewPassword')}
-                onBlur={handleBlur('confirmNewPassword')}
-                value={values.confirmNewPassword}
-                error={touched.confirmNewPassword ? errors.confirmNewPassword : undefined}
-              />
-              <AppButton title="Reset Password (demo)" onPress={handleSubmit as any} loading={isSubmitting} />
-            </>
-          )}
-          {message && <Text className="mt-2 text-sm text-amber-600">{message}</Text>}
+
+          <AppButton
+            title="Gửi yêu cầu"
+            onPress={handleSubmit as any}
+            loading={isSubmitting}
+            className="mt-2"
+          />
+
+          {info ? <Text className="text-sm text-[#333]">{info}</Text> : null}
+          {error ? <Text className="text-sm text-red-500">{error}</Text> : null}
         </View>
       )}
     </Formik>

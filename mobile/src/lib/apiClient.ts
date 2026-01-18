@@ -1,12 +1,13 @@
 import axios from 'axios';
-import * as SecureStore from 'expo-secure-store';
+import { tokenStore } from './tokenStore';
 
 const baseURL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
 
-const apiClient = axios.create({ baseURL });
+// CHANGED: đặt timeout mặc định để tránh treo "Loading session..." nếu backend không phản hồi
+const apiClient = axios.create({ baseURL, timeout: 7000 });
 
 apiClient.interceptors.request.use(async (config) => {
-  const token = await SecureStore.getItemAsync('ace_access_token');
+  const token = await tokenStore.getItemAsync('ace_access_token');
   if (token) {
     config.headers = {
       ...config.headers,
@@ -22,7 +23,7 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config;
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
-      const refreshToken = await SecureStore.getItemAsync('ace_refresh_token');
+      const refreshToken = await tokenStore.getItemAsync('ace_refresh_token');
       if (!refreshToken) {
         return Promise.reject(error);
       }
@@ -30,11 +31,15 @@ apiClient.interceptors.response.use(
       try {
         const refreshResponse = await axios.post(`${baseURL}/auth/refresh`, { refreshToken });
         const { accessToken, refreshToken: newRefresh } = refreshResponse.data;
-        await SecureStore.setItemAsync('ace_access_token', accessToken);
-        await SecureStore.setItemAsync('ace_refresh_token', newRefresh || refreshToken);
+        await tokenStore.setItemAsync('ace_access_token', accessToken);
+        await tokenStore.setItemAsync('ace_refresh_token', newRefresh || refreshToken);
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
         return apiClient(originalRequest);
       } catch (refreshErr) {
+        // clear token khi refresh thất bại
+        await tokenStore.deleteItemAsync('ace_access_token');
+        await tokenStore.deleteItemAsync('ace_refresh_token');
+        await tokenStore.deleteItemAsync('ace_must_change');
         return Promise.reject(refreshErr);
       }
     }

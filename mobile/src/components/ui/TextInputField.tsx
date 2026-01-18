@@ -17,9 +17,10 @@ export const TextInputField: React.FC<Props> = ({ label, error, secureToggle, se
       <Text className="mb-1 text-sm text-slate-700">{label}</Text>
       <View className="relative">
         <TextInput
-          className="w-full rounded-md border border-slate-300 px-3 py-2 pr-10"
+          className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 pr-10 text-base"
           placeholderTextColor="#9ca3af"
           secureTextEntry={actualSecure}
+          style={{ minHeight: 44 }}
           {...props}
         />
         {secureToggle && (

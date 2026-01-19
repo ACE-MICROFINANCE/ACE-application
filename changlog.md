@@ -1,4 +1,7 @@
-﻿# CHANGELOG
+# CHANGELOG
+
+## 2026-01-19 14:25
+- Mobile: clear profile store on logout and remount bottom tab navigator per role key to avoid showing staff/admin tabs after switching back to customer accounts.
 
 ## 2026-01-06 17:50
 - Add keyboard-safe helpers for iOS modals (visualViewport inset + delayed scrollIntoView) and apply to change-password modal.

@@ -9,6 +9,7 @@ type ProfileState = {
   lastFetchedAt: number | null;
   error: string | null;
   refreshProfile: () => Promise<void>;
+  reset: () => void;
 };
 
 const TTL_MS = 5 * 60 * 1000; // 5 phút cache
@@ -42,5 +43,10 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
     })();
     inFlight = job;
     return job;
+  },
+
+  reset: () => {
+    inFlight = null;
+    set({ profile: null, status: 'idle', lastFetchedAt: null, error: null });
   },
 }));

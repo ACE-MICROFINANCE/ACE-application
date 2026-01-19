@@ -46,13 +46,13 @@ const formatDuration = (start?: string | null, end?: string | null, durationMinu
 const getAvatarUrl = (event: ScheduleItem) => {
   if (event.eventType === 'MEETING') return require('../../assets/img/community-meeting.png');
   if (event.eventType === 'FIELD_SCHOOL') return require('../../assets/img/farming-plant-rice.png');
-  if (event.eventType === 'FARMING_TASK') return require('../../assets/img/farming-plant-rice.png'); // CHANGED: dùng farming icon thay thế
+  if (event.eventType === 'FARMING_TASK') return require('../../assets/img/farming-plant-rice.png');
   return require('../../assets/img/farming-plant-rice.png');
 };
 
 const buildEventText = (event: ScheduleItem) => {
-  if ((event as any).daysUntilEvent != null) {
-    const days = (event as any).daysUntilEvent;
+  if (event.daysUntilEvent != null) {
+    const days = event.daysUntilEvent;
     if (event.eventType === 'MEETING') return `Bạn có cuộc họp trong ${days} ngày tới`;
     if (event.eventType === 'FIELD_SCHOOL') return `Trong ${days} ngày nữa sẽ có buổi tập huấn tại địa phương`;
     if (event.eventType === 'FARMING_TASK') return `Trong ${days} ngày nữa: ${event.title.toLowerCase()}`;
@@ -74,6 +74,7 @@ const ScheduleItemRow = ({
     onPress={onToggle}
     className="flex-row items-center gap-4 px-4 py-4 active:bg-black/5"
     android_ripple={{ color: '#e5e7eb' }}
+    style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.99 : 1 }] })}
   >
     <View className="relative h-12 w-12 overflow-hidden rounded-full bg-black/5">
       <Image source={getAvatarUrl(item)} style={{ width: 48, height: 48 }} resizeMode="cover" />
@@ -94,7 +95,7 @@ const ScheduleItemRow = ({
   </Pressable>
 );
 
-const ScheduleScreen = () => {
+const CustomerScheduleScreen = () => {
   const { loading, allowed } = useScreenGuard((profile) => profile?.actorKind !== 'STAFF');
   const [events, setEvents] = useState<ScheduleItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -169,13 +170,17 @@ const ScheduleScreen = () => {
           const detailError = errorById[event.id as number];
           return (
             <View key={event.id} className="overflow-hidden">
-              <ScheduleItemRow item={event} isExpanded={isExpanded} onToggle={() => {
-                const next = isExpanded ? null : (event.id as number);
-                setExpandedId(next);
-                if (next !== null && !detailsById[event.id as number] && !loadingById[event.id as number]) {
-                  fetchDetail(event.id as number);
-                }
-              }} />
+              <ScheduleItemRow
+                item={event}
+                isExpanded={isExpanded}
+                onToggle={() => {
+                  const next = isExpanded ? null : (event.id as number);
+                  setExpandedId(next);
+                  if (next !== null && !detailsById[event.id as number] && !loadingById[event.id as number]) {
+                    fetchDetail(event.id as number);
+                  }
+                }}
+              />
               {isExpanded ? (
                 <View className="border-t border-black/5 px-4 pb-4 pt-3">
                   {isDetailLoading ? (
@@ -196,7 +201,7 @@ const ScheduleScreen = () => {
                         </Text>
                       </Text>
                       <Text className="text-[#555]">
-                        Địa điểm: <Text className="font-medium">{detail.locationName || '—'}</Text>
+                        Địa điểm: <Text className="font-medium">{detail.locationName || '-'}</Text>
                       </Text>
                       {formatDuration(detail.startDate, detail.endDate, detail.durationMinutes) ? (
                         <Text className="text-[#555]">
@@ -240,14 +245,16 @@ const ScheduleScreen = () => {
         showsVerticalScrollIndicator={false}
       >
         <View style={{ alignSelf: 'center', width: '100%', maxWidth: 480, gap: 12 }}>
-          <Card className="bg-[#DFF5D1] px-6 py-4 rounded-2xl shadow-sm items-center">
+          <Card className="bg-[#DFF5D1] px-6 py-4 rounded-2xl shadow-md items-center">
             <Text className="text-xl font-semibold text-slate-900">Họp nhóm và Tập huấn</Text>
           </Card>
-          <View className="bg-white rounded-3xl shadow-md border border-black/5 overflow-hidden">{content}</View>
+          <View className="bg-white rounded-3xl shadow-[0_12px_32px_rgba(0,0,0,0.10)] border border-black/5 overflow-hidden">
+            {content}
+          </View>
         </View>
       </ScrollView>
     </MobileFrame>
   );
 };
 
-export default ScheduleScreen;
+export default CustomerScheduleScreen;

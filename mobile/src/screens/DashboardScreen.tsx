@@ -4,6 +4,7 @@ import * as Location from 'expo-location';
 import { MobileFrame } from '@components/layout/MobileFrame';
 import { Card } from '@components/ui/Card';
 import { useAuth } from '@contexts/AuthContext';
+import { useProfileStore } from '@store/profileStore';
 import { appApi, type LoanCurrentResponse, type ScheduleItem, type WeatherResponse } from '@services/appApi';
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
@@ -224,6 +225,10 @@ const WeatherCard = () => {
 
 const DashboardScreen = () => {
   const { customer } = useAuth();
+  const { profile } = useProfileStore();
+  const isStaff = profile?.actorKind === 'STAFF';
+  const isAdmin = isStaff && profile?.role === 'ADMIN';
+  const includeLoanReminder = !(isStaff || isAdmin);
   const [loan, setLoan] = useState<LoanCurrentResponse | null>(null);
   const [events, setEvents] = useState<ScheduleItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -288,7 +293,7 @@ const DashboardScreen = () => {
 
         <WeatherCard />
 
-        <DashboardRemindersCard events={events} loan={loan} includeLoanReminder={true} loading={loading} />
+        <DashboardRemindersCard events={events} loan={loan} includeLoanReminder={includeLoanReminder} loading={loading} />
       </View>
     </MobileFrame>
   );

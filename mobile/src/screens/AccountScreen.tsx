@@ -53,7 +53,6 @@ const AccountScreen = () => {
         <Card className="rounded-2xl bg-white shadow-lg p-6 space-y-4">
           <View className="items-center">
             <Text className="text-lg font-semibold text-[#333]">Thông tin bà con</Text>
-            <Text className="mt-1 text-sm text-[#666]">Cập nhật từ hồ sơ khách hàng ACE</Text>
           </View>
 
           {loading ? <Text className="text-center text-sm text-[#666]">Đang tải...</Text> : null}

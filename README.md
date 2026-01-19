@@ -7,6 +7,9 @@ Full-stack setup for ACE Farmer (backend + web + mobile). This README is for new
 - Web: Next.js 15 (App Router), Tailwind (custom UI wrappers), Axios with auth interceptors.
 - Mobile: Expo React Native, React Navigation, NativeWind.
 
+### Navigation / auth notes (mobile)
+- Bottom tab layout remounts per role (customer vs staff vs admin) to avoid stale tabs when switching accounts. Logout clears profile cache before login.
+
 ## Repository Structure
 - backend/: NestJS API (modules: auth, admin, customers, loans, savings, events, feedback, dashboard, notifications), Prisma schema + migrations + seed, Swagger docs.
 - web/: Next.js 15 App Router frontend.

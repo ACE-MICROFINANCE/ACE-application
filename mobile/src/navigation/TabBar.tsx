@@ -3,6 +3,7 @@ import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Image, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Animated, Easing } from 'react-native';
+import { useProfileStore } from '@store/profileStore';
 
 // CHANGED: dùng đúng icon giống web (đã copy từ web/public/img)
 const iconMap: Record<string, any> = {
@@ -11,10 +12,14 @@ const iconMap: Record<string, any> = {
   Schedule: require('../../assets/img/Schedule_icon.png'),
   Info: require('../../assets/img/infomation_icon.jpg'),
   Account: require('../../assets/img/account_icon.jpg'),
+  StaffCustomers: require('../../assets/img/staff_management_icon.jpg'),
+  StaffManage: require('../../assets/img/staff_management_icon.jpg'), // fallback: dùng icon staff management
 };
 
 export const TabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigation }) => {
   const insets = useSafeAreaInsets();
+  const { profile } = useProfileStore();
+  const isStaff = profile?.actorKind === 'STAFF';
 
   return (
     <View
@@ -29,8 +34,10 @@ export const TabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, naviga
     >
       <View className="pointer-events-auto mx-auto w-full max-w-md px-4">
         <View
-          className="flex-row items-center justify-evenly rounded-3xl bg-white px-4 py-3 shadow-lg"
-          style={{ marginBottom: insets.bottom + 12 }}
+          className={`flex-row items-center rounded-3xl bg-white px-4 py-3 shadow-lg ${
+            isStaff ? 'justify-center' : 'justify-evenly'
+          }`}
+          style={{ marginBottom: insets.bottom + 12}}
         >
           {state.routes.map((route, index) => {
             if (route.name === 'Dashboard') return null; // CHANGED: ẩn icon Dashboard nhưng giữ index để state khớp

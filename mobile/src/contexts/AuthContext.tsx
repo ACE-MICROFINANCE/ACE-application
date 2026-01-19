@@ -70,6 +70,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const logout = async () => {
     await authStore.clear();
+    profileStore.reset();
     setAccessToken(null);
     setRefreshToken(null);
     setCustomer(null);

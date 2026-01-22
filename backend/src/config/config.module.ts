@@ -29,4 +29,8 @@ export const ConfigValidationSchema = Joi.object({
   ENABLE_LOAN_REMINDER: Joi.boolean().default(false),
   LOAN_REMINDER_DAYS: Joi.number().default(7),
   LOAN_REMINDER_HOUR: Joi.number().default(8),
+  FPT_TTS_API_KEY: Joi.string().optional(),
+  FPT_TTS_VOICE: Joi.string().default('banmai'),
+  FPT_TTS_SPEED: Joi.string().default('0'),
+  FPT_TTS_FORMAT: Joi.string().default('mp3'),
 });

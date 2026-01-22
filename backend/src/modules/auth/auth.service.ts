@@ -79,6 +79,7 @@ export class AuthService {
       memberNo: customer.memberNo,
       branchCode: customer.branchCode ?? null, // CHANGED: branchCode in JWT
       groupCode: customer.groupCode ?? null, // CHANGED: groupCode in JWT
+      accessibilityEnabled: customer.accessibilityEnabled === true, // CHANGED: carry accessibility flag
     };
 
     const refreshExpiresIn = this.getExpiresIn('jwt.refreshExpiresIn', '7d') as string | number;
@@ -206,6 +207,7 @@ export class AuthService {
         branchName: loginCustomer.branchName ?? null, // CHANGED: include branchName in profile
         groupCode: loginCustomer.groupCode ?? null,
         groupName: loginCustomer.groupName ?? null,
+        accessibilityEnabled: loginCustomer.accessibilityEnabled === true, // CHANGED: expose accessibility flag in profile
       }, // CHANGED: include profile payload for RBAC
     };
   }

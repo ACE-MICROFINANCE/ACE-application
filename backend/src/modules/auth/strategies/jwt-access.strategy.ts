@@ -10,6 +10,7 @@ export interface JwtPayload {
   role?: 'ADMIN' | 'BRANCH_MANAGER';
   branchCode?: string | null;
   groupCode?: string | null;
+  accessibilityEnabled?: boolean; // CHANGED: carry accessibility flag for customer tokens
 }
 
 @Injectable()
@@ -30,6 +31,7 @@ export class JwtAccessStrategy extends PassportStrategy(Strategy, 'jwt-access') 
       role: payload.role, // CHANGED: attach staff role
       branchCode: payload.branchCode ?? null, // CHANGED: attach branchCode
       groupCode: payload.groupCode ?? null, // CHANGED: attach groupCode
+      accessibilityEnabled: payload.accessibilityEnabled ?? undefined, // CHANGED: pass accessibility flag
     };
   }
 }

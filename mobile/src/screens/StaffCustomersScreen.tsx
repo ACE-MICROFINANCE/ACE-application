@@ -5,12 +5,14 @@ import {
   Animated,
   Modal,
   Platform,
+  Dimensions,
   Pressable,
   ScrollView,
   Text,
   TextInput,
   View,
   Switch,
+  StyleSheet,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -52,6 +54,8 @@ const StaffCustomersScreen = () => {
   const { profile } = useProfileStore();
   const isStaff = profile?.actorKind === 'STAFF';
   const insets = useSafeAreaInsets();
+  const { height: WIN_H } = Dimensions.get('window');
+  const MODAL_H = Math.min(WIN_H * 0.86, 720);
 
   const [customers, setCustomers] = useState<StaffCustomerItem[]>([]);
   const [searchValue, setSearchValue] = useState('');

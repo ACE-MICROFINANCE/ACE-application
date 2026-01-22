@@ -12,6 +12,9 @@ import {
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useProfileStore } from '@store/profileStore';
+import { requestTts } from '@services/ttsApi';
+import { playTtsUrl, stopTts } from '@lib/ttsPlayer';
+import { markSpoken, shouldSpeak } from '@lib/accessibilityCooldown';
 
 // CHANGED: dùng icon giống web (copy từ web/public/img)
 const iconMap: Record<string, any> = {
@@ -22,6 +25,16 @@ const iconMap: Record<string, any> = {
   Account: require('../../assets/img/account_icon.jpg'),
   StaffCustomers: require('../../assets/img/staff_management_icon.jpg'),
   StaffManage: require('../../assets/img/staff_management_icon.jpg'), // fallback nếu không có contact_sso
+};
+
+const labelMap: Record<string, string> = {
+  Loans: 'Khoản vay',
+  Savings: 'Tiết kiệm',
+  Schedule: 'Lịch',
+  Info: 'Thông tin',
+  Account: 'Tài khoản',
+  StaffCustomers: 'Quản lý khách hàng',
+  StaffManage: 'Quản lý nhân viên',
 };
 
 type TabItemProps = {
@@ -135,11 +148,65 @@ export const TabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, naviga
   const insets = useSafeAreaInsets();
   const { profile } = useProfileStore();
   const isStaff = profile?.actorKind === 'STAFF';
+  const accessibilityEnabled =
+    profile?.actorKind === 'CUSTOMER' && profile?.accessibilityEnabled === true;
+
+  const confirmedTabsRef = useRef<Set<string>>(new Set());
+  const pendingRef = useRef<{ name: string; at: number } | null>(null);
+
+  useEffect(() => {
+    return () => {
+      stopTts();
+    };
+  }, []);
 
   const routes = useMemo(
     () => state.routes.filter((route) => route.name !== 'Dashboard'),
     [state.routes],
   );
+
+  const handleAccessiblePress = async (routeName: string, navigateFn: () => void) => {
+    if (!accessibilityEnabled) {
+      navigateFn();
+      return;
+    }
+
+    if (confirmedTabsRef.current.has(routeName)) {
+      navigateFn();
+      return;
+    }
+
+    const now = Date.now();
+    const pending = pendingRef.current;
+    const CONFIRM_WINDOW = 2500;
+    const COOLDOWN = 60_000;
+
+    if (pending && pending.name === routeName && now - pending.at <= CONFIRM_WINDOW) {
+      confirmedTabsRef.current.add(routeName);
+      pendingRef.current = null;
+      await stopTts();
+      navigateFn();
+      return;
+    }
+
+    pendingRef.current = { name: routeName, at: now };
+
+    if (!shouldSpeak(routeName, now, COOLDOWN)) {
+      return; // trong cooldown: không đọc lại, không navigate
+    }
+
+    const text = labelMap[routeName] ?? routeName;
+    markSpoken(routeName, now);
+    try {
+      await stopTts();
+      const res = await requestTts(text);
+      if (res?.audioUrl) {
+        await playTtsUrl(res.audioUrl);
+      }
+    } catch {
+      // ignore TTS errors, không chặn UI
+    }
+  };
 
   return (
     <View pointerEvents="box-none" style={styles.root}>
@@ -175,12 +242,14 @@ export const TabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, naviga
                 });
 
                 if (!isFocused && !event.defaultPrevented) {
-                  navigation.navigate(route.name as never, route.params as never);
+                  const navigateFn = () => navigation.navigate(route.name as never, route.params as never);
+                  handleAccessiblePress(route.name, navigateFn);
                   return;
                 }
 
                 if (isFocused) {
-                  navigation.navigate('Dashboard' as never);
+                  const navigateFn = () => navigation.navigate('Dashboard' as never);
+                  handleAccessiblePress(route.name, navigateFn);
                 }
               };
 

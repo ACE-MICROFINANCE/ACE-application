@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "55656255346",
+    "project_id": "ace-app-27",
+    "storage_bucket": "ace-app-27.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:55656255346:android:e2b77189796167bab557eb",
+        "android_client_info": {
+          "package_name": "parner.anhchiem.org"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBgERm00z7dwfM871bFuJg05SSy7Lu_L1U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

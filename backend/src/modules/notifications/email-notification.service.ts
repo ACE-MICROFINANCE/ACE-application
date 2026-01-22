@@ -5,9 +5,13 @@ import { Feedback, Customer } from '@prisma/client';
 import * as fs from 'fs';
 import * as path from 'path';
 
+/**
+ * Legacy email notification service (feedback/password reset).
+ * Kept alongside push notifications for backward compatibility.
+ */
 @Injectable()
-export class NotificationService {
-  private readonly logger = new Logger(NotificationService.name);
+export class EmailNotificationService {
+  private readonly logger = new Logger(EmailNotificationService.name);
   private transporter: Transporter | null = null;
 
   constructor(private readonly configService: ConfigService) {
@@ -37,7 +41,7 @@ export class NotificationService {
   private renderTemplate(templateName: string, variables: Record<string, string>) {
     const candidates = [
       path.join(__dirname, 'templates', templateName), // dist
-      path.join(process.cwd(), 'src', 'modules', 'notifications', 'templates', templateName), // ts-node / dev
+      path.join(process.cwd(), 'src', 'modules', 'notifications', 'templates', templateName), // dev
     ];
     for (const candidate of candidates) {
       if (fs.existsSync(candidate)) {
@@ -45,11 +49,11 @@ export class NotificationService {
           const raw = fs.readFileSync(candidate, 'utf-8');
           return raw.replace(/{{(.*?)}}/g, (_, key: string) => variables[key.trim()] ?? '');
         } catch (error) {
-          this.logger.warn(`Đọc template thất bại: ${candidate}. Error: ${error}`);
+          this.logger.warn(`Render template failed: ${candidate}. Error: ${error}`);
         }
       }
     }
-    this.logger.warn(`Không tìm thấy template ${templateName} trong các đường dẫn: ${candidates.join(', ')}`);
+    this.logger.warn(`Template ${templateName} not found in: ${candidates.join(', ')}`);
     return '';
   }
 
@@ -75,7 +79,7 @@ export class NotificationService {
   }
 
   async sendPasswordResetToStaff(customer: Customer, tempPassword: string) {
-    const subject = `Yêu cầu cấp lại mật khẩu cho khách hàng ${customer.memberNo}`;
+    const subject = `Yeu cau cap lai mat khau cho khach hang ${customer.memberNo}`;
     const html =
       this.renderTemplate('reset-password.html', {
         memberNo: customer.memberNo,
@@ -86,22 +90,22 @@ export class NotificationService {
         tempPassword,
       }) ||
       `
-        <p>Nhân viên thân mến,</p>
-        <p>Có yêu cầu cấp lại mật khẩu cho khách hàng:</p>
+        <p>Nhan vien than men,</p>
+        <p>Co yeu cau cap lai mat khau cho khach hang:</p>
         <ul>
-          <li><strong>Mã thành viên:</strong> ${customer.memberNo}</li>
-          <li><strong>Họ tên:</strong> ${customer.fullName ?? ''}</li>
-          <li><strong>Số điện thoại:</strong> ${customer.phoneNumber ?? ''}</li>
-          <li><strong>Địa chỉ:</strong> ${(customer.villageName ?? '')} ${(customer.groupName ?? '')}</li>
-          <li><strong>Mật khẩu tạm:</strong> ${tempPassword}</li>
+          <li><strong>Ma thanh vien:</strong> ${customer.memberNo}</li>
+          <li><strong>Ho ten:</strong> ${customer.fullName ?? ''}</li>
+          <li><strong>So dien thoai:</strong> ${customer.phoneNumber ?? ''}</li>
+          <li><strong>Dia chi:</strong> ${(customer.villageName ?? '')} ${(customer.groupName ?? '')}</li>
+          <li><strong>Mat khau tam:</strong> ${tempPassword}</li>
         </ul>
-        <p>Vui lòng chủ động liên hệ khách hàng và hướng dẫn đổi mật khẩu sau khi đăng nhập.</p>
+        <p>Vui long lien he khach hang va huong dan doi mat khau sau khi dang nhap.</p>
       `;
     await this.sendMail(subject, html);
   }
 
   async sendFeedbackToStaff(customer: Customer, feedback: Feedback) {
-    const subject = `Feedback mới từ khách hàng ${customer.memberNo}`;
+    const subject = `Feedback moi tu khach hang ${customer.memberNo}`;
     const html =
       this.renderTemplate('feedback.html', {
         memberNo: customer.memberNo,
@@ -113,16 +117,16 @@ export class NotificationService {
         content: feedback.content ?? '',
       }) ||
       `
-        <p>Nhân viên thân mến,</p>
-        <p>Khách hàng vừa gửi góp ý:</p>
+        <p>Nhan vien than men,</p>
+        <p>Khach hang vua gui gop y:</p>
         <ul>
-          <li><strong>Mã thành viên:</strong> ${customer.memberNo}</li>
-          <li><strong>Họ tên:</strong> ${customer.fullName ?? ''}</li>
-          <li><strong>Số điện thoại:</strong> ${customer.phoneNumber ?? ''}</li>
-          <li><strong>Địa chỉ:</strong> ${(customer.villageName ?? '')} ${(customer.groupName ?? '')}</li>
-          <li><strong>Thời gian:</strong> ${feedback.createdAt.toISOString()}</li>
+          <li><strong>Ma thanh vien:</strong> ${customer.memberNo}</li>
+          <li><strong>Ho ten:</strong> ${customer.fullName ?? ''}</li>
+          <li><strong>So dien thoai:</strong> ${customer.phoneNumber ?? ''}</li>
+          <li><strong>Dia chi:</strong> ${(customer.villageName ?? '')} ${(customer.groupName ?? '')}</li>
+          <li><strong>Thoi gian:</strong> ${feedback.createdAt.toISOString()}</li>
         </ul>
-        <p><strong>Nội dung:</strong></p>
+        <p><strong>Noi dung:</strong></p>
         <p>${feedback.content}</p>
       `;
     await this.sendMail(subject, html);

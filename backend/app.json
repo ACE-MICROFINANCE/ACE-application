@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "7ee4a610-fc24-4614-a272-896885718dfc"
+      }
+    },
+    "android": {
+      "package": "com.phucpink.acefarmerbackend"
+    }
+  }
+}

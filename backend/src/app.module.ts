@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ConfigModule } from '@nestjs/config';
 import configuration from './config/configuration';
 import { ConfigValidationSchema } from './config/config.module';
@@ -13,6 +14,7 @@ import { FeedbackModule } from './modules/feedback/feedback.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { WeatherModule } from './weather/weather.module';
 import { StaffUsersModule } from './modules/staff-users/staff-users.module'; // CHANGED: staff users RBAC
+import { NotificationsModule } from './modules/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -21,6 +23,7 @@ import { StaffUsersModule } from './modules/staff-users/staff-users.module'; // 
       load: [configuration],
       validationSchema: ConfigValidationSchema,
     }),
+    ScheduleModule.forRoot(),
     PrismaModule,
     AuthModule,
     CustomersModule,
@@ -32,6 +35,7 @@ import { StaffUsersModule } from './modules/staff-users/staff-users.module'; // 
     DashboardModule,
     WeatherModule,
     StaffUsersModule, // CHANGED: staff users RBAC
+    NotificationsModule,
   ],
 })
 export class AppModule {}

@@ -16,7 +16,27 @@ Full-stack setup for ACE Farmer (backend + web + mobile). This README is for new
   - Customer pages: /dashboard/*
   - Staff pages: /staff/dashboard/*
   - Admin pages: /dashboard/admin/*
-- mobile/: Expo RN client (not covered here, similar API usage as web).
+- mobile/: Expo RN client (Expo-managed).
+
+### backend/ layout (high level)
+- src/
+  - modules/ (auth, admin, customers, loans, savings, events/schedule, feedback, notifications, dashboard)
+  - common/ (guards/interceptors/utils)
+  - config/ (env validation, configuration)
+  - main.ts, app.module.ts
+- prisma/ (schema.prisma, migrations/, seed.ts)
+- docs/ (API/docs/notifications etc.)
+
+### mobile/ layout (high level)
+- src/
+  - screens/ (CustomerScheduleScreen, StaffScheduleScreen, StaffCustomersScreen, StaffManageScreen, etc.)
+  - navigation/ (TabBar, navigators)
+  - components/ (ui, layout MobileFrame, forms)
+  - lib/ (apiClient, tokenStore)
+  - store/ (profile/auth stores)
+  - theme/ (tokens)
+- assets/ (images/icons)
+- app.json, .env (Expo config)
 
 ## Prerequisites
 - Node.js 18+ and npm
@@ -74,6 +94,10 @@ npm run dev    # runs at 3000
 - CUSTOMER: logs in with memberNo + password; sees full customer dashboard (loan, savings, schedule, info, account).
 - STAFF (BRANCH_MANAGER): logs in with email + password; scoped to branchCode; manages schedules for their branch.
 - ADMIN: logs in with email + password; manages staff users and branches list.
+
+## Accessibility (Trợ năng)
+- Mobile: Staff can toggle “Trợ năng” per customer in StaffCustomersScreen; when enabled, app surfaces accessibility-friendly flows (e.g., simplified navigation, voice-friendly prompts – pending UX work) for that customer’s account.
+- Backend: Accessibility flag is stored on the customer record and can be toggled via staff API (setCustomerAccessibilityForStaff); value is returned in /me and staff customer detail endpoints so mobile can render the toggle and adapt UI.
 
 ## Core Business Rules
 - Single login endpoint: POST /auth/login accepts { identifier, password }.

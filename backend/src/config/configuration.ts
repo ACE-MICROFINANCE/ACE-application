@@ -35,4 +35,18 @@ export default () => ({
   security: {
     tempPasswordEncKey: process.env.TEMP_PASSWORD_ENC_KEY, // CHANGED: AES-GCM key for temp password
   },
+  notifications: {
+    pushMode: process.env.PUSH_MODE || 'stub', // stub|fcm
+    enableRealtime: process.env.ENABLE_REALTIME === 'true',
+    enableScheduleReminder: process.env.ENABLE_SCHEDULE_REMINDER === 'true',
+    scheduleReminderDays: process.env.SCHEDULE_REMINDER_DAYS
+      ? Number(process.env.SCHEDULE_REMINDER_DAYS)
+      : 7,
+    scheduleReminderHour: process.env.SCHEDULE_REMINDER_HOUR
+      ? Number(process.env.SCHEDULE_REMINDER_HOUR)
+      : 8,
+    enableLoanReminder: process.env.ENABLE_LOAN_REMINDER === 'true',
+    loanReminderDays: process.env.LOAN_REMINDER_DAYS ? Number(process.env.LOAN_REMINDER_DAYS) : 7,
+    loanReminderHour: process.env.LOAN_REMINDER_HOUR ? Number(process.env.LOAN_REMINDER_HOUR) : 8,
+  },
 });

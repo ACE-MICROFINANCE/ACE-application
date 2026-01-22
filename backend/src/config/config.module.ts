@@ -21,4 +21,12 @@ export const ConfigValidationSchema = Joi.object({
   PAYMENT_BANK_ACCOUNT_NAME: Joi.string().required(),
   DEFAULT_CUSTOMER_PASSWORD: Joi.string().optional(), // CHANGED: optional stub password
   TEMP_PASSWORD_ENC_KEY: Joi.string().required(), // CHANGED: AES-GCM key for temp password
+  PUSH_MODE: Joi.string().valid('stub', 'fcm').default('stub'),
+  ENABLE_REALTIME: Joi.boolean().default(false),
+  ENABLE_SCHEDULE_REMINDER: Joi.boolean().default(false),
+  SCHEDULE_REMINDER_DAYS: Joi.number().default(7),
+  SCHEDULE_REMINDER_HOUR: Joi.number().default(8),
+  ENABLE_LOAN_REMINDER: Joi.boolean().default(false),
+  LOAN_REMINDER_DAYS: Joi.number().default(7),
+  LOAN_REMINDER_HOUR: Joi.number().default(8),
 });

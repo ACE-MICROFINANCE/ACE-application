@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, Text, View, Platform } from 'react-native';
 import { MobileFrame } from '@components/layout/MobileFrame';
 import { Card } from '@components/ui/Card';
 import { AppButton } from '@components/ui/AppButton';
@@ -74,7 +74,13 @@ const ScheduleItemRow = ({
     onPress={onToggle}
     className="flex-row items-center gap-4 px-4 py-4 active:bg-black/5"
     android_ripple={{ color: '#e5e7eb' }}
-    style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.99 : 1 }] })}
+    style={({ pressed }) =>
+      Platform.OS === 'web'
+        ? undefined
+        : {
+            backgroundColor: pressed ? 'rgba(0,0,0,0.03)' : 'transparent',
+          }
+    }
   >
     <View className="relative h-12 w-12 overflow-hidden rounded-full bg-black/5">
       <Image source={getAvatarUrl(item)} style={{ width: 48, height: 48 }} resizeMode="cover" />

@@ -11,7 +11,10 @@ import {
   TextInput,
   View,
   KeyboardAvoidingView,
+  StyleSheet,
+  Dimensions,
 } from "react-native";
+
 import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -52,6 +55,8 @@ const formatDateTimeDisplay = (iso?: string | null) => {
   const yyyy = d.getFullYear();
   return `${hh}:${mm}, ${dd}/${mo}/${yyyy}`;
 };
+const { height: WIN_H } = Dimensions.get("window");
+const MODAL_H = Math.min(WIN_H * 0.9, 720); // 90% màn hình, giới hạn 720 cho máy lớn
 
 const startOfToday = () => {
   const now = new Date();
@@ -81,6 +86,8 @@ const StaffScheduleScreen = () => {
   const insets = useSafeAreaInsets();
   const isStaff = profile?.actorKind === "STAFF";
   const isWeb = Platform.OS === "web";
+  const { height: WIN_H } = Dimensions.get("window");
+  const MODAL_H = Math.min(WIN_H * 0.9, 720);
 
   const [events, setEvents] = useState<ScheduleItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -94,10 +101,13 @@ const StaffScheduleScreen = () => {
   const [detailLoading, setDetailLoading] = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
   const [eventTypePickerOpen, setEventTypePickerOpen] = useState(false);
+
   const [groupSearch, setGroupSearch] = useState("");
   const [groupPickerOpen, setGroupPickerOpen] = useState(false);
   const [groupPickerSelection, setGroupPickerSelection] = useState<string[]>([]);
+
   const [datePickerMode, setDatePickerMode] = useState<"date" | "time" | null>(null);
   const [tempDate, setTempDate] = useState<Date | null>(null);
 
@@ -112,7 +122,7 @@ const StaffScheduleScreen = () => {
     selectedGroupCodes: [] as string[],
   });
 
-  const openCreateModal = () => {
+  const resetForm = () => {
     setSelectedEvent(null);
     setDetail(null);
     setDetailLoading(false);
@@ -129,7 +139,19 @@ const StaffScheduleScreen = () => {
       audienceMode: "BRANCH_ALL",
       selectedGroupCodes: [],
     });
+  };
+
+  const openCreateModal = () => {
+    resetForm();
     setModalMode("create");
+  };
+
+  const closeAllModals = () => {
+    setEventTypePickerOpen(false);
+    setGroupPickerOpen(false);
+    setModalMode(null);
+    setDatePickerMode(null);
+    setTempDate(null);
   };
 
   const fetchSchedule = async () => {
@@ -162,28 +184,31 @@ const StaffScheduleScreen = () => {
     setGroupSearch("");
     setGroupPickerSelection([]);
     setDetailLoading(true);
+
     try {
       const data = await appApi.getScheduleDetail(item.id as number);
       setDetail(data);
-      setGroupPickerSelection((data.targetGroups ?? []).map((g) => g.groupCode));
-      setFormState((prev) => ({
-        ...prev,
-        title: data.title ?? item.title,
-        eventType: data.eventType ?? item.eventType,
-        startDate: data.startDate ?? item.startDate,
+
+      const selectedCodes = (data.targetGroups ?? []).map((g) => g.groupCode);
+      setGroupPickerSelection(selectedCodes);
+
+      setFormState({
+        title: (data.title ?? item.title ?? "").toString(),
+        eventType: (data.eventType ?? item.eventType ?? "MEETING") as string,
+        startDate: (data.startDate ?? item.startDate ?? "").toString(),
         durationMinutes: data.durationMinutes ? String(data.durationMinutes) : "",
-        locationName: data.locationName ?? "",
-        description: data.description ?? "",
-        audienceMode: (data.audienceType as "BRANCH_ALL" | "GROUPS") || "BRANCH_ALL",
-        selectedGroupCodes: (data.targetGroups ?? []).map((g) => g.groupCode),
-      }));
+        locationName: (data.locationName ?? "").toString(),
+        description: (data.description ?? "").toString(),
+        audienceMode: ((data.audienceType as "BRANCH_ALL" | "GROUPS") || "BRANCH_ALL") as "BRANCH_ALL" | "GROUPS",
+        selectedGroupCodes: selectedCodes,
+      });
     } catch {
       setSaveError("Không tải được chi tiết lịch.");
       setFormState((prev) => ({
         ...prev,
-        title: item.title,
-        eventType: item.eventType as string,
-        startDate: item.startDate,
+        title: item.title ?? "",
+        eventType: (item.eventType ?? "MEETING") as string,
+        startDate: item.startDate ?? "",
       }));
     } finally {
       setDetailLoading(false);
@@ -227,14 +252,21 @@ const StaffScheduleScreen = () => {
       ? "Thêm lịch nông vụ"
       : "Thêm lịch";
 
-  const handleSaveEdit = async () => {
-    if (!selectedEvent) return;
+  const validateAudience = () => {
     if (formState.audienceMode === "GROUPS" && formState.selectedGroupCodes.length === 0) {
       setSaveError("Vui lòng chọn ít nhất 1 nhóm.");
-      return;
+      return false;
     }
+    return true;
+  };
+
+  const handleSaveEdit = async () => {
+    if (!selectedEvent) return;
+    if (!validateAudience()) return;
+
     setSaveLoading(true);
     setSaveError(null);
+
     try {
       const payload = {
         title: formState.title.trim() || undefined,
@@ -251,6 +283,7 @@ const StaffScheduleScreen = () => {
               })
             : undefined,
       };
+
       await appApi.updateSchedule(selectedEvent.id as number, payload);
       setModalMode(null);
       await fetchSchedule();
@@ -274,12 +307,11 @@ const StaffScheduleScreen = () => {
       setSaveError("Vui lòng nhập thời lượng hợp lệ.");
       return;
     }
-    if (formState.audienceMode === "GROUPS" && formState.selectedGroupCodes.length === 0) {
-      setSaveError("Vui lòng chọn ít nhất 1 nhóm.");
-      return;
-    }
+    if (!validateAudience()) return;
+
     setSaveLoading(true);
     setSaveError(null);
+
     try {
       const payload: ScheduleCreatePayload = {
         title: formState.title.trim(),
@@ -297,6 +329,7 @@ const StaffScheduleScreen = () => {
               })
             : undefined,
       };
+
       await appApi.createEvent(payload);
       setModalMode(null);
       await fetchSchedule();
@@ -309,15 +342,19 @@ const StaffScheduleScreen = () => {
 
   const handleDelete = async () => {
     if (!selectedEvent) return;
+
     const confirmed = await new Promise<boolean>((resolve) => {
       Alert.alert("Xóa lịch?", "Bạn có chắc muốn xóa lịch này không?", [
         { text: "Hủy", style: "cancel", onPress: () => resolve(false) },
         { text: "Xóa", style: "destructive", onPress: () => resolve(true) },
       ]);
     });
+
     if (!confirmed) return;
+
     setSaveLoading(true);
     setSaveError(null);
+
     try {
       await appApi.deleteEvent(selectedEvent.id as number);
       setModalMode(null);
@@ -356,9 +393,9 @@ const StaffScheduleScreen = () => {
     setDatePickerMode("date");
   };
 
-  const handleDateChange = (_event: any, selected?: Date) => {
+  const handleDateChange = (event: any, selected?: Date) => {
     if (datePickerMode !== "date") return;
-    if (!_event || _event.type === "dismissed") {
+    if (!event || event.type === "dismissed") {
       setDatePickerMode(null);
       return;
     }
@@ -367,9 +404,9 @@ const StaffScheduleScreen = () => {
     setDatePickerMode("time");
   };
 
-  const handleTimeChange = (_event: any, selected?: Date) => {
+  const handleTimeChange = (event: any, selected?: Date) => {
     if (datePickerMode !== "time") return;
-    if (!_event || _event.type === "dismissed") {
+    if (!event || event.type === "dismissed") {
       setDatePickerMode(null);
       return;
     }
@@ -384,6 +421,7 @@ const StaffScheduleScreen = () => {
   const renderAudience = () => (
     <View className="space-y-2">
       <Text className="text-xs font-medium text-[#6C757D]">Đối tượng</Text>
+
       <View className="flex-row gap-2">
         {[
           { value: "BRANCH_ALL" as const, label: "Toàn chi nhánh" },
@@ -391,23 +429,23 @@ const StaffScheduleScreen = () => {
         ].map((opt) => (
           <Pressable
             key={opt.value}
-            onPress={() =>
+            onPress={() => {
+              setSaveError(null);
               setFormState((prev) => ({
                 ...prev,
                 audienceMode: opt.value,
                 selectedGroupCodes: opt.value === "GROUPS" ? prev.selectedGroupCodes : [],
-              }))
-            }
+              }));
+            }}
             className={`rounded-full border px-4 py-2 ${
-              formState.audienceMode === opt.value
-                ? "border-[#0A84FF] bg-[#E7F2FF]"
-                : "border-black/10 bg-white"
+              formState.audienceMode === opt.value ? "border-[#0A84FF] bg-[#E7F2FF]" : "border-black/10 bg-white"
             }`}
           >
             <Text className="text-sm font-semibold text-[#111]">{opt.label}</Text>
           </Pressable>
         ))}
       </View>
+
       {formState.audienceMode === "GROUPS" ? (
         <Pressable
           onPress={() => {
@@ -423,17 +461,17 @@ const StaffScheduleScreen = () => {
           </Text>
         </Pressable>
       ) : null}
-      {formState.audienceMode === "GROUPS" && formState.selectedGroupCodes.length === 0 && saveError ? (
-        <Text className="text-xs text-red-500">{saveError}</Text>
-      ) : null}
     </View>
   );
+
+  // ✅ Fix “Invalid prop ... to React.Fragment”: không dùng Fragment để gắn props
+  // Ở đây ta dùng View wrapper thay cho <>...</>
 
   if (!isStaff) {
     return (
       <MobileFrame withBottomPadding>
         <View className="flex-1 items-center justify-center px-4">
-          <Card className="w-full rounded-2xl">
+          <Card className="w-full rounded-2xl bg-white">
             <Text className="text-center text-sm text-[#666]">Bạn không có quyền truy cập trang này.</Text>
           </Card>
         </View>
@@ -445,28 +483,29 @@ const StaffScheduleScreen = () => {
     <MobileFrame withBottomPadding>
       <ScrollView
         className="flex-1"
+        // ✅ Bỏ background xám: không set backgroundColor #F2F2F7 nữa
         contentContainerStyle={{
           paddingTop: 32,
           paddingBottom: 72,
           paddingHorizontal: 16,
           gap: 16,
-          backgroundColor: "#F2F2F7",
+          backgroundColor: "#FFFFFF",
         }}
         showsVerticalScrollIndicator={false}
       >
         <View style={{ alignSelf: "center", width: "100%", maxWidth: 480, gap: 16 }}>
-          <Card className="rounded-2xl bg-[#DFF5D1] px-6 py-4 text-center shadow-md items-center">
+          <Card className="rounded-2xl bg-[#DFF5D1] px-6 py-4 items-center">
             <Text className="text-xl font-semibold text-slate-900">Công tác và Tập huấn</Text>
           </Card>
 
-          <View className="rounded-3xl border border-black/5 bg-white shadow-[0_12px_32px_rgba(0,0,0,0.10)] overflow-hidden">
+          <View className="rounded-3xl border border-black/5 bg-white overflow-hidden">
             {isLoading ? (
               <View className="px-4 py-6 items-center">
                 <ActivityIndicator />
                 <Text className="mt-2 text-sm text-[#666]">Đang tải lịch...</Text>
               </View>
             ) : error ? (
-              <View className="space-y-2 px-4 py-6 text-center">
+              <View className="px-4 py-6 items-center" style={{ gap: 8 }}>
                 <Text className="text-sm text-red-500">{error}</Text>
                 <AppButton title="Thử lại" onPress={fetchSchedule} />
               </View>
@@ -477,13 +516,12 @@ const StaffScheduleScreen = () => {
             ) : (
               upcomingEvents.map((event, index) => (
                 <Pressable
-                  key={event.id}
+                  key={String(event.id)}
                   onPress={() => openEditModal(event)}
                   className="flex-row items-center gap-4 px-4 py-4"
                   android_ripple={{ color: "rgba(0,0,0,0.03)" }}
                   style={({ pressed }) => ({
                     backgroundColor: pressed ? "rgba(0,0,0,0.03)" : "transparent",
-                    transform: [{ scale: pressed ? 0.99 : 1 }],
                     borderBottomWidth: index === upcomingEvents.length - 1 ? 0 : 1,
                     borderBottomColor: "rgba(0,0,0,0.05)",
                   })}
@@ -491,7 +529,7 @@ const StaffScheduleScreen = () => {
                   <View className="relative h-12 w-12 overflow-hidden rounded-full bg-black/5">
                     <Image source={getAvatarUrl(event)} style={{ width: 48, height: 48 }} resizeMode="cover" />
                   </View>
-                  <View className="flex-1 space-y-1">
+                  <View className="flex-1" style={{ gap: 4 }}>
                     <Text className="text-sm font-semibold text-[#0A84FF]">{formatDate(event.startDate)}</Text>
                     <Text className="text-sm text-[#1C1C1E]" numberOfLines={2}>
                       {buildEventText(event)}
@@ -504,14 +542,22 @@ const StaffScheduleScreen = () => {
         </View>
       </ScrollView>
 
-      <View pointerEvents="box-none" style={{ position: "absolute", inset: 0 }}>
-        <View className="pointer-events-none absolute inset-x-0 bottom-0 z-50">
-          <View className="mx-auto w-full max-w-md relative pointer-events-auto">
+      {/* Floating plus button */}
+      <View pointerEvents="box-none" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
+        <View pointerEvents="none" style={{ position: "absolute", left: 0, right: 0, bottom: 0 }}>
+          <View pointerEvents="box-none" style={{ marginHorizontal: "auto" as any, width: "100%", maxWidth: 480 }}>
             <Pressable
               onPress={openCreateModal}
-              className="absolute right-4 h-14 w-14 items-center justify-center rounded-full bg-[#007AFF] shadow-[0_12px_30px_rgba(0,0,0,0.25)]"
               style={{
+                position: "absolute",
+                right: 16,
                 bottom: insets.bottom + 122,
+                height: 56,
+                width: 56,
+                borderRadius: 28,
+                backgroundColor: "#007AFF",
+                alignItems: "center",
+                justifyContent: "center",
               }}
             >
               <Feather name="plus" size={26} color="#fff" />
@@ -520,155 +566,273 @@ const StaffScheduleScreen = () => {
         </View>
       </View>
 
-      <Modal transparent visible={modalMode !== null} animationType="fade" onRequestClose={() => setModalMode(null)}>
-        <Pressable className="flex-1 bg-black/30 px-4" onPress={() => setModalMode(null)}>
+      {/* Create/Edit modal */}
+      <Modal transparent visible={Boolean(modalMode)} animationType="fade" onRequestClose={() => setModalMode(null)}>
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.30)" }}>
+          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setModalMode(null)} />
+
           <KeyboardAvoidingView
             behavior={Platform.OS === "ios" ? "padding" : undefined}
-            style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+            style={{ flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: 16 }}
           >
             <Pressable
-              className="w-full max-w-md overflow-hidden rounded-[28px] border border-black/5 bg-white shadow-2xl"
               onPress={(e) => e.stopPropagation()}
-              style={{ maxHeight: isWeb ? "90vh" : "90%", width: "100%" }}
+              style={{
+                width: "100%",
+                maxWidth: 520,
+                height: MODAL_H,
+                backgroundColor: "#fff",
+                borderRadius: 28,
+                overflow: "hidden",
+                borderWidth: 1,
+                borderColor: "rgba(0,0,0,0.06)",
+              }}
             >
-              <View className="relative flex-row items-center justify-center border-b border-black/5 px-6 py-4">
-                <Text className="text-[17px] font-semibold text-[#111]">{modalTitle}</Text>
+              {/* Header */}
+              <View
+                style={{
+                  paddingHorizontal: 24,
+                  paddingVertical: 16,
+                  borderBottomWidth: 1,
+                  borderBottomColor: "rgba(0,0,0,0.06)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Text style={{ fontSize: 17, fontWeight: "600", color: "#111" }}>{modalTitle}</Text>
+
                 <Pressable
                   onPress={() => setModalMode(null)}
-                  className="absolute right-4 top-3 h-8 w-8 items-center justify-center rounded-full border border-black/10 bg-black/5"
-              >
-                <Text className="text-base text-[#333]">×</Text>
-              </Pressable>
-            </View>
-
-            <View style={{ flexGrow: 1, minHeight: 0 }}>
-              <ScrollView
-                style={{ flex: 1, maxHeight: isWeb ? "70vh" : undefined }}
-                keyboardShouldPersistTaps="handled"
-                nestedScrollEnabled
-                showsVerticalScrollIndicator
-                contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 12, flexGrow: 1 }}
-              >
-                <View className="space-y-2">
-                  <Text className="text-xs font-medium text-[#6C757D]">Tiêu đề</Text>
-                  <TextInput
-                    value={formState.title}
-                    onChangeText={(value) => setFormState((prev) => ({ ...prev, title: value }))}
-                  placeholder="Nhập tiêu đề"
-                  className="rounded-2xl border border-black/5 px-4 py-3 text-base"
-                />
-              </View>
-
-              {modalMode === "edit" ? (
-                <View className="space-y-1 rounded-2xl border border-black/5 bg-white px-4 py-3">
-                  <Text className="text-xs font-medium text-[#6C757D]">Loại sự kiện</Text>
-                  <Text className="text-sm font-semibold text-[#111]">
-                    {EVENT_TYPES.find((opt) => opt.value === formState.eventType)?.label || formState.eventType}
-                  </Text>
-                </View>
-              ) : (
-                <View className="space-y-2">
-                  <Text className="text-xs font-medium text-[#6C757D]">Loại sự kiện</Text>
-                  <Pressable
-                    onPress={() => setEventTypePickerOpen(true)}
-                    className="flex-row items-center justify-between rounded-2xl border border-black/5 bg-white px-4 py-3"
-                  >
-                    <Text className="text-base font-semibold text-[#111]">
-                      {EVENT_TYPES.find((opt) => opt.value === formState.eventType)?.label || "Chọn loại sự kiện"}
-                    </Text>
-                    <Feather name="chevron-down" size={18} color="#0A84FF" />
-                  </Pressable>
-                </View>
-              )}
-
-              {renderAudience()}
-
-              <View className="space-y-2">
-                <Text className="text-xs font-medium text-[#6C757D]">Bắt đầu</Text>
-                <Pressable
-                  onPress={handleOpenDatePicker}
-                  className="rounded-2xl border border-black/5 px-4 py-3 bg-white flex-row items-center justify-between"
+                  style={{
+                    position: "absolute",
+                    right: 16,
+                    top: 12,
+                    height: 32,
+                    width: 32,
+                    borderRadius: 16,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: "rgba(0,0,0,0.05)",
+                    borderWidth: 1,
+                    borderColor: "rgba(0,0,0,0.10)",
+                  }}
                 >
-                  <Text className="text-base font-semibold text-[#111]">{formatDateTimeDisplay(formState.startDate)}</Text>
-                  <Feather name="chevron-down" size={18} color="#0A84FF" />
+                  <Text style={{ fontSize: 18, color: "#333" }}>×</Text>
                 </Pressable>
-                {formState.eventType === "MEETING" ? (
-                  <Text className="text-sm text-[#6C757D] leading-relaxed">
-                    Lịch họp thường lặp lại mỗi 28 ngày kể từ ngày đã chọn. Nếu trùng Tết hoặc ngày bận, bạn có thể chỉnh lại thủ công.
-                  </Text>
-                ) : null}
               </View>
 
-              <View className="space-y-2">
-                <Text className="text-xs font-medium text-[#6C757D]">Thời lượng (phút)</Text>
-                <TextInput
-                  keyboardType="numeric"
-                  value={formState.durationMinutes}
-                  onChangeText={(value) => setFormState((prev) => ({ ...prev, durationMinutes: value.replace(/[^0-9]/g, "") }))}
-                  placeholder="Nhập thời lượng"
-                  className="rounded-2xl border border-black/5 px-4 py-3 text-base"
-                />
+              {/* Body */}
+              <View style={{ flex: 1, minHeight: 0 }}>
+                <ScrollView
+                  style={{ flex: 1 }}
+                  keyboardShouldPersistTaps="handled"
+                  nestedScrollEnabled
+                  contentContainerStyle={{
+                    paddingHorizontal: 24,
+                    paddingTop: 16,
+                    paddingBottom: 24,
+                    gap: 12,
+                  }}
+                >
+                  {detailLoading ? (
+                    <View style={{ paddingVertical: 8, alignItems: "center", gap: 8 }}>
+                      <ActivityIndicator />
+                      <Text style={{ fontSize: 13, color: "#666" }}>Đang tải chi tiết...</Text>
+                    </View>
+                  ) : null}
+
+                  {/* Title */}
+                  <View style={{ gap: 8 }}>
+                    <Text style={{ fontSize: 12, fontWeight: "600", color: "#6C757D" }}>Tiêu đề</Text>
+                    <TextInput
+                      value={formState.title}
+                      onChangeText={(value) => setFormState((prev) => ({ ...prev, title: value }))}
+                      placeholder="Nhập tiêu đề"
+                      style={{
+                        borderWidth: 1,
+                        borderColor: "rgba(0,0,0,0.06)",
+                        borderRadius: 16,
+                        paddingHorizontal: 16,
+                        paddingVertical: 12,
+                        fontSize: 16,
+                        backgroundColor: "#fff",
+                      }}
+                    />
+                  </View>
+
+                  {/* Event type */}
+                  {modalMode === "edit" ? (
+                    <View style={{ gap: 6, borderWidth: 1, borderColor: "rgba(0,0,0,0.06)", borderRadius: 16, paddingHorizontal: 16, paddingVertical: 12 }}>
+                      <Text style={{ fontSize: 12, fontWeight: "600", color: "#6C757D" }}>Loại sự kiện</Text>
+                      <Text style={{ fontSize: 14, fontWeight: "600", color: "#111" }}>
+                        {EVENT_TYPES.find((opt) => opt.value === formState.eventType)?.label || formState.eventType}
+                      </Text>
+                    </View>
+                  ) : (
+                    <View style={{ gap: 8 }}>
+                      <Text style={{ fontSize: 12, fontWeight: "600", color: "#6C757D" }}>Loại sự kiện</Text>
+                      <Pressable
+                        onPress={() => setEventTypePickerOpen(true)}
+                        style={{
+                          borderWidth: 1,
+                          borderColor: "rgba(0,0,0,0.06)",
+                          borderRadius: 16,
+                          paddingHorizontal: 16,
+                          paddingVertical: 12,
+                          backgroundColor: "#fff",
+                          flexDirection: "row",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <Text style={{ fontSize: 16, fontWeight: "600", color: "#111" }}>
+                          {EVENT_TYPES.find((opt) => opt.value === formState.eventType)?.label || "Chọn loại sự kiện"}
+                        </Text>
+                        <Feather name="chevron-down" size={18} color="#0A84FF" />
+                      </Pressable>
+                    </View>
+                  )}
+
+                  {/* Audience */}
+                  {renderAudience()}
+
+                  {/* Start */}
+                  <View style={{ gap: 8 }}>
+                    <Text style={{ fontSize: 12, fontWeight: "600", color: "#6C757D" }}>Bắt đầu</Text>
+                    <Pressable
+                      onPress={handleOpenDatePicker}
+                      style={{
+                        borderWidth: 1,
+                        borderColor: "rgba(0,0,0,0.06)",
+                        borderRadius: 16,
+                        paddingHorizontal: 16,
+                        paddingVertical: 12,
+                        backgroundColor: "#fff",
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <Text style={{ fontSize: 16, fontWeight: "600", color: "#111" }}>{formatDateTimeDisplay(formState.startDate)}</Text>
+                      <Feather name="chevron-down" size={18} color="#0A84FF" />
+                    </Pressable>
+
+                    {formState.eventType === "MEETING" ? (
+                      <Text style={{ fontSize: 13, color: "#6C757D", lineHeight: 18 }}>
+                        Lịch họp thường lặp lại mỗi 28 ngày kể từ ngày đã chọn. Nếu trùng Tết hoặc ngày bận, bạn có thể chỉnh lại thủ công.
+                      </Text>
+                    ) : null}
+                  </View>
+
+                  {/* Duration */}
+                  <View style={{ gap: 8 }}>
+                    <Text style={{ fontSize: 12, fontWeight: "600", color: "#6C757D" }}>Thời lượng (phút)</Text>
+                    <TextInput
+                      keyboardType="numeric"
+                      value={formState.durationMinutes}
+                      onChangeText={(value) =>
+                        setFormState((prev) => ({ ...prev, durationMinutes: value.replace(/[^0-9]/g, "") }))
+                      }
+                      placeholder="Nhập thời lượng"
+                      style={{
+                        borderWidth: 1,
+                        borderColor: "rgba(0,0,0,0.06)",
+                        borderRadius: 16,
+                        paddingHorizontal: 16,
+                        paddingVertical: 12,
+                        fontSize: 16,
+                        backgroundColor: "#fff",
+                      }}
+                    />
+                  </View>
+
+                  {/* Location */}
+                  <View style={{ gap: 8 }}>
+                    <Text style={{ fontSize: 12, fontWeight: "600", color: "#6C757D" }}>Địa điểm</Text>
+                    <TextInput
+                      value={formState.locationName}
+                      onChangeText={(value) => setFormState((prev) => ({ ...prev, locationName: value }))}
+                      placeholder="Nhập địa điểm"
+                      style={{
+                        borderWidth: 1,
+                        borderColor: "rgba(0,0,0,0.06)",
+                        borderRadius: 16,
+                        paddingHorizontal: 16,
+                        paddingVertical: 12,
+                        fontSize: 16,
+                        backgroundColor: "#fff",
+                      }}
+                    />
+                  </View>
+
+                  {/* Description */}
+                  <View style={{ gap: 8 }}>
+                    <Text style={{ fontSize: 12, fontWeight: "600", color: "#6C757D" }}>Mô tả</Text>
+                    <TextInput
+                      multiline
+                      numberOfLines={4}
+                      value={formState.description}
+                      onChangeText={(value) => setFormState((prev) => ({ ...prev, description: value }))}
+                      placeholder="Nhập mô tả"
+                      textAlignVertical="top"
+                      style={{
+                        borderWidth: 1,
+                        borderColor: "rgba(0,0,0,0.06)",
+                        borderRadius: 16,
+                        paddingHorizontal: 16,
+                        paddingVertical: 12,
+                        fontSize: 16,
+                        backgroundColor: "#fff",
+                        minHeight: 110,
+                      }}
+                    />
+                  </View>
+
+                  {saveError ? <Text style={{ fontSize: 14, color: "#e53935" }}>{saveError}</Text> : null}
+                </ScrollView>
               </View>
 
-              <View className="space-y-2">
-                <Text className="text-xs font-medium text-[#6C757D]">Địa điểm</Text>
-                <TextInput
-                  value={formState.locationName}
-                  onChangeText={(value) => setFormState((prev) => ({ ...prev, locationName: value }))}
-                  placeholder="Nhập địa điểm"
-                  className="rounded-2xl border border-black/5 px-4 py-3 text-base"
-                />
+              {/* Footer (✅ không dùng Fragment) */}
+              <View style={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 20, borderTopWidth: 1, borderTopColor: "rgba(0,0,0,0.06)", gap: 10 }}>
+                {modalMode === "edit" ? (
+                  <View style={{ gap: 10 }}>
+                    <AppButton title="Xóa lịch" onPress={handleDelete} loading={saveLoading} bgColor="#e53935" />
+                    <AppButton title="Lưu" onPress={handleSaveEdit} loading={saveLoading} />
+                  </View>
+                ) : (
+                  <View style={{ gap: 10 }}>
+                    <AppButton title="Hủy" onPress={() => setModalMode(null)} bgColor="#e53935" />
+                    <AppButton title="Tạo lịch" onPress={handleCreate} loading={saveLoading} />
+                  </View>
+                )}
               </View>
-
-              <View className="space-y-2">
-                <Text className="text-xs font-medium text-[#6C757D]">Mô tả</Text>
-                <TextInput
-                  multiline
-                  numberOfLines={4}
-                  value={formState.description}
-                  onChangeText={(value) => setFormState((prev) => ({ ...prev, description: value }))}
-                  placeholder="Nhập mô tả"
-                  className="rounded-2xl border border-black/5 px-4 py-3 text-base"
-                  textAlignVertical="top"
-                />
-              </View>
-
-              {saveError && <Text className="text-sm text-red-500">{saveError}</Text>}
-              </ScrollView>
-            </View>
-
-            <View className="flex-col items-stretch gap-2 border-t border-black/5 bg-white px-6 pb-5 pt-4">
-              {modalMode === "edit" ? (
-                <>
-                  <AppButton
-                    title="Xóa lịch"
-                    onPress={handleDelete}
-                    loading={saveLoading}
-                    bgColor="#e53935"
-                  />
-                  <AppButton title="Lưu" onPress={handleSaveEdit} loading={saveLoading} />
-                </>
-              ) : (
-                <>
-                  <AppButton
-                    title="Hủy"
-                    onPress={() => setModalMode(null)}
-                    bgColor="#e53935"
-                  />
-                  <AppButton title="Tạo lịch" onPress={handleCreate} loading={saveLoading} />
-                </>
-              )}
-            </View>
             </Pressable>
           </KeyboardAvoidingView>
-        </Pressable>
+        </View>
       </Modal>
 
-      <Modal transparent visible={eventTypePickerOpen} animationType="fade" onRequestClose={() => setEventTypePickerOpen(false)}>
-        <Pressable className="flex-1 items-center justify-center bg-black/30 px-4" onPress={() => setEventTypePickerOpen(false)}>
+      {/* Event type picker */}
+      <Modal
+        transparent
+        visible={eventTypePickerOpen}
+        animationType="fade"
+        presentationStyle={Platform.OS === "ios" ? "overFullScreen" : undefined}
+        onRequestClose={() => setEventTypePickerOpen(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.30)" }}>
+          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setEventTypePickerOpen(false)} />
           <Pressable
-            className="w-full max-w-sm rounded-2xl bg-white shadow-2xl overflow-hidden"
             onPress={(e) => e.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: 420,
+              backgroundColor: "#fff",
+              borderRadius: 16,
+              overflow: "hidden",
+              alignSelf: "center",
+              marginHorizontal: 16,
+              marginTop: "40%",
+            }}
           >
             {EVENT_TYPES.map((opt) => {
               const active = formState.eventType === opt.value;
@@ -679,111 +843,131 @@ const StaffScheduleScreen = () => {
                     setFormState((prev) => ({ ...prev, eventType: opt.value }));
                     setEventTypePickerOpen(false);
                   }}
-                  className={`px-4 py-3 border-b border-black/5 ${active ? "bg-[#E7F2FF]" : "bg-white"}`}
+                  style={{
+                    paddingHorizontal: 16,
+                    paddingVertical: 12,
+                    borderBottomWidth: 1,
+                    borderBottomColor: "rgba(0,0,0,0.06)",
+                    backgroundColor: active ? "#E7F2FF" : "#fff",
+                  }}
                 >
-                  <Text className={`text-base ${active ? "font-semibold text-[#0A84FF]" : "text-[#111]"}`}>{opt.label}</Text>
+                  <Text style={{ fontSize: 16, fontWeight: active ? "600" : "400", color: active ? "#0A84FF" : "#111" }}>
+                    {opt.label}
+                  </Text>
                 </Pressable>
               );
             })}
+
             <Pressable
               onPress={() => setEventTypePickerOpen(false)}
-              className="px-4 py-3 items-center justify-center bg-slate-100"
+              style={{ paddingHorizontal: 16, paddingVertical: 12, alignItems: "center", backgroundColor: "rgba(0,0,0,0.04)" }}
             >
-              <Text className="text-sm font-semibold text-[#111]">Đóng</Text>
+              <Text style={{ fontSize: 14, fontWeight: "600", color: "#111" }}>Đóng</Text>
             </Pressable>
           </Pressable>
-        </Pressable>
+        </View>
       </Modal>
 
-      <Modal transparent visible={groupPickerOpen} animationType="fade" onRequestClose={() => setGroupPickerOpen(false)}>
-        <Pressable className="flex-1 bg-black/30 px-4" onPress={() => setGroupPickerOpen(false)}>
+      {/* Group picker */}
+      <Modal
+        transparent
+        visible={groupPickerOpen}
+        animationType="fade"
+        presentationStyle={Platform.OS === "ios" ? "overFullScreen" : undefined}
+        onRequestClose={() => setGroupPickerOpen(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.30)" }}>
+          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setGroupPickerOpen(false)} />
           <KeyboardAvoidingView
             behavior={Platform.OS === "ios" ? "padding" : undefined}
-            style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+            style={{ flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: 16 }}
           >
             <Pressable
-              className="w-full max-w-sm rounded-2xl bg-white shadow-2xl overflow-hidden"
               onPress={(e) => e.stopPropagation()}
-              style={{ maxHeight: "85%", width: "100%" }}
+              style={{ width: "100%", maxWidth: 420, backgroundColor: "#fff", borderRadius: 16, overflow: "hidden", maxHeight: "85%" }}
             >
-              <View className="border-b border-black/10 bg-white px-4 py-3">
-                <Text className="text-base font-semibold text-[#111]">Chọn nhóm</Text>
-                <View className="mt-2 rounded-xl border border-black/10 bg-white px-3 py-2">
-                  <TextInput
-                    value={groupSearch}
-                  onChangeText={setGroupSearch}
-                  placeholder="Tìm nhóm..."
-                  className="text-sm text-[#111] py-1"
-                />
+              <View style={{ paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "rgba(0,0,0,0.10)" }}>
+                <Text style={{ fontSize: 16, fontWeight: "600", color: "#111" }}>Chọn nhóm</Text>
+
+                <View style={{ marginTop: 8, borderRadius: 12, borderWidth: 1, borderColor: "rgba(0,0,0,0.10)", paddingHorizontal: 12, paddingVertical: 8 }}>
+                  <TextInput value={groupSearch} onChangeText={setGroupSearch} placeholder="Tìm nhóm..." style={{ fontSize: 14, color: "#111", paddingVertical: 2 }} />
+                </View>
               </View>
-            </View>
-            <ScrollView
-              style={{ flex: 1 }}
-              keyboardShouldPersistTaps="handled"
-              nestedScrollEnabled
-              showsVerticalScrollIndicator
-              contentContainerStyle={{ flexGrow: 1 }}
-            >
-              {filteredGroups.length === 0 ? (
-                <Text className="px-4 py-3 text-sm text-[#666]">Chưa có nhóm phù hợp.</Text>
-              ) : (
-                filteredGroups.map((group) => {
-                  const checked = groupPickerSelection.includes(group.groupCode);
-                  return (
-                    <Pressable
-                      key={group.groupCode}
-                      onPress={() => {
-                        setGroupPickerSelection((prev) =>
-                          checked ? prev.filter((code) => code !== group.groupCode) : [...prev, group.groupCode],
-                        );
-                      }}
-                      className="flex-row items-center justify-between border-b border-black/5 px-4 py-3"
-                    >
-                      <View className="flex-1 pr-3">
-                        <Text className="text-sm font-semibold text-[#111]">{group.groupName || group.groupCode}</Text>
-                        <Text className="text-xs text-[#666]">
-                          {group.branchName ? `Chi nhánh: ${group.branchName}` : "Nhóm"}
-                        </Text>
-                      </View>
-                      <View
-                        className={`h-5 w-5 rounded-full border ${
-                          checked ? "border-[#0A84FF] bg-[#0A84FF]" : "border-black/25"
-                        }`}
-                      />
-                    </Pressable>
-                  );
-                })
-              )}
-            </ScrollView>
-            <View className="flex-row items-center gap-2 border-t border-black/10 bg-white px-4 py-3">
-              <View className="flex-1">
-                <AppButton
-                  title="Hủy"
-                  onPress={() => setGroupPickerOpen(false)}
-                  className="bg-slate-200"
-                  textClassName="text-slate-700"
-                  fullWidth={false}
-                />
+
+              <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled contentContainerStyle={{ flexGrow: 1 }}>
+                {filteredGroups.length === 0 ? (
+                  <Text style={{ paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: "#666" }}>Chưa có nhóm phù hợp.</Text>
+                ) : (
+                  filteredGroups.map((group) => {
+                    const checked = groupPickerSelection.includes(group.groupCode);
+                    return (
+                      <Pressable
+                        key={group.groupCode}
+                        onPress={() => {
+                          setGroupPickerSelection((prev) =>
+                            checked ? prev.filter((code) => code !== group.groupCode) : [...prev, group.groupCode],
+                          );
+                        }}
+                        style={{
+                          paddingHorizontal: 16,
+                          paddingVertical: 12,
+                          borderBottomWidth: 1,
+                          borderBottomColor: "rgba(0,0,0,0.06)",
+                          flexDirection: "row",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <View style={{ flex: 1, paddingRight: 12 }}>
+                          <Text style={{ fontSize: 14, fontWeight: "600", color: "#111" }}>{group.groupName || group.groupCode}</Text>
+                          <Text style={{ fontSize: 12, color: "#666", marginTop: 2 }}>
+                            {group.branchName ? `Chi nhánh: ${group.branchName}` : "Nhóm"}
+                          </Text>
+                        </View>
+
+                        <View
+                          style={{
+                            height: 20,
+                            width: 20,
+                            borderRadius: 10,
+                            borderWidth: 1,
+                            borderColor: checked ? "#0A84FF" : "rgba(0,0,0,0.25)",
+                            backgroundColor: checked ? "#0A84FF" : "transparent",
+                          }}
+                        />
+                      </Pressable>
+                    );
+                  })
+                )}
+              </ScrollView>
+
+              <View style={{ flexDirection: "row", gap: 10, paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1, borderTopColor: "rgba(0,0,0,0.10)" }}>
+                <View style={{ flex: 1 }}>
+                  <AppButton
+                    title="Hủy"
+                    onPress={() => setGroupPickerOpen(false)}
+                    bgColor="#E5E7EB"
+                    textClassName="text-slate-700"
+                    fullWidth={false}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <AppButton
+                    title="Xong"
+                    onPress={() => {
+                      setFormState((prev) => ({ ...prev, selectedGroupCodes: groupPickerSelection }));
+                      setGroupPickerOpen(false);
+                    }}
+                    fullWidth={false}
+                  />
+                </View>
               </View>
-              <View className="flex-1">
-                <AppButton
-                  title="Xong"
-                  onPress={() => {
-                    setFormState((prev) => ({
-                      ...prev,
-                      selectedGroupCodes: groupPickerSelection,
-                    }));
-                    setGroupPickerOpen(false);
-                  }}
-                  fullWidth={false}
-                />
-              </View>
-            </View>
             </Pressable>
           </KeyboardAvoidingView>
-        </Pressable>
+        </View>
       </Modal>
 
+      {/* iOS date/time picker */}
       {datePickerMode ? (
         <DateTimePicker
           value={tempDate || (formState.startDate ? new Date(formState.startDate) : new Date())}

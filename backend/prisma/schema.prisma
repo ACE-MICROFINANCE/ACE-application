@@ -194,4 +194,31 @@ model Feedback {
   customer Customer @relation(fields: [customerId], references: [id])
 }
 
+model Notification {
+  id                  String   @id @default(cuid())
+  recipientActorKind  String
+  recipientId         String
+  type                String
+  title               String
+  body                String
+  data                String
+  isRead              Boolean  @default(false)
+  notificationKey     String   @unique
+  createdAt           DateTime @default(now())
+
+  @@index([recipientActorKind, recipientId])
+}
+
+model DeviceToken {
+  id         String   @id @default(cuid())
+  actorKind  String
+  actorId    String
+  token      String   @unique
+  platform   String
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+
+  @@index([actorKind, actorId])
+}
+
 // NOTE: Them CustomerSavingsTransaction de luu lich su giao dich tu BIJLI va phuc vu /savings.

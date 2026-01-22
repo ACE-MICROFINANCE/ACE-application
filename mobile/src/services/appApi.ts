@@ -291,4 +291,8 @@ export const appApi = {
     const { data } = await apiClient.get('/me');
     return data;
   },
+  registerDeviceToken: async (token: string, platform: 'android' | 'ios') => {
+    const { data } = await apiClient.post('/notifications/device-token', { token, platform });
+    return data;
+  },
 };

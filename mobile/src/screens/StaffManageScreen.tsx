@@ -4,6 +4,7 @@ import {
   Alert,
   Animated,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -61,6 +62,7 @@ const StaffManageScreen = () => {
     branchCode: "",
     password: "",
   });
+  const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
   const [saveLoading, setSaveLoading] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [resetPassword, setResetPassword] = useState("");
@@ -344,7 +346,6 @@ const StaffManageScreen = () => {
                       android_ripple={{ color: "rgba(0,0,0,0.03)" }}
                       style={({ pressed }) => ({
                         backgroundColor: pressed ? "rgba(0,0,0,0.03)" : "transparent",
-                        transform: [{ scale: pressed ? 0.99 : 1 }],
                         borderBottomWidth: idx === arr.length - 1 ? 0 : 1,
                         borderBottomColor: "rgba(0,0,0,0.05)",
                       })}
@@ -374,18 +375,18 @@ const StaffManageScreen = () => {
       <View pointerEvents="box-none" style={{ position: "absolute", inset: 0 }}>
         <View className="pointer-events-none absolute inset-x-0 bottom-0 z-50">
           <View className="mx-auto w-full max-w-md relative pointer-events-auto">
-            <Pressable
-              onPress={openCreateModal}
-              onPressIn={() => Animated.spring(fabScale, { toValue: 0.95, useNativeDriver: true }).start()}
-              onPressOut={() => Animated.spring(fabScale, { toValue: 1, useNativeDriver: true }).start()}
-              className="absolute right-4 h-14 w-14 items-center justify-center rounded-full bg-[#007AFF] shadow-[0_12px_30px_rgba(0,0,0,0.25)]"
-              style={{
-                bottom: insets.bottom + 122,
-                transform: [{ scale: fabScale }],
-              }}
-            >
-              <Feather name="plus" size={28} color="#fff" />
-            </Pressable>
+           <AnimatedPressable
+  onPress={openCreateModal}
+  onPressIn={() => Animated.spring(fabScale, { toValue: 0.95, useNativeDriver: true }).start()}
+  onPressOut={() => Animated.spring(fabScale, { toValue: 1, useNativeDriver: true }).start()}
+  className="absolute right-4 h-14 w-14 items-center justify-center rounded-full bg-[#007AFF] shadow-[0_12px_30px_rgba(0,0,0,0.25)]"
+  style={{
+    bottom: insets.bottom + 122,
+    transform: [{ scale: fabScale }], // ✅ luôn đúng trên native + web
+  }}
+>
+  <Feather name="plus" size={28} color="#fff" />
+</AnimatedPressable>
           </View>
         </View>
       </View>
@@ -513,7 +514,9 @@ const StaffManageScreen = () => {
                   <Pressable
                     onPress={handleDelete}
                     className="w-full rounded-full bg-[#DC3545] px-4 py-3"
-                    style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.98 : 1 }] })}
+                    style={({ pressed }) =>
+                      Platform.OS === "web" ? undefined : { opacity: pressed ? 0.9 : 1 }
+                    }
                   >
                     <Text className="text-center text-sm font-semibold text-white">Xóa nhân viên</Text>
                   </Pressable>

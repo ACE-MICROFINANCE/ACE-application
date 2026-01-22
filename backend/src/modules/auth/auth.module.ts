@@ -7,14 +7,14 @@ import { AuthController } from './auth.controller';
 import { JwtAccessStrategy } from './strategies/jwt-access.strategy';
 import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
 import { PrismaModule } from '../../database/prisma.module';
-import { NotificationModule } from '../notifications/notification.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { CustomersModule } from '../customers/customers.module';
 import { TempPasswordCryptoService } from '../../common/services/temp-password-crypto.service'; // CHANGED: temp password crypto
 
 @Module({
   imports: [
     PrismaModule,
-    NotificationModule,
+    NotificationsModule,
     CustomersModule, // [BIJLI-CUSTOMER] allow customer sync service in auth
     JwtModule.registerAsync({
       imports: [ConfigModule],

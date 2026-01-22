@@ -4,6 +4,7 @@ import {
   Alert,
   Animated,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -44,6 +45,9 @@ const formatBranchGroup = (branchName?: string | null, groupName?: string | null
   return `${branchText} • ${groupText}`;
 };
 
+// ✅ FIX: Pressable thường không nhận Animated.Value ổn định -> dùng AnimatedPressable
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
 const StaffCustomersScreen = () => {
   const { profile } = useProfileStore();
   const isStaff = profile?.actorKind === 'STAFF';
@@ -75,6 +79,7 @@ const StaffCustomersScreen = () => {
   const [lockLoading, setLockLoading] = useState(false);
   const [accessibilityLoading, setAccessibilityLoading] = useState(false);
 
+  // ✅ Animated value cho FAB
   const fabScale = useRef(new Animated.Value(1)).current;
 
   const fetchCustomers = async (q?: string) => {
@@ -214,6 +219,7 @@ const StaffCustomersScreen = () => {
 
   const handleToggleLock = async (lock: boolean) => {
     if (!selectedDetail) return;
+
     const confirmed = lock
       ? await new Promise<boolean>((resolve) =>
           Alert.alert('Khóa tài khoản?', 'Bạn có chắc muốn khóa tài khoản này?', [
@@ -222,15 +228,15 @@ const StaffCustomersScreen = () => {
           ]),
         )
       : true;
+
     if (!confirmed) return;
+
     setLockLoading(true);
     setSaveError(null);
     try {
       await appApi.lockCustomerForStaff(selectedDetail.memberNo, lock);
       setSelectedDetail((prev) =>
-        prev && prev.credential
-          ? { ...prev, credential: { ...prev.credential, isActive: !lock } }
-          : prev,
+        prev && prev.credential ? { ...prev, credential: { ...prev.credential, isActive: !lock } } : prev,
       );
       await fetchCustomers(query);
     } catch (e: any) {
@@ -324,9 +330,9 @@ const StaffCustomersScreen = () => {
                     android_ripple={{ color: 'rgba(0,0,0,0.03)' }}
                     style={({ pressed }) => ({
                       backgroundColor: pressed ? 'rgba(0,0,0,0.03)' : 'transparent',
-                      transform: [{ scale: pressed ? 0.99 : 1 }],
                       borderBottomWidth: isLast ? 0 : 1,
                       borderBottomColor: 'rgba(0,0,0,0.05)',
+                      ...(Platform.OS === 'web' ? {} : {}),
                     })}
                   >
                     <View className="space-y-1">
@@ -342,9 +348,7 @@ const StaffCustomersScreen = () => {
                       <Text className="text-xs text-[#666]">
                         Chi nhánh - Nhóm: {formatBranchGroup(customer.branchName, customer.groupName)}
                       </Text>
-                      {customer.phoneNumber ? (
-                        <Text className="text-xs text-[#666]">SĐT: {customer.phoneNumber}</Text>
-                      ) : null}
+                      {customer.phoneNumber ? <Text className="text-xs text-[#666]">SĐT: {customer.phoneNumber}</Text> : null}
                     </View>
                   </Pressable>
                 );
@@ -354,30 +358,28 @@ const StaffCustomersScreen = () => {
         </View>
       </ScrollView>
 
+      {/* FAB */}
       <View pointerEvents="box-none" style={{ position: 'absolute', inset: 0 }}>
         <View className="pointer-events-none absolute inset-x-0 bottom-0 z-50">
           <View className="mx-auto w-full max-w-md relative pointer-events-auto">
-            <Pressable
+            <AnimatedPressable
               onPress={openCreate}
               onPressIn={() => Animated.spring(fabScale, { toValue: 0.95, useNativeDriver: true }).start()}
               onPressOut={() => Animated.spring(fabScale, { toValue: 1, useNativeDriver: true }).start()}
               className="absolute right-4 h-14 w-14 items-center justify-center rounded-full bg-[#007AFF] shadow-[0_12px_30px_rgba(0,0,0,0.25)]"
               style={{
                 bottom: insets.bottom + 122,
-                transform: [{ scale: fabScale }],
+                transform: [{ scale: fabScale }], // ✅ FIX: scale luôn là Animated.Value, component là AnimatedPressable
               }}
             >
               <Ionicons name="add" size={26} color="#fff" />
-            </Pressable>
+            </AnimatedPressable>
           </View>
         </View>
       </View>
 
       <Modal visible={modalMode !== null} transparent animationType="fade" onRequestClose={() => setModalMode(null)}>
-        <Pressable
-          className="flex-1 items-center justify-center bg-black/30 px-4"
-          onPress={() => setModalMode(null)}
-        >
+        <Pressable className="flex-1 items-center justify-center bg-black/30 px-4" onPress={() => setModalMode(null)}>
           <Pressable
             className="w-full max-w-md overflow-hidden rounded-[28px] border border-black/5 bg-white shadow-2xl"
             onPress={(e) => e.stopPropagation()}
@@ -439,6 +441,7 @@ const StaffCustomersScreen = () => {
                         <Text className="text-xs font-medium text-[#6C757D]">Mã đối tác</Text>
                         <Text className="text-sm font-semibold text-[#111]">{selectedDetail.memberNo}</Text>
                       </View>
+
                       <View className="space-y-1 rounded-2xl border border-black/5 bg-white px-4 py-3">
                         <Text className="text-xs font-medium text-[#6C757D]">Họ và tên</Text>
                         <Text className="text-sm font-semibold text-[#111]">
@@ -451,9 +454,7 @@ const StaffCustomersScreen = () => {
                           <View className="space-y-1">
                             <Text className="text-sm font-semibold text-[#111]">Khóa tài khoản</Text>
                             <Text className="text-xs text-[#6C757D]">
-                              {selectedDetail.credential
-                                ? 'Bật để vô hiệu hóa đăng nhập'
-                                : 'Khách hàng chưa có tài khoản'}
+                              {selectedDetail.credential ? 'Bật để vô hiệu hóa đăng nhập' : 'Khách hàng chưa có tài khoản'}
                             </Text>
                           </View>
                           <Switch
@@ -487,14 +488,10 @@ const StaffCustomersScreen = () => {
                           <View className="flex-row items-center justify-between">
                             <Text className="text-sm font-semibold text-[#111]">Mật khẩu tạm thời hiện tại</Text>
                             <Pressable onPress={() => setShowTempPassword((prev) => !prev)}>
-                              <Text className="text-xs font-medium text-[#007AFF]">
-                                {showTempPassword ? 'Ẩn' : 'Hiện'}
-                              </Text>
+                              <Text className="text-xs font-medium text-[#007AFF]">{showTempPassword ? 'Ẩn' : 'Hiện'}</Text>
                             </Pressable>
                           </View>
-                          <Text className="text-sm text-[#111]">
-                            {showTempPassword ? tempPassword : '********'}
-                          </Text>
+                          <Text className="text-sm text-[#111]">{showTempPassword ? tempPassword : '********'}</Text>
                         </View>
                       ) : null}
 
@@ -502,9 +499,7 @@ const StaffCustomersScreen = () => {
                         <View className="flex-row items-center justify-between">
                           <Text className="text-sm font-semibold text-[#111]">Đặt lại mật khẩu</Text>
                           <Pressable onPress={() => setShowResetPassword((prev) => !prev)}>
-                            <Text className="text-sm font-medium text-[#007AFF]">
-                              {showResetPassword ? 'Ẩn' : 'Mở'}
-                            </Text>
+                            <Text className="text-sm font-medium text-[#007AFF]">{showResetPassword ? 'Ẩn' : 'Mở'}</Text>
                           </Pressable>
                         </View>
                         {showResetPassword ? (

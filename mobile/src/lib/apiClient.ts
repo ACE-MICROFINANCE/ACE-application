@@ -1,7 +1,11 @@
 import axios from 'axios';
+import Constants from 'expo-constants';
 import { tokenStore } from './tokenStore';
 
-const baseURL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
+const baseURL =
+  (Constants.expoConfig?.extra as any)?.API_BASE_URL ||
+  process.env.EXPO_PUBLIC_API_URL ||
+  'https://api.phucpink.io.vn';
 
 // CHANGED: đặt timeout mặc định để tránh treo "Loading session..." nếu backend không phản hồi
 const apiClient = axios.create({ baseURL, timeout: 7000 });

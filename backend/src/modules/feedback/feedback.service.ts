@@ -1,13 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { CreateFeedbackDto } from './dto/create-feedback.dto';
-import { NotificationService } from '../notifications/notification.service';
+import { EmailNotificationService } from '../notifications/email-notification.service';
 
 @Injectable()
 export class FeedbackService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly notificationService: NotificationService,
+    private readonly emailNotificationService: EmailNotificationService,
   ) {}
 
   private map(feedback: any) {
@@ -33,7 +33,7 @@ export class FeedbackService {
       where: { id },
     });
     if (customer) {
-      await this.notificationService.sendFeedbackToStaff(customer, feedback);
+      await this.emailNotificationService.sendFeedbackToStaff(customer, feedback);
     }
 
     return this.map(feedback);

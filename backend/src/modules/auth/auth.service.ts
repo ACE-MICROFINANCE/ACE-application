@@ -8,7 +8,7 @@ import { PrismaService } from '../../database/prisma.service';
 import { comparePassword, hashPassword } from '../../utils/password.util';
 import { computeExpiryDate, hashToken } from '../../utils/token.util';
 import { JwtPayload } from './strategies/jwt-access.strategy';
-import { NotificationService } from '../notifications/notification.service';
+import { EmailNotificationService } from '../notifications/email-notification.service';
 import { generateNumericPassword } from '../../utils/password.util';
 import { BijliCustomerSyncService } from '../customers/bijli-customer-sync.service';
 import { formatVietnameseName } from '../../common/utils/string.utils';
@@ -21,7 +21,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
-    private readonly notificationService: NotificationService,
+    private readonly emailNotificationService: EmailNotificationService,
     private readonly bijliCustomerSyncService: BijliCustomerSyncService, // [BIJLI-CUSTOMER] sync profile on login
     private readonly tempPasswordCryptoService: TempPasswordCryptoService, // CHANGED: temp password crypto
   ) {}
@@ -342,6 +342,6 @@ export class AuthService {
       });
     }
 
-    await this.notificationService.sendPasswordResetToStaff(customer, tempPassword);
+    await this.emailNotificationService.sendPasswordResetToStaff(customer, tempPassword);
+    }
   }
-}

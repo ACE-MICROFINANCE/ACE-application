@@ -4,11 +4,14 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { addDays, addMinutes, differenceInCalendarDays, differenceInMinutes } from 'date-fns';
+import { addDays, addMinutes, differenceInMinutes } from 'date-fns';
 import { PrismaService } from '../../database/prisma.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { getNextMeetingStart } from './utils/meeting-recurrence';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationToSend } from '../notifications/types';
+import { scheduleTemplates } from '../notifications/notification-templates';
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
@@ -33,7 +36,10 @@ type StaffEventFilters = {
 
 @Injectable()
 export class EventsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   private startOfToday() {
     const now = new Date();
@@ -158,7 +164,9 @@ export class EventsService {
       throw new NotFoundException('Event not found');
     }
 
-    return this.mapStaffEvent(createdEvent);
+    const mapped = this.mapStaffEvent(createdEvent);
+    await this.dispatchScheduleNotification(scheduleTemplates.created, mapped);
+    return mapped;
   }
 
   async listStaffEvents(staff: StaffContext, filters: StaffEventFilters) {
@@ -188,6 +196,94 @@ export class EventsService {
     const now = new Date();
     const mapped = events.map((event) => this.mapStaffEvent(event, now)); // CHANGED: normalize meeting dates
     return mapped.sort((a, b) => a.startDate.getTime() - b.startDate.getTime()); // CHANGED: sort by effective startDate
+  }
+
+  private async resolveRecipients(event: any): Promise<Array<{ actorKind: 'CUSTOMER' | 'STAFF'; actorId: string }>> {
+    const recipients: Array<{ actorKind: 'CUSTOMER' | 'STAFF'; actorId: string }> = [];
+    const branchCode = event.branchCode;
+    const audienceType = event.audienceType;
+    const targetGroupCodes = (event.targetGroups ?? [])
+      .map((g: { groupCode?: string | null }) => g.groupCode)
+      .filter(Boolean) as string[];
+
+    if (branchCode) {
+      const customerWhere: any = { branchCode };
+      if (audienceType === 'GROUPS' && targetGroupCodes.length) {
+        customerWhere.groupCode = { in: targetGroupCodes };
+      }
+      const customers = await this.prisma.customer.findMany({
+        where: customerWhere,
+        select: { id: true },
+      });
+      recipients.push(
+        ...customers.map((c) => ({
+          actorKind: 'CUSTOMER' as const,
+          actorId: c.id.toString(),
+        })),
+      );
+    }
+
+    if (event.createdByStaffId) {
+      recipients.push({
+        actorKind: 'STAFF',
+        actorId: event.createdByStaffId.toString(),
+      });
+    }
+
+    return recipients;
+  }
+
+  private getChangedFieldsShort(
+    existing: any,
+    next: { title?: string; startDate?: Date; endDate?: Date | null; locationName?: string | null; description?: string | null },
+  ) {
+    const changes: string[] = [];
+    if (next.title && next.title !== existing.title) changes.push('tieu de');
+    if (next.startDate && next.startDate.getTime() !== existing.startDate.getTime()) changes.push('thoi gian');
+    if (
+      (next.endDate && existing.endDate && next.endDate.getTime() !== existing.endDate.getTime()) ||
+      (next.endDate && !existing.endDate) ||
+      (!next.endDate && existing.endDate)
+    ) {
+      changes.push('thoi gian');
+    }
+    if (next.locationName !== undefined && next.locationName !== existing.locationName) changes.push('dia diem');
+    if (next.description !== undefined && next.description !== existing.description) changes.push('noi dung');
+    return changes.join(', ');
+  }
+
+  private async dispatchScheduleNotification(
+    templateBuilder: (input: any) => { type: any; title: string; body: string; notificationKey: string; data: any },
+    event: any,
+    extra?: Partial<{ reminderDays: number; changedFieldsShort: string }>,
+  ) {
+    const recipients = await this.resolveRecipients(event);
+    if (!recipients.length) return;
+    const template = templateBuilder({
+      scheduleId: event.id,
+      title: event.title,
+      startDate: event.startDate,
+      endDate: event.endDate,
+      locationName: event.locationName,
+      groupName: event.targetGroups?.[0]?.groupName,
+      branchCode: event.branchCode,
+      groupCode: event.targetGroups?.[0]?.groupCode,
+      reminderDays: extra?.reminderDays,
+      changedFieldsShort: extra?.changedFieldsShort,
+      updatedAt: event.updatedAt ?? new Date(),
+    });
+
+    const payloads: NotificationToSend[] = recipients.map((rec) => ({
+      recipientActorKind: rec.actorKind,
+      recipientId: rec.actorId,
+      type: template.type,
+      title: template.title,
+      body: template.body,
+      data: template.data,
+      notificationKey: template.notificationKey,
+    }));
+
+    await this.notificationsService.persistAndDispatch(payloads);
   }
 
   async updateStaffEvent(staff: StaffContext, id: string, dto: UpdateEventDto) {
@@ -270,13 +366,25 @@ export class EventsService {
       throw new NotFoundException('Event not found');
     }
 
-    return this.mapStaffEvent(refreshed);
+    const mapped = this.mapStaffEvent(refreshed);
+    const changedFieldsShort = this.getChangedFieldsShort(existing, {
+      title: mapped.title,
+      startDate: mapped.startDate,
+      endDate: mapped.endDate,
+      locationName: mapped.locationName,
+      description: mapped.description,
+    });
+    await this.dispatchScheduleNotification(scheduleTemplates.updated, mapped, { changedFieldsShort });
+    return mapped;
   }
 
   async deleteStaffEvent(staff: StaffContext, id: string) {
     const branchCode = this.ensureBranchCode(staff);
     const eventId = BigInt(id);
-    const existing = await this.prisma.event.findUnique({ where: { id: eventId } });
+    const existing = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      include: { targetGroups: true },
+    });
     if (!existing) {
       throw new NotFoundException('Event not found');
     }
@@ -284,11 +392,13 @@ export class EventsService {
       throw new ForbiddenException('Event does not belong to your branch'); // CHANGED: branch guard
     }
 
+    const eventToDelete = this.mapStaffEvent(existing);
     await this.prisma.$transaction(async (tx) => {
       await tx.eventTargetGroup.deleteMany({ where: { eventId } });
       await tx.event.delete({ where: { id: eventId } });
     });
 
+    await this.dispatchScheduleNotification(scheduleTemplates.canceled, eventToDelete);
     return { success: true };
   }
 

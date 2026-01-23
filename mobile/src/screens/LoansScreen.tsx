@@ -15,9 +15,16 @@ import { Card } from '@components/ui/Card';
 import { useScreenGuard } from '../hooks/useScreenGuard';
 import { appApi, type LoanCurrentResponse, type LoanQrPayload } from '@services/appApi';
 import { AppButton } from '@components/ui/AppButton';
+import { useProfileStore } from '@store/profileStore';
+import { requestTts } from '@services/ttsApi';
+import { playTtsUrl, stopTts } from '@lib/ttsPlayer';
 
 const LoansScreen = () => {
   const { loading, allowed } = useScreenGuard((profile) => profile?.actorKind !== 'STAFF');
+  const { profile } = useProfileStore();
+  const accessibilityEnabled =
+    profile?.actorKind === 'CUSTOMER' && profile?.accessibilityEnabled === true;
+
   const [loan, setLoan] = useState<LoanCurrentResponse | null>(null);
   const [loanLoading, setLoanLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -29,6 +36,7 @@ const LoansScreen = () => {
   const [amountError, setAmountError] = useState<string | null>(null);
   const [isQrLoading, setIsQrLoading] = useState(false);
   const amountInputRef = useRef<TextInput | null>(null);
+  const spokenOnceRef = useRef(false);
 
   const loadLoan = async () => {
     setLoanLoading(true);
@@ -64,9 +72,31 @@ const LoansScreen = () => {
     return () => clearTimeout(t);
   }, [isQrModalOpen]);
 
+  useEffect(() => {
+    return () => {
+      stopTts().catch(() => undefined);
+    };
+  }, []);
+
   const formatCurrency = (val?: number | null) => {
     const n = Number(val ?? 0);
     return n.toLocaleString('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 });
+  };
+
+  const formatMoneyForSpeech = (val?: number | null) => {
+    const n = Math.round(Number(val ?? 0));
+    if (!Number.isFinite(n)) return '';
+    return `${n} đồng`;
+  };
+
+  const formatDateForSpeech = (val?: string | null) => {
+    if (!val) return '';
+    const d = new Date(val);
+    if (!Number.isFinite(d.getTime())) return '';
+    const day = d.getDate();
+    const month = d.getMonth() + 1;
+    const year = d.getFullYear();
+    return `${day} tháng ${month} năm ${year}`;
   };
 
   const formatDate = (val?: string | null) => {
@@ -169,6 +199,46 @@ const LoansScreen = () => {
   const loanPaymentTypeLabel = loan?.loanPaymentTypeLabel ?? null;
   const loanTypeDisplayLabel = loanPaymentTypeLabel ?? loanTypeLabel ?? null;
   const disbursementDateText = formatDate(loan?.disbursementDate ?? loan?.disbursementDateInferred); // CHANGED
+
+  useEffect(() => {
+    if (!allowed || !accessibilityEnabled) return;
+    if (loanLoading) return;
+    if (spokenOnceRef.current) return;
+
+    spokenOnceRef.current = true;
+
+    let textToSpeak = '';
+
+    if (error) {
+      textToSpeak =
+        'Không thể tải dữ liệu khoản vay. Nếu có lỗi, hãy liên hệ với cán bộ công tác xã hội.';
+    } else if (!loan) {
+      textToSpeak = 'Bạn chưa có khoản vay nào.';
+    } else if (loan?.nextPayment?.totalDue && loan?.nextPayment?.dueDate) {
+      const moneyText = formatMoneyForSpeech(loan.nextPayment.totalDue);
+      const dateText = formatDateForSpeech(loan.nextPayment.dueDate);
+      if (moneyText && dateText) {
+        textToSpeak = `Số tiền đến hạn của bạn là ${moneyText}, sẽ tới hạn vào ngày ${dateText}.`;
+      }
+    } else {
+      textToSpeak = 'Bạn hiện chưa đến kỳ thanh toán.';
+    }
+
+    if (!textToSpeak || textToSpeak.length < 3) return;
+
+    (async () => {
+      try {
+        await stopTts();
+        const res = await requestTts(textToSpeak);
+        if (res?.ok && res.audioUrl) {
+          await playTtsUrl(res.audioUrl);
+        }
+      } catch {
+        // ignore TTS errors
+      }
+    })();
+  }, [allowed, accessibilityEnabled, loanLoading, loan, error]);
+
 
   if (loading || !allowed) {
     return (

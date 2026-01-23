@@ -11,6 +11,8 @@ type Props = TextInputProps & {
 export const TextInputField: React.FC<Props> = ({ label, error, secureToggle, secureTextEntry, ...props }) => {
   const [hidden, setHidden] = useState<boolean>(Boolean(secureTextEntry));
   const actualSecure = secureToggle ? hidden : secureTextEntry;
+  const baseColor = '#111';
+  const placeholderColor = '#9ca3af';
 
   return (
     <View className="mb-3">
@@ -18,9 +20,11 @@ export const TextInputField: React.FC<Props> = ({ label, error, secureToggle, se
       <View className="relative">
         <TextInput
           className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 pr-10 text-base"
-          placeholderTextColor="#9ca3af"
+          placeholderTextColor={placeholderColor}
           secureTextEntry={actualSecure}
-          style={{ minHeight: 44 }}
+          style={[{ minHeight: 44, color: baseColor }, props.style]}
+          selectionColor="#4f46e5"
+          cursorColor={baseColor}
           {...props}
         />
         {secureToggle && (

@@ -489,7 +489,6 @@ const StaffScheduleScreen = () => {
           paddingBottom: 72,
           paddingHorizontal: 16,
           gap: 16,
-          backgroundColor: "#FFFFFF",
         }}
         showsVerticalScrollIndicator={false}
       >

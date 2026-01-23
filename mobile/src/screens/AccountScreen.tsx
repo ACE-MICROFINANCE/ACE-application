@@ -20,6 +20,7 @@ const AccountScreen = () => {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
+  const [feedbackSending, setFeedbackSending] = useState(false);
   const [profile, setProfile] = useState<any>(customer);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,8 +36,8 @@ const AccountScreen = () => {
         const me = await appApi.getProfile?.();
         if (mounted) setProfile(me);
       } catch (e: any) {
-        // Hiển thị dữ liệu đã có (customer) nếu API lỗi
-        if (mounted) setError('Không tải được thông tin tài khoản.');
+        // // Hiển thị dữ liệu đã có (customer) nếu API lỗi
+        // if (mounted) setError('Không tải được thông tin tài khoản.');
       } finally {
         if (mounted) setLoading(false);
       }
@@ -160,35 +161,48 @@ const AccountScreen = () => {
               <Text className="text-lg text-[#333]">×</Text>
             </Pressable>
             <Text className="text-lg font-semibold text-center text-[#333] mb-3">Gửi phản hồi</Text>
-            <TextInput
-              className="w-full min-h-[120px] rounded-2xl border border-[#d9d9d9] px-3 py-2 text-base text-[#333]"
-              placeholder="Nhập nội dung bạn muốn gửi..."
-              multiline
-              value={feedback}
-              onChangeText={setFeedback}
-            />
-              {feedbackMsg ? <Text className="mt-2 text-sm text-emerald-600">{feedbackMsg}</Text> : null}
+              <TextInput
+                className="w-full min-h-[120px] rounded-2xl border border-[#d9d9d9] px-3 py-2 text-base text-[#333]"
+                placeholder="Nhập nội dung bạn muốn gửi..."
+                placeholderTextColor="#9ca3af"
+                multiline
+                value={feedback}
+                onChangeText={setFeedback}
+              />
+            {feedbackMsg ? (
+              <Text
+                className={`mt-2 text-sm ${
+                  feedbackMsg.includes('thất bại') ? 'text-red-500' : 'text-emerald-600'
+                }`}
+              >
+                {feedbackMsg}
+              </Text>
+            ) : null}
             <View className="mt-3 flex-row gap-2">
               <View className="flex-1">
                 <AppButton
                   title="Gửi"
-                  onPress={() => {
-                    if (!feedback.trim()) {
+                  loading={feedbackSending}
+                  disabled={feedbackSending}
+                  onPress={async () => {
+                    const content = feedback.trim();
+                    if (!content) {
                       setFeedbackMsg('Vui lòng nhập nội dung phản hồi.');
                       return;
                     }
-                    appApi
-                      .sendFeedback(feedback.trim())
-                      .then(() => {
-                        setFeedbackMsg('Cảm ơn bạn đã gửi góp ý!');
-                        setFeedbackOpen(false);
-                      })
-                      .catch(() => setFeedbackMsg('Gửi góp ý thất bại, thử lại sau.'));
+                    try {
+                      setFeedbackSending(true);
+                      setFeedbackMsg(null);
+                      await appApi.sendFeedback(content);
+                      setFeedbackMsg('Cảm ơn bạn đã gửi góp ý!');
+                      setFeedback('');
+                    } catch {
+                      setFeedbackMsg('Gửi góp ý thất bại, thử lại sau.');
+                    } finally {
+                      setFeedbackSending(false);
+                    }
                   }}
                 />
-              </View>
-              <View className="flex-1">
-                <AppButton title="Hủy" className="bg-gray-300 text-[#333]" onPress={() => setFeedbackOpen(false)} />
               </View>
             </View>
           </View>

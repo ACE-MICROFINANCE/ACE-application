@@ -1,10 +1,13 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { MobileFrame } from '@components/layout/MobileFrame';
 import { Card } from '@components/ui/Card';
 import { AppButton } from '@components/ui/AppButton';
 import { useScreenGuard } from '../hooks/useScreenGuard';
 import { appApi, type SavingsItem, type SavingsTransactionItem } from '@services/appApi';
+import { useProfileStore } from '@store/profileStore';
+import { requestTts } from '@services/ttsApi';
+import { playTtsUrl, stopTts } from '@lib/ttsPlayer';
 
 const formatCurrency = (val?: number | null) => {
   const n = Number(val ?? 0);
@@ -20,10 +23,14 @@ const formatDate = (val?: string | null) => {
 
 const SavingsScreen = () => {
   const { loading, allowed } = useScreenGuard((profile) => profile?.actorKind !== 'STAFF');
+  const { profile } = useProfileStore();
+  const accessibilityEnabled =
+    profile?.actorKind === 'CUSTOMER' && profile?.accessibilityEnabled === true;
   const [savings, setSavings] = useState<SavingsItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<'COMPULSORY' | 'VOLUNTARY' | null>(null);
+  const spokenOnceRef = useRef(false);
 
   const fetchSavings = async () => {
     setIsLoading(true);
@@ -50,6 +57,55 @@ const SavingsScreen = () => {
     () => savings.find((item) => item.type === 'VOLUNTARY'),
     [savings],
   );
+
+  useEffect(() => {
+    return () => {
+      stopTts().catch(() => undefined);
+    };
+  }, []);
+
+  const formatMoneyForSpeech = (val?: number | null) => {
+    const n = Math.round(Number(val ?? 0));
+    if (!Number.isFinite(n)) return '';
+    return `${n.toString()} đồng`;
+  };
+
+  useEffect(() => {
+    if (!allowed || !accessibilityEnabled) return;
+    if (isLoading) return;
+    if (spokenOnceRef.current) return;
+
+    spokenOnceRef.current = true;
+
+    let textToSpeak = '';
+
+    if (error) {
+      textToSpeak =
+        'Không thể tải thông tin tiết kiệm. Nếu có lỗi, hãy liên hệ với cán bộ công tác xã hội.';
+    } else if (voluntary) {
+      textToSpeak = `Số tiền tiết kiệm tự nguyện hiện tại của bạn là ${formatMoneyForSpeech(
+        voluntary.currentBalance,
+      )}.`;
+    } else if (compulsory) {
+      textToSpeak = 'Bạn chưa có sổ tiết kiệm tự nguyện.';
+    } else {
+      textToSpeak = 'Chưa có sổ tiết kiệm.';
+    }
+
+    if (!textToSpeak || textToSpeak.length < 3) return;
+
+    (async () => {
+      try {
+        await stopTts();
+        const res = await requestTts(textToSpeak);
+        if (res?.ok && res.audioUrl) {
+          await playTtsUrl(res.audioUrl);
+        }
+      } catch {
+        // ignore TTS errors
+      }
+    })();
+  }, [allowed, accessibilityEnabled, isLoading, error, compulsory, voluntary]);
 
   const toggle = (type: 'COMPULSORY' | 'VOLUNTARY') => {
     setExpanded((prev) => (prev === type ? null : type));

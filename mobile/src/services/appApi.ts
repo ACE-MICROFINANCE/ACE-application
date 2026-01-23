@@ -295,4 +295,8 @@ export const appApi = {
     const { data } = await apiClient.post('/notifications/device-token', { token, platform });
     return data;
   },
+  sendFeedback: async (content: string) => {
+    const { data } = await apiClient.post('/feedback', { content });
+    return data;
+  },
 };

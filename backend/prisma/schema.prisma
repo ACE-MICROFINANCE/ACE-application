@@ -3,65 +3,62 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlserver"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Customer {
-  id                  BigInt   @id @default(autoincrement())
-  memberNo            String   @unique                     // numeric string used to login
-  fullName            String?
-  gender              String?
-  idCardNumber        String?
-  phoneNumber         String?
-  locationType        String?                             // "Rural"/"Urban"
-  villageName         String?                             // Ward/Village
-  groupCode           String?
-  groupName           String?
-  branchCode          String? // CHANGED: branch code for RBAC filtering
-  branchName          String? // CHANGED: branch display name from group mapping
-  membershipStartDate DateTime?
-  isActive            Boolean  @default(true)
-  accessibilityEnabled Boolean @default(false) // CHANGED: trợ năng
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-  lastSyncedAt        DateTime? // [BIJLI-CUSTOMER] cache sync timestamp
+  id                   BigInt                       @id @default(autoincrement())
+  memberNo             String                       @unique
+  fullName             String?
+  gender               String?
+  idCardNumber         String?
+  phoneNumber          String?
+  locationType         String?
+  villageName          String?
+  groupCode            String?
+  groupName            String?
+  branchCode           String?
+  branchName           String?
+  membershipStartDate  DateTime?
+  isActive             Boolean                      @default(true)
+  accessibilityEnabled Boolean                      @default(false)
+  createdAt            DateTime                     @default(now())
+  updatedAt            DateTime                     @updatedAt
+  lastSyncedAt         DateTime?
+  credential           CustomerCredential?
+  savings              CustomerSavings[]
+  savingsTransactions  CustomerSavingsTransaction[]
+  feedbacks            Feedback[]
+  loans                Loan[]
+  refreshTokens        RefreshToken[]
 
-  credential     CustomerCredential?
-  refreshTokens  RefreshToken[]
-  loans          Loan[]
-  savings        CustomerSavings[]
-  savingsTransactions CustomerSavingsTransaction[] // CHANGED: lưu lịch sử giao dịch tiết kiệm
-  feedbacks      Feedback[]
-
-  @@index([branchCode, groupCode]) // CHANGED: optimize branch + group filters
+  @@index([branchCode, groupCode])
 }
 
 model CustomerCredential {
-  customerId         BigInt  @id
-  passwordHash       String
-  isActive           Boolean @default(true) // CHANGED: khóa/mở tài khoản
-  mustChangePassword Boolean @default(true)
-  tempPasswordEncrypted String? // CHANGED: AES-GCM temp password
-  tempPasswordIssuedAt DateTime? // CHANGED: temp password issued time
-  passwordUpdatedAt  DateTime?
-  lastLoginAt        DateTime?
-
-  customer Customer @relation(fields: [customerId], references: [id])
+  customerId            BigInt    @id
+  passwordHash          String
+  isActive              Boolean   @default(true)
+  mustChangePassword    Boolean   @default(true)
+  tempPasswordEncrypted String?
+  tempPasswordIssuedAt  DateTime?
+  passwordUpdatedAt     DateTime?
+  lastLoginAt           DateTime?
+  customer              Customer  @relation(fields: [customerId], references: [id])
 }
 
 model RefreshToken {
-  id         BigInt   @id @default(autoincrement())
+  id         BigInt    @id @default(autoincrement())
   customerId BigInt
   tokenHash  String
   expiresAt  DateTime
   revokedAt  DateTime?
-  createdAt  DateTime @default(now())
-
-  customer Customer @relation(fields: [customerId], references: [id])
+  createdAt  DateTime  @default(now())
+  customer   Customer  @relation(fields: [customerId], references: [id])
 }
 
-// CHANGED: RBAC staff users
 model StaffUser {
   id           BigInt   @id @default(autoincrement())
   email        String   @unique
@@ -72,14 +69,13 @@ model StaffUser {
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-
-  events Event[] @relation("EventCreatedBy") // CHANGED: staff creator relation
+  events       Event[]  @relation("EventCreatedBy")
 }
 
 model Loan {
-  id                        BigInt   @id @default(autoincrement())
+  id                        BigInt            @id @default(autoincrement())
   customerId                BigInt
-  loanNo                    String   @unique
+  loanNo                    String            @unique
   externalLoanId            String?
   productName               String?
   loanCycle                 Int?
@@ -90,14 +86,13 @@ model Loan {
   maturityDate              DateTime?
   totalPrincipalOutstanding Decimal?
   totalInterestOutstanding  Decimal?
-  lastSyncedAt              DateTime? // [BIJLI-LOAN] cache sync timestamp
-  loanType                  String   @default("DEGRESSIVE") // [BIJLI-LOAN-RULE] BULLET/DEGRESSIVE
-  status                    String   @default("ACTIVE")
-  createdAt                 DateTime @default(now())
-  updatedAt                 DateTime @updatedAt
-
-  customer     Customer          @relation(fields: [customerId], references: [id])
-  installments LoanInstallment[]
+  lastSyncedAt              DateTime?
+  loanType                  String            @default("DEGRESSIVE")
+  status                    String            @default("ACTIVE")
+  createdAt                 DateTime          @default(now())
+  updatedAt                 DateTime          @updatedAt
+  customer                  Customer          @relation(fields: [customerId], references: [id])
+  installments              LoanInstallment[]
 }
 
 model LoanInstallment {
@@ -109,24 +104,22 @@ model LoanInstallment {
   interestDue   Decimal
   status        String   @default("PENDING")
   createdAt     DateTime @default(now())
-
-  loan Loan @relation(fields: [loanId], references: [id])
+  loan          Loan     @relation(fields: [loanId], references: [id])
 
   @@unique([loanId, installmentNo])
 }
 
 model CustomerSavings {
-  id                BigInt   @id @default(autoincrement())
+  id                BigInt    @id @default(autoincrement())
   customerId        BigInt
   type              String
-  principalAmount   Decimal  @default(0)
-  currentBalance    Decimal  @default(0)
-  interestAccrued   Decimal  @default(0)
+  principalAmount   Decimal   @default(0)
+  currentBalance    Decimal   @default(0)
+  interestAccrued   Decimal   @default(0)
   lastDepositAmount Decimal?
   lastDepositDate   DateTime?
-  importedAt        DateTime @default(now())
-
-  customer Customer @relation(fields: [customerId], references: [id])
+  importedAt        DateTime  @default(now())
+  customer          Customer  @relation(fields: [customerId], references: [id])
 
   @@unique([customerId, type])
 }
@@ -141,42 +134,37 @@ model CustomerSavingsTransaction {
   withdrawalAmount Decimal  @default(0)
   externalKey      String   @unique
   createdAt        DateTime @default(now())
-
-  customer Customer @relation(fields: [customerId], references: [id])
+  customer         Customer @relation(fields: [customerId], references: [id])
 
   @@index([customerId, savingsType, trnDate])
-  // CHANGED: thêm bảng lưu lịch sử giao dịch tiết kiệm để phục vụ /savings
 }
 
 model Event {
-  id          BigInt   @id @default(autoincrement())
-  title       String
-  description String?
-  eventType   String
-  startDate   DateTime
-  endDate     DateTime?
-  scope       String   @default("GLOBAL")
-  groupCode   String?
-  villageName String?
-  branchCode  String   @default("UNKNOWN") // CHANGED: branch ownership for RBAC
-  audienceType String @default("BRANCH_ALL") // CHANGED: BRANCH_ALL | GROUPS
-  locationName String? // CHANGED: event location
-  durationMinutes Int? // CHANGED: duration (minutes)
-  createdByStaffId BigInt? // CHANGED: staff creator id
-  importedAt  DateTime @default(now())
-
-  createdByStaff StaffUser? @relation("EventCreatedBy", fields: [createdByStaffId], references: [id]) // CHANGED: staff creator
-  targetGroups   EventTargetGroup[] // CHANGED: audience groups
+  id               BigInt             @id @default(autoincrement())
+  title            String
+  description      String?
+  eventType        String
+  startDate        DateTime
+  endDate          DateTime?
+  scope            String             @default("GLOBAL")
+  groupCode        String?
+  villageName      String?
+  branchCode       String             @default("UNKNOWN")
+  audienceType     String             @default("BRANCH_ALL")
+  locationName     String?
+  durationMinutes  Int?
+  createdByStaffId BigInt?
+  importedAt       DateTime           @default(now())
+  createdByStaff   StaffUser?         @relation("EventCreatedBy", fields: [createdByStaffId], references: [id])
+  targetGroups     EventTargetGroup[]
 }
 
-// CHANGED: event target groups for GROUPS audience
 model EventTargetGroup {
-  id        BigInt @id @default(autoincrement())
+  id        BigInt  @id @default(autoincrement())
   eventId   BigInt
   groupCode String
   groupName String?
-
-  event Event @relation(fields: [eventId], references: [id])
+  event     Event   @relation(fields: [eventId], references: [id])
 
   @@unique([eventId, groupCode])
   @@index([groupCode])
@@ -184,27 +172,26 @@ model EventTargetGroup {
 }
 
 model Feedback {
-  id           BigInt   @id @default(autoincrement())
-  customerId   BigInt
-  content      String
-  createdAt    DateTime @default(now())
-  status       String   @default("NEW")
+  id            BigInt   @id @default(autoincrement())
+  customerId    BigInt
+  content       String
+  createdAt     DateTime @default(now())
+  status        String   @default("NEW")
   exportBatchId Int?
-
-  customer Customer @relation(fields: [customerId], references: [id])
+  customer      Customer @relation(fields: [customerId], references: [id])
 }
 
 model Notification {
-  id                  String   @id @default(cuid())
-  recipientActorKind  String
-  recipientId         String
-  type                String
-  title               String
-  body                String
-  data                String
-  isRead              Boolean  @default(false)
-  notificationKey     String   @unique
-  createdAt           DateTime @default(now())
+  id                 String   @id @default(cuid())
+  recipientActorKind String
+  recipientId        String
+  type               String
+  title              String
+  body               String
+  data               String
+  isRead             Boolean  @default(false)
+  notificationKey    String   @unique
+  createdAt          DateTime @default(now())
 
   @@index([recipientActorKind, recipientId])
 }
@@ -220,5 +207,3 @@ model DeviceToken {
 
   @@index([actorKind, actorId])
 }
-
-// NOTE: Them CustomerSavingsTransaction de luu lich su giao dich tu BIJLI va phuc vu /savings.

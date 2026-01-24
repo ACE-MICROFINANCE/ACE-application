@@ -27,7 +27,7 @@ export const authService = {
   },
   // CHANGED: thêm timeout để tránh treo "Loading session..." trên web khi không truy cập được backend
   getMe: async () => {
-    const { data } = await apiClient.get('/auth/me', { timeout: 7000 });
+    const { data } = await apiClient.get('/auth/me', { timeout: 30000 });
     return data;
   },
   refreshToken: async (refreshToken: string) => {

@@ -543,7 +543,7 @@ const StaffScheduleScreen = () => {
 
       {/* Floating plus button */}
       <View pointerEvents="box-none" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
-        <View pointerEvents="none" style={{ position: "absolute", left: 0, right: 0, bottom: 0 }}>
+        <View pointerEvents="box-none" style={{ position: "absolute", left: 0, right: 0, bottom: 0 }}>
           <View pointerEvents="box-none" style={{ marginHorizontal: "auto" as any, width: "100%", maxWidth: 480 }}>
             <Pressable
               onPress={openCreateModal}
@@ -643,21 +643,24 @@ const StaffScheduleScreen = () => {
                   {/* Title */}
                   <View style={{ gap: 8 }}>
                     <Text style={{ fontSize: 12, fontWeight: "600", color: "#6C757D" }}>Tiêu đề</Text>
-                    <TextInput
-                      value={formState.title}
-                      onChangeText={(value) => setFormState((prev) => ({ ...prev, title: value }))}
-                      placeholder="Nhập tiêu đề"
-                      style={{
-                        borderWidth: 1,
-                        borderColor: "rgba(0,0,0,0.06)",
-                        borderRadius: 16,
-                        paddingHorizontal: 16,
-                        paddingVertical: 12,
-                        fontSize: 16,
-                        backgroundColor: "#fff",
-                      }}
-                    />
-                  </View>
+                  <TextInput
+                    value={formState.title}
+                    onChangeText={(value) => setFormState((prev) => ({ ...prev, title: value }))}
+                    placeholder="Nhập tiêu đề"
+                    style={{
+                      borderWidth: 1,
+                      borderColor: "rgba(0,0,0,0.06)",
+                      borderRadius: 16,
+                      paddingHorizontal: 16,
+                      paddingVertical: 12,
+                      color: "#111",
+                      fontSize: 16,
+                      backgroundColor: "#fff",
+                    }}
+                    placeholderTextColor="#9ca3af"
+                    selectionColor="#111"
+                  />
+                </View>
 
                   {/* Event type */}
                   {modalMode === "edit" ? (
@@ -726,43 +729,49 @@ const StaffScheduleScreen = () => {
                   {/* Duration */}
                   <View style={{ gap: 8 }}>
                     <Text style={{ fontSize: 12, fontWeight: "600", color: "#6C757D" }}>Thời lượng (phút)</Text>
-                    <TextInput
-                      keyboardType="numeric"
-                      value={formState.durationMinutes}
-                      onChangeText={(value) =>
-                        setFormState((prev) => ({ ...prev, durationMinutes: value.replace(/[^0-9]/g, "") }))
-                      }
-                      placeholder="Nhập thời lượng"
-                      style={{
-                        borderWidth: 1,
-                        borderColor: "rgba(0,0,0,0.06)",
-                        borderRadius: 16,
-                        paddingHorizontal: 16,
-                        paddingVertical: 12,
-                        fontSize: 16,
-                        backgroundColor: "#fff",
-                      }}
-                    />
-                  </View>
+                  <TextInput
+                    keyboardType="numeric"
+                    value={formState.durationMinutes}
+                    onChangeText={(value) =>
+                      setFormState((prev) => ({ ...prev, durationMinutes: value.replace(/[^0-9]/g, "") }))
+                    }
+                    placeholder="Nhập thời lượng"
+                    style={{
+                      borderWidth: 1,
+                      borderColor: "rgba(0,0,0,0.06)",
+                      borderRadius: 16,
+                      paddingHorizontal: 16,
+                      paddingVertical: 12,
+                      color: "#111",
+                      fontSize: 16,
+                      backgroundColor: "#fff",
+                    }}
+                    placeholderTextColor="#9ca3af"
+                    selectionColor="#111"
+                  />
+                </View>
 
                   {/* Location */}
                   <View style={{ gap: 8 }}>
                     <Text style={{ fontSize: 12, fontWeight: "600", color: "#6C757D" }}>Địa điểm</Text>
-                    <TextInput
-                      value={formState.locationName}
-                      onChangeText={(value) => setFormState((prev) => ({ ...prev, locationName: value }))}
-                      placeholder="Nhập địa điểm"
-                      style={{
-                        borderWidth: 1,
-                        borderColor: "rgba(0,0,0,0.06)",
-                        borderRadius: 16,
-                        paddingHorizontal: 16,
-                        paddingVertical: 12,
-                        fontSize: 16,
-                        backgroundColor: "#fff",
-                      }}
-                    />
-                  </View>
+                  <TextInput
+                    value={formState.locationName}
+                    onChangeText={(value) => setFormState((prev) => ({ ...prev, locationName: value }))}
+                    placeholder="Nhập địa điểm"
+                    style={{
+                      borderWidth: 1,
+                      borderColor: "rgba(0,0,0,0.06)",
+                      borderRadius: 16,
+                      paddingHorizontal: 16,
+                      paddingVertical: 12,
+                      color: "#111",
+                      fontSize: 16,
+                      backgroundColor: "#fff",
+                    }}
+                    placeholderTextColor="#9ca3af"
+                    selectionColor="#111"
+                  />
+                </View>
 
                   {/* Description */}
                   <View style={{ gap: 8 }}>
@@ -771,21 +780,24 @@ const StaffScheduleScreen = () => {
                       multiline
                       numberOfLines={4}
                       value={formState.description}
-                      onChangeText={(value) => setFormState((prev) => ({ ...prev, description: value }))}
-                      placeholder="Nhập mô tả"
-                      textAlignVertical="top"
-                      style={{
-                        borderWidth: 1,
-                        borderColor: "rgba(0,0,0,0.06)",
-                        borderRadius: 16,
-                        paddingHorizontal: 16,
-                        paddingVertical: 12,
-                        fontSize: 16,
-                        backgroundColor: "#fff",
-                        minHeight: 110,
-                      }}
-                    />
-                  </View>
+                    onChangeText={(value) => setFormState((prev) => ({ ...prev, description: value }))}
+                    placeholder="Nhập mô tả"
+                    textAlignVertical="top"
+                    style={{
+                      borderWidth: 1,
+                      borderColor: "rgba(0,0,0,0.06)",
+                      borderRadius: 16,
+                      paddingHorizontal: 16,
+                      paddingVertical: 12,
+                      color: "#111",
+                      fontSize: 16,
+                      backgroundColor: "#fff",
+                      minHeight: 110,
+                    }}
+                    placeholderTextColor="#9ca3af"
+                    selectionColor="#111"
+                  />
+                </View>
 
                   {saveError ? <Text style={{ fontSize: 14, color: "#e53935" }}>{saveError}</Text> : null}
                 </ScrollView>
@@ -889,7 +901,14 @@ const StaffScheduleScreen = () => {
                 <Text style={{ fontSize: 16, fontWeight: "600", color: "#111" }}>Chọn nhóm</Text>
 
                 <View style={{ marginTop: 8, borderRadius: 12, borderWidth: 1, borderColor: "rgba(0,0,0,0.10)", paddingHorizontal: 12, paddingVertical: 8 }}>
-                  <TextInput value={groupSearch} onChangeText={setGroupSearch} placeholder="Tìm nhóm..." style={{ fontSize: 14, color: "#111", paddingVertical: 2 }} />
+                  <TextInput
+                    value={groupSearch}
+                    onChangeText={setGroupSearch}
+                    placeholder="Tìm nhóm..."
+                    placeholderTextColor="#9ca3af"
+                    selectionColor="#111"
+                    style={{ fontSize: 14, color: "#111", paddingVertical: 2 }}
+                  />
                 </View>
               </View>
 

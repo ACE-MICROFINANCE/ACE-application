@@ -11,6 +11,7 @@ import {
   TextInput,
   View,
   Switch,
+  Dimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -69,6 +70,7 @@ const StaffManageScreen = () => {
   const [showResetPassword, setShowResetPassword] = useState(false);
   const [branchPickerOpen, setBranchPickerOpen] = useState(false);
   const fabScale = useRef(new Animated.Value(1)).current;
+  const { height: SCREEN_H } = Dimensions.get("window");
 
   const branchOptions = useMemo(
     () =>
@@ -412,8 +414,13 @@ const StaffManageScreen = () => {
               </Pressable>
             </View>
 
-            <View style={{ maxHeight: "80%" }}>
-              <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 12 }}>
+            <View style={{ height: Math.min(SCREEN_H * 0.78, 640) }}>
+              <ScrollView
+                style={{ flex: 1 }}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 12, gap: 12 }}
+              >
                 <View className="space-y-2">
                   <Text className="text-xs font-medium text-[#6C757D]">Họ và tên</Text>
                   <TextInput
@@ -504,7 +511,17 @@ const StaffManageScreen = () => {
 
                 {saveError ? <Text className="text-sm text-red-500">{saveError}</Text> : null}
               </ScrollView>
-              <View style={{ paddingHorizontal: 24, paddingBottom: 16, gap: 10 }}>
+              <View
+                style={{
+                  paddingHorizontal: 24,
+                  paddingTop: 10,
+                  paddingBottom: insets.bottom + 16,
+                  gap: 10,
+                  borderTopWidth: 1,
+                  borderTopColor: "rgba(0,0,0,0.05)",
+                  backgroundColor: "white",
+                }}
+              >
                 {modalMode === "create" ? (
                   <AppButton title="Tạo nhân viên" onPress={handleCreate} loading={saveLoading} />
                 ) : (
@@ -514,9 +531,7 @@ const StaffManageScreen = () => {
                   <Pressable
                     onPress={handleDelete}
                     className="w-full rounded-full bg-[#DC3545] px-4 py-3"
-                    style={({ pressed }) =>
-                      Platform.OS === "web" ? undefined : { opacity: pressed ? 0.9 : 1 }
-                    }
+                    style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}
                   >
                     <Text className="text-center text-sm font-semibold text-white">Xóa nhân viên</Text>
                   </Pressable>

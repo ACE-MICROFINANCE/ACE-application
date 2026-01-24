@@ -57,7 +57,9 @@ export const LoginForm = ({ onSuccess }: { onSuccess: (mustChange: boolean) => v
             label="Mật khẩu (chỉ gồm số)"
             placeholder="Nhập mật khẩu 6 số"
             secureTextEntry
-            keyboardType="numeric"
+            secureToggle
+            keyboardType="number-pad"
+            maxLength={6}
             onChangeText={handleChange('password')}
             onBlur={handleBlur('password')}
             value={values.password}

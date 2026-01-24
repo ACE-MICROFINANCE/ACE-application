@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Text, TextInput, View, TextInputProps, TouchableOpacity } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { Platform, Text, TextInput, View, TextInputProps, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 type Props = TextInputProps & {
@@ -8,21 +8,41 @@ type Props = TextInputProps & {
   secureToggle?: boolean;
 };
 
-export const TextInputField: React.FC<Props> = ({ label, error, secureToggle, secureTextEntry, ...props }) => {
+export const TextInputField: React.FC<Props> = ({
+  label,
+  error,
+  secureToggle,
+  secureTextEntry,
+  keyboardType,
+  ...props
+}) => {
   const [hidden, setHidden] = useState<boolean>(Boolean(secureTextEntry));
   const actualSecure = secureToggle ? hidden : secureTextEntry;
+
+  // ✅ Fix Android: secureTextEntry + numeric hay bị trắng
+  const finalKeyboardType = useMemo(() => {
+    if (Platform.OS === 'android' && actualSecure && keyboardType === 'numeric') {
+      return 'number-pad' as const;
+    }
+    return keyboardType;
+  }, [actualSecure, keyboardType]);
   const baseColor = '#111';
   const placeholderColor = '#9ca3af';
 
   return (
     <View className="mb-3">
-      <Text className="mb-1 text-sm text-slate-700">{label}</Text>
+      <Text className="mb-1 text-sm" style={{ color: '#1f2937' }}>
+        {label}
+      </Text>
       <View className="relative">
         <TextInput
           className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 pr-10 text-base"
-          placeholderTextColor={placeholderColor}
+          placeholderTextColor={props.placeholderTextColor ?? placeholderColor}
           secureTextEntry={actualSecure}
-          style={[{ minHeight: 44, color: baseColor }, props.style]}
+          keyboardType={finalKeyboardType}
+          autoCorrect={false}
+          autoCapitalize="none"
+          style={[{ minHeight: 44, color: baseColor, backgroundColor: '#fff' }, props.style]}
           selectionColor="#4f46e5"
           cursorColor={baseColor}
           {...props}

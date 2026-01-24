@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "jsEngine": "hermes",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/img/icon.jpg.png",
     "platforms": [
       "ios",
       "android",
@@ -18,18 +18,18 @@
       "package": "parner.anhchiem.org",
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icon.png",
+        "foregroundImage": "./assets/img/icon.jpg.png",
         "backgroundColor": "#FFFFFF"
       }
     },
     "ios": {
-      "icon": "./assets/icon.png"
+      "icon": "./assets/img/icon.jpg.png"
     },
     "extra": {
       "eas": {
         "projectId": "3e4a2d40-0d87-41ee-95d9-ecfb1bf469fa"
       },
-      "API_BASE_URL": "https://api.phucpink.io.vn/"
+      "API_BASE_URL": "https://api.anhchiem.org"
     },
     "plugins": [
       "expo-font"

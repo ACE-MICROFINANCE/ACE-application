@@ -169,16 +169,12 @@ export class AuthService {
       data: { lastLoginAt: new Date() },
     });
 
+    // [BIJLI-CUSTOMER] Best-effort sync chạy nền, không chặn login
+    this.bijliCustomerSyncService
+      .syncMemberNo(customer.memberNo)
+      .catch(() => undefined);
+
     let loginCustomer = customer;
-    try {
-      await this.bijliCustomerSyncService.syncMemberNo(customer.memberNo); // [BIJLI-CUSTOMER] refresh profile each login
-      const refreshed = await this.getCustomerWithCredential({ id: customer.id }); // [BIJLI-CUSTOMER] load latest profile
-      if (refreshed) {
-        loginCustomer = refreshed; // [BIJLI-CUSTOMER] return updated data to FE
-      }
-    } catch {
-      // [BIJLI-CUSTOMER] ignore BIJLI errors to keep login working
-    }
 
     if (loginCustomer.fullName) {
       const formattedName = formatVietnameseName(loginCustomer.fullName);

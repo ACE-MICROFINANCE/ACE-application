@@ -383,11 +383,9 @@ const StaffCustomersScreen = () => {
       </View>
 
       <Modal visible={modalMode !== null} transparent animationType="fade" onRequestClose={() => setModalMode(null)}>
-        <Pressable className="flex-1 items-center justify-center bg-black/30 px-4" onPress={() => setModalMode(null)}>
-          <Pressable
-            className="w-full max-w-md overflow-hidden rounded-[28px] border border-black/5 bg-white shadow-2xl"
-            onPress={(e) => e.stopPropagation()}
-          >
+        <View className="flex-1 items-center justify-center bg-black/30 px-4">
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setModalMode(null)} />
+          <View className="w-full max-w-md overflow-hidden rounded-[28px] border border-black/5 bg-white shadow-2xl">
             <View className="relative flex-row items-center justify-center border-b border-black/5 px-6 py-4">
               <Text className="text-[17px] font-semibold text-[#111]">
                 {modalMode === 'create' ? 'Tạo tài khoản đối tác' : 'Thông tin đối tác'}
@@ -401,8 +399,14 @@ const StaffCustomersScreen = () => {
             </View>
 
             <ScrollView
-              style={{ maxHeight: '80%' }}
-              contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 12 }}
+              style={{ maxHeight: MODAL_H }}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={{
+                paddingHorizontal: 24,
+                paddingTop: 16,
+                paddingBottom: insets.bottom + 24,
+                gap: 12,
+              }}
             >
               {modalMode === 'create' ? (
                 <>
@@ -526,8 +530,8 @@ const StaffCustomersScreen = () => {
                 </>
               ) : null}
             </ScrollView>
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
     </MobileFrame>
   );

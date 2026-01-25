@@ -16,6 +16,7 @@ import { WeatherModule } from './weather/weather.module';
 import { StaffUsersModule } from './modules/staff-users/staff-users.module'; // CHANGED: staff users RBAC
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { TtsModule } from './modules/tts/tts.module';
+import { ContactsModule } from './modules/contacts/contacts.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { TtsModule } from './modules/tts/tts.module';
     StaffUsersModule, // CHANGED: staff users RBAC
     NotificationsModule,
     TtsModule,
+    ContactsModule,
   ],
 })
 export class AppModule {}

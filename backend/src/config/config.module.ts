@@ -33,4 +33,5 @@ export const ConfigValidationSchema = Joi.object({
   FPT_TTS_VOICE: Joi.string().default('banmai'),
   FPT_TTS_SPEED: Joi.string().default('0'),
   FPT_TTS_FORMAT: Joi.string().default('mp3'),
+  CONTACTS_BY_BRANCH_JSON: Joi.string().optional(),
 });

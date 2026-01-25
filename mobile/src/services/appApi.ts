@@ -93,6 +93,18 @@ export type StaffBranchItem = {
   displayName: string;
 };
 
+export type ContactItem = {
+  type: 'HOTLINE' | 'AGRI' | 'SOCIAL' | string;
+  label: string;
+  phone: string;
+};
+
+export type ContactsResponse = {
+  branchCode: string;
+  contacts: ContactItem[];
+  socialPhone: string | null;
+};
+
 export type CreateStaffUserPayload = {
   email: string;
   password: string;
@@ -297,6 +309,12 @@ export const appApi = {
   },
   sendFeedback: async (content: string) => {
     const { data } = await apiClient.post('/feedback', { content });
+    return data;
+  },
+  getContactsByBranchCode: async (branchCode: string): Promise<ContactsResponse> => {
+    const { data } = await apiClient.get('/public/contacts', {
+      params: { branchCode },
+    });
     return data;
   },
 };

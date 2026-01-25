@@ -1,18 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Image, Linking, Pressable, Text, TouchableOpacity, View } from 'react-native';
 import { MobileFrame } from '@components/layout/MobileFrame';
 import { Card } from '@components/ui/Card';
 import { useScreenGuard } from '../hooks/useScreenGuard';
+import { appApi, type ContactItem } from '@services/appApi';
 
 type InfoItem = {
   image: any;
   alt: string;
   text: string;
-};
-
-type ContactDetail = {
-  label: string;
-  phone: string;
 };
 
 const contactItem: InfoItem = {
@@ -27,20 +23,46 @@ const knowledgeItem: InfoItem = {
   text: 'Kiến thức nông nghiệp Việt Nam',
 };
 
-const contactDetails: ContactDetail[] = [
-  { label: 'Đường dây nóng', phone: '1900000' },
-  { label: 'SDT Cán bộ trồng trọt & chăn nuôi', phone: '0766667505' },
-  { label: 'SDT Cán bộ xã hội', phone: '0766667507' },
-];
-
 const InfoScreen = () => {
-  const { loading, allowed } = useScreenGuard((profile) => profile?.actorKind !== 'STAFF');
+  const { loading, allowed, profile } = useScreenGuard((p) => p?.actorKind !== 'STAFF');
   const [expandedContact, setExpandedContact] = useState(true);
   const [openError, setOpenError] = useState<string | null>(null);
+  const [contacts, setContacts] = useState<ContactItem[]>([]);
+  const [contactError, setContactError] = useState<string | null>(null);
 
   useEffect(() => {
     setOpenError(null);
   }, [expandedContact]);
+
+  const branchCode = useMemo(() => profile?.branchCode, [profile]);
+
+  useEffect(() => {
+    let mounted = true;
+    if (!branchCode) {
+      setContacts([]);
+      setContactError('Không có thông tin chi nhánh.');
+      return () => {
+        mounted = false;
+      };
+    }
+    (async () => {
+      try {
+        setContactError(null);
+        const res = await appApi.getContactsByBranchCode(branchCode);
+        if (!mounted) return;
+        setContacts(Array.isArray(res?.contacts) ? res.contacts : []);
+      } catch {
+        if (mounted) {
+          setContacts([]);
+          setContactError('Không tải được danh sách liên hệ.');
+        }
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [branchCode]);
 
   if (loading || !allowed) {
     return (
@@ -89,7 +111,7 @@ const InfoScreen = () => {
 
             {expandedContact ? (
               <View className="mt-4 border-t border-black/5 pt-3 space-y-2">
-                {contactDetails.map((detail) => (
+                {contacts.map((detail) => (
                   <TouchableOpacity
                     key={detail.phone}
                     className="flex-row items-center justify-between rounded-lg px-2 py-2"
@@ -100,6 +122,9 @@ const InfoScreen = () => {
                     <Text className="font-medium text-[#111]">{detail.phone}</Text>
                   </TouchableOpacity>
                 ))}
+                {contactError ? (
+                  <Text className="text-sm text-red-500 text-center">{contactError}</Text>
+                ) : null}
               </View>
             ) : null}
           </Card>

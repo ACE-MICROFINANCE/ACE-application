@@ -49,4 +49,7 @@ export default () => ({
     loanReminderDays: process.env.LOAN_REMINDER_DAYS ? Number(process.env.LOAN_REMINDER_DAYS) : 7,
     loanReminderHour: process.env.LOAN_REMINDER_HOUR ? Number(process.env.LOAN_REMINDER_HOUR) : 8,
   },
+  contacts: {
+    byBranchJson: process.env.CONTACTS_BY_BRANCH_JSON || '',
+  },
 });

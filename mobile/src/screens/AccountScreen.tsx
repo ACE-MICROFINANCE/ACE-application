@@ -21,6 +21,8 @@ const AccountScreen = () => {
   const [feedback, setFeedback] = useState('');
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
   const [feedbackSending, setFeedbackSending] = useState(false);
+  const [socialPhone, setSocialPhone] = useState<string | null>(null);
+  const [contactError, setContactError] = useState<string | null>(null);
   const [profile, setProfile] = useState<any>(customer);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,6 +49,37 @@ const AccountScreen = () => {
       mounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    const code = merged?.branchCode;
+    if (!code) {
+      setSocialPhone(null);
+      return () => {
+        mounted = false;
+      };
+    }
+
+    (async () => {
+      try {
+        setContactError(null);
+        const res = await appApi.getContactsByBranchCode(code);
+        if (!mounted) return;
+        const phone = res?.socialPhone ?? null;
+        setSocialPhone(phone);
+        setContactError(phone ? null : 'Chưa có số liên hệ.');
+      } catch {
+        if (mounted) {
+          setSocialPhone(null);
+          setContactError('Chưa có số liên hệ.');
+        }
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [merged?.branchCode]);
 
   return (
     <MobileFrame withBottomPadding>
@@ -116,7 +149,13 @@ const AccountScreen = () => {
               title="Liên hệ CCO"
               bgColor="#10b981"
               className="mt-0"
-              onPress={() => Linking.openURL('tel:0877500429')}
+              onPress={() => {
+                if (!socialPhone) {
+                  setContactError('Chưa có số liên hệ.');
+                  return;
+                }
+                Linking.openURL(`tel:${socialPhone}`);
+              }}
             />
             <AppButton
               title="Đăng xuất"
@@ -127,6 +166,8 @@ const AccountScreen = () => {
               }}
             />
           </View>
+
+          {contactError ? <Text className="text-xs text-red-500 text-center">{contactError}</Text> : null}
         </Card>
       </View>
 

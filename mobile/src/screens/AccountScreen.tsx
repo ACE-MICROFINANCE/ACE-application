@@ -28,6 +28,11 @@ const AccountScreen = () => {
   const [error, setError] = useState<string | null>(null);
 
   const merged = useMemo(() => profile || customer || {}, [profile, customer]);
+  const actorKind = merged?.actorKind;
+  const staffRole = merged?.role;
+  const isCustomer = actorKind === 'CUSTOMER';
+  const isStaff = actorKind === 'STAFF';
+  const isAdmin = isStaff && staffRole === 'ADMIN';
 
   useEffect(() => {
     let mounted = true;
@@ -53,6 +58,13 @@ const AccountScreen = () => {
   useEffect(() => {
     let mounted = true;
     const code = merged?.branchCode;
+    if (!isCustomer) {
+      setSocialPhone(null);
+      setContactError(null);
+      return () => {
+        mounted = false;
+      };
+    }
     if (!code) {
       setSocialPhone(null);
       return () => {
@@ -79,84 +91,94 @@ const AccountScreen = () => {
     return () => {
       mounted = false;
     };
-  }, [merged?.branchCode]);
+  }, [merged?.branchCode, isCustomer]);
+
+  const isMeaningful = (val: any) => {
+    if (val === null || val === undefined) return false;
+    if (typeof val === 'string') return val.trim().length > 0;
+    if (typeof val === 'number') return Number.isFinite(val);
+    return true;
+  };
+
+  const rows = useMemo(() => {
+    const r: Array<{ label: string; value: string | number }> = [];
+
+    if (isCustomer) {
+      const idCode = merged?.customerId || merged?.memberNo;
+      if (isMeaningful(merged?.fullName)) r.push({ label: 'Họ tên', value: merged.fullName });
+      if (isMeaningful(idCode)) r.push({ label: 'Mã khách hàng', value: idCode });
+      if (isMeaningful(merged?.idCardNumber)) r.push({ label: 'Số CMT/CCCD', value: merged.idCardNumber });
+      if (isMeaningful(merged?.phoneNumber)) r.push({ label: 'Điện thoại', value: merged.phoneNumber });
+      const group = merged?.groupName || merged?.groupCode;
+      if (isMeaningful(group)) r.push({ label: 'Nhóm/Vùng', value: group });
+      if (isMeaningful(merged?.loanCycle)) r.push({ label: 'Vòng vay', value: merged.loanCycle });
+      if (merged?.membershipStartDate) {
+        r.push({ label: 'Ngày tham gia', value: formatDate(merged.membershipStartDate) });
+      }
+    } else if (isStaff) {
+      if (isMeaningful(merged?.fullName)) r.push({ label: 'Họ tên', value: merged.fullName });
+      if (isMeaningful(merged?.email)) r.push({ label: 'Email', value: merged.email });
+      if (isMeaningful(merged?.role)) r.push({ label: 'Vai trò', value: merged.role });
+      const branchText =
+        merged?.branchCode || merged?.branchName
+          ? `${merged.branchCode ?? ''}${merged.branchName ? ` - ${merged.branchName}` : ''}`.trim()
+          : '';
+      if (isMeaningful(branchText)) r.push({ label: 'Chi nhánh', value: branchText });
+    }
+
+    return r;
+  }, [isCustomer, isStaff, merged]);
 
   return (
     <MobileFrame withBottomPadding>
       <View className="pt-6 pb-4">
         <Card className="rounded-2xl bg-white shadow-lg p-6 space-y-4">
           <View className="items-center">
-            <Text className="text-lg font-semibold text-[#333]">Thông tin bà con</Text>
+            <Text className="text-lg font-semibold text-[#333]">Thông tin tài khoản</Text>
           </View>
 
           {loading ? <Text className="text-center text-sm text-[#666]">Đang tải...</Text> : null}
           {error ? <Text className="text-center text-sm text-red-500">{error}</Text> : null}
 
           <View className="space-y-2 opacity-100">
-            <View className="flex-row justify-between">
-              <Text className="text-[#555] text-sm">Họ tên</Text>
-              <Text className="text-sm font-semibold text-[#333]" numberOfLines={1}>
-                {merged?.fullName || '-'}
-              </Text>
-            </View>
-            <View className="flex-row justify-between">
-              <Text className="text-[#555] text-sm">Mã khách hàng</Text>
-              <Text className="text-sm font-semibold text-[#333]">
-                {merged?.customerId || merged?.memberNo || '-'}
-              </Text>
-            </View>
-            <View className="flex-row justify-between">
-              <Text className="text-[#555] text-sm">Số CMT/CCCD</Text>
-              <Text className="text-sm font-semibold text-[#333]">{merged?.idCardNumber || '-'}</Text>
-            </View>
-            <View className="flex-row justify-between">
-              <Text className="text-[#555] text-sm">Điện thoại</Text>
-              <Text className="text-sm font-semibold text-[#333]">{merged?.phoneNumber || '-'}</Text>
-            </View>
-            <View className="flex-row justify-between">
-              <Text className="text-[#555] text-sm">Nhóm/Vùng</Text>
-              <Text className="text-sm font-semibold text-[#333]">
-                {merged?.groupName || merged?.groupCode || '-'}
-              </Text>
-            </View>
-            <View className="flex-row justify-between">
-              <Text className="text-[#555] text-sm">Vòng vay</Text>
-              <Text className="text-sm font-semibold text-[#333]">
-                {merged?.loanCycle !== undefined && merged?.loanCycle !== null ? merged.loanCycle : '-'}
-              </Text>
-            </View>
-            <View className="flex-row justify-between">
-              <Text className="text-[#555] text-sm">Ngày tham gia</Text>
-              <Text className="text-sm font-semibold text-[#333]">
-                {formatDate(merged?.membershipStartDate)}
-              </Text>
-            </View>
+            {rows.map((row) => (
+              <View className="flex-row justify-between" key={`${row.label}-${row.value}`}>
+                <Text className="text-[#555] text-sm">{row.label}</Text>
+                <Text className="text-sm font-semibold text-[#333]" numberOfLines={1}>
+                  {row.value}
+                </Text>
+              </View>
+            ))}
           </View>
 
           <View className="space-y-3 pt-2">
             <AppButton title="Đổi mật khẩu" bgColor="#1d63b3" className="mt-0" onPress={() => setChangeOpen(true)} />
-            <AppButton
-              title="Gửi góp ý"
-              bgColor="#f39c12"
-              className="mt-0"
-              onPress={() => {
-                setFeedback('');
-                setFeedbackMsg(null);
-                setFeedbackOpen(true);
-              }}
-            />
-            <AppButton
-              title="Liên hệ CCO"
-              bgColor="#10b981"
-              className="mt-0"
-              onPress={() => {
-                if (!socialPhone) {
-                  setContactError('Chưa có số liên hệ.');
-                  return;
-                }
-                Linking.openURL(`tel:${socialPhone}`);
-              }}
-            />
+            {isCustomer && !isAdmin ? (
+              <>
+                <AppButton
+                  title="Gửi góp ý"
+                  bgColor="#f39c12"
+                  className="mt-0"
+                  onPress={() => {
+                    setFeedback('');
+                    setFeedbackMsg(null);
+                    setFeedbackOpen(true);
+                  }}
+                />
+                <AppButton
+                  title="Liên hệ CCO"
+                  bgColor="#10b981"
+                  className="mt-0"
+                  onPress={() => {
+                    if (!socialPhone) {
+                      setContactError('Chưa có số liên hệ.');
+                      return;
+                    }
+                    Linking.openURL(`tel:${socialPhone}`);
+                  }}
+                />
+              </>
+            ) : null}
             <AppButton
               title="Đăng xuất"
               bgColor="#e53935"
@@ -167,7 +189,9 @@ const AccountScreen = () => {
             />
           </View>
 
-          {contactError ? <Text className="text-xs text-red-500 text-center">{contactError}</Text> : null}
+          {isCustomer && contactError ? (
+            <Text className="text-xs text-red-500 text-center">{contactError}</Text>
+          ) : null}
         </Card>
       </View>
 

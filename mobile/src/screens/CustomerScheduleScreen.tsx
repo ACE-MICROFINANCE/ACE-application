@@ -52,10 +52,10 @@ const getAvatarUrl = (event: ScheduleItem) => {
   const type = String(event.eventType ?? '').trim().toUpperCase();
 
   if (type === 'MEETING') return require('../../assets/img/community-meeting.png');
-  if (type === 'FIELD_SCHOOL') return require('../../assets/img/farming-plant-rice.png');
-  if (type === 'FARMING_TASK') return require('../../assets/img/farming-plant-rice.png');
+  if (type === 'FIELD_SCHOOL') return require('../../assets/img/farming-plant-rice.jpg');
+  if (type === 'FARMING_TASK') return require('../../assets/img/farming-plant-rice.jpg');
 
-  return require('../../assets/img/farming-plant-rice.png');
+  return require('../../assets/img/farming-plant-rice.jpg');
 };
 
 const buildEventText = (event: ScheduleItem) => {

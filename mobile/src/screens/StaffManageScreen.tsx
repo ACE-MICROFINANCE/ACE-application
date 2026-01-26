@@ -2,7 +2,6 @@
 import {
   ActivityIndicator,
   Alert,
-  Animated,
   Modal,
   Platform,
   Pressable,
@@ -14,7 +13,6 @@ import {
   Dimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Feather } from "@expo/vector-icons";
 import { MobileFrame } from "@components/layout/MobileFrame";
 import { Card } from "@components/ui/Card";
 import { AppButton } from "@components/ui/AppButton";
@@ -26,6 +24,7 @@ import {
   type StaffUserItem,
   type UpdateStaffUserPayload,
 } from "@services/appApi";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 
 type ModalMode = "create" | "edit" | null;
 
@@ -41,6 +40,13 @@ const StaffManageScreen = () => {
   const { profile } = useProfileStore();
   const isAdmin = profile?.actorKind === "STAFF" && profile?.role === "ADMIN";
   const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
+  const CONTAINER_MAX_W = 480;
+  const [contentWidth, setContentWidth] = useState<number>(0);
+  const TAB_FALLBACK = 110; // fallback nếu tabBarHeight không trả về
+  const tabH = Math.max(tabBarHeight || 0, TAB_FALLBACK);
+  const BUTTON_H = 56;
+  const floatingBottom = tabH + 12; // khoảng cách đẹp phía trên tabbar
 
   const [staffUsers, setStaffUsers] = useState<StaffUserItem[]>([]);
   const [branches, setBranches] = useState<StaffBranchItem[]>([]);
@@ -63,13 +69,11 @@ const StaffManageScreen = () => {
     branchCode: "",
     password: "",
   });
-  const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
   const [saveLoading, setSaveLoading] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [resetPassword, setResetPassword] = useState("");
   const [showResetPassword, setShowResetPassword] = useState(false);
   const [branchPickerOpen, setBranchPickerOpen] = useState(false);
-  const fabScale = useRef(new Animated.Value(1)).current;
   const { height: SCREEN_H } = Dimensions.get("window");
 
   const branchOptions = useMemo(
@@ -298,10 +302,18 @@ const StaffManageScreen = () => {
       <View className="absolute inset-0 bg-[#F2F2F7]" pointerEvents="none" />
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ paddingTop: 32, paddingBottom: 56, paddingHorizontal: 16, gap: 16 }}
+        contentContainerStyle={{
+          paddingTop: 32,
+          paddingBottom: floatingBottom + BUTTON_H + 24, // chừa chỗ cho button + tabbar
+          paddingHorizontal: 16,
+          gap: 16,
+        }}
         showsVerticalScrollIndicator={false}
       >
-        <View style={{ alignSelf: "center", width: "100%", maxWidth: 480, gap: 16 }}>
+        <View
+          onLayout={(e) => setContentWidth(e.nativeEvent.layout.width)}
+          style={{ alignSelf: "center", width: "100%", maxWidth: CONTAINER_MAX_W, gap: 16 }}
+        >
           <Card className="items-center rounded-2xl bg-[#DDEBFF] px-6 py-4 shadow-md">
             <Text className="text-lg font-semibold text-slate-900">Quản lý nhân viên</Text>
           </Card>
@@ -374,22 +386,21 @@ const StaffManageScreen = () => {
         </View>
       </ScrollView>
 
-      <View pointerEvents="box-none" style={{ position: "absolute", inset: 0 }}>
-        <View className="pointer-events-none absolute inset-x-0 bottom-0 z-50">
-          <View className="mx-auto w-full max-w-md relative pointer-events-auto">
-           <AnimatedPressable
-  onPress={openCreateModal}
-  onPressIn={() => Animated.spring(fabScale, { toValue: 0.95, useNativeDriver: true }).start()}
-  onPressOut={() => Animated.spring(fabScale, { toValue: 1, useNativeDriver: true }).start()}
-  className="absolute right-4 h-14 w-14 items-center justify-center rounded-full bg-[#007AFF] shadow-[0_12px_30px_rgba(0,0,0,0.25)]"
-  style={{
-    bottom: insets.bottom + 122,
-    transform: [{ scale: fabScale }], // ✅ luôn đúng trên native + web
-  }}
->
-  <Feather name="plus" size={28} color="#fff" />
-</AnimatedPressable>
-          </View>
+      <View
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: floatingBottom,
+          zIndex: 9999,
+          elevation: 50,
+          paddingHorizontal: 16,
+          alignItems: "center",
+        }}
+        pointerEvents="box-none"
+      >
+        <View style={{ width: contentWidth || "100%", maxWidth: CONTAINER_MAX_W }}>
+          <AppButton title="Thêm nhân viên mới" onPress={openCreateModal} />
         </View>
       </View>
 
@@ -414,13 +425,17 @@ const StaffManageScreen = () => {
               </Pressable>
             </View>
 
-            <View style={{ height: Math.min(SCREEN_H * 0.78, 640) }}>
-              <ScrollView
-                style={{ flex: 1 }}
-                keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 12, gap: 12 }}
-              >
+            {/** Body + Footer */}
+            {(() => {
+              const MODAL_BODY_MAX_H = Math.min(SCREEN_H * 0.78, 640);
+              return (
+                <>
+                  <ScrollView
+                    style={{ maxHeight: MODAL_BODY_MAX_H }}
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 12, gap: 12 }}
+                  >
                 <View className="space-y-2">
                   <Text className="text-xs font-medium text-[#6C757D]">Họ và tên</Text>
                   <TextInput
@@ -510,34 +525,36 @@ const StaffManageScreen = () => {
                 ) : null}
 
                 {saveError ? <Text className="text-sm text-red-500">{saveError}</Text> : null}
-              </ScrollView>
-              <View
-                style={{
-                  paddingHorizontal: 24,
-                  paddingTop: 10,
-                  paddingBottom: insets.bottom + 16,
-                  gap: 10,
-                  borderTopWidth: 1,
-                  borderTopColor: "rgba(0,0,0,0.05)",
-                  backgroundColor: "white",
-                }}
-              >
-                {modalMode === "create" ? (
-                  <AppButton title="Tạo nhân viên" onPress={handleCreate} loading={saveLoading} />
-                ) : (
-                  <AppButton title="Lưu thay đổi" onPress={handleUpdate} loading={saveLoading} />
-                )}
-                {modalMode === "edit" ? (
-                  <Pressable
-                    onPress={handleDelete}
-                    className="w-full rounded-full bg-[#DC3545] px-4 py-3"
-                    style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}
+                  </ScrollView>
+                  <View
+                    style={{
+                      paddingHorizontal: 24,
+                      paddingTop: 10,
+                      paddingBottom: insets.bottom + 16,
+                      gap: 10,
+                      borderTopWidth: 1,
+                      borderTopColor: "rgba(0,0,0,0.05)",
+                      backgroundColor: "white",
+                    }}
                   >
-                    <Text className="text-center text-sm font-semibold text-white">Xóa nhân viên</Text>
-                  </Pressable>
-                ) : null}
-              </View>
-            </View>
+                    {modalMode === "create" ? (
+                      <AppButton title="Tạo nhân viên" onPress={handleCreate} loading={saveLoading} />
+                    ) : (
+                      <AppButton title="Lưu thay đổi" onPress={handleUpdate} loading={saveLoading} />
+                    )}
+                    {modalMode === "edit" ? (
+                      <Pressable
+                        onPress={handleDelete}
+                        className="w-full rounded-full bg-[#DC3545] px-4 py-3"
+                        style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}
+                      >
+                        <Text className="text-center text-sm font-semibold text-white">Xóa nhân viên</Text>
+                      </Pressable>
+                    ) : null}
+                  </View>
+                </>
+              );
+            })()}
           </Pressable>
         </Pressable>
       </Modal>

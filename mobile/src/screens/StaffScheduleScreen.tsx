@@ -29,6 +29,7 @@ import {
   type ScheduleCreatePayload,
   type StaffGroupItem,
 } from "@services/appApi";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 
 const EVENT_TYPES: Array<{ value: string; label: string }> = [
   { value: "MEETING", label: "Họp nhóm" },
@@ -55,8 +56,6 @@ const formatDateTimeDisplay = (iso?: string | null) => {
   const yyyy = d.getFullYear();
   return `${hh}:${mm}, ${dd}/${mo}/${yyyy}`;
 };
-const { height: WIN_H } = Dimensions.get("window");
-const MODAL_H = Math.min(WIN_H * 0.9, 720); // 90% màn hình, giới hạn 720 cho máy lớn
 
 const startOfToday = () => {
   const now = new Date();
@@ -65,9 +64,9 @@ const startOfToday = () => {
 
 const getAvatarUrl = (event: ScheduleItem) => {
   if (event.eventType === "MEETING") return require("../../assets/img/community-meeting.png");
-  if (event.eventType === "FIELD_SCHOOL") return require("../../assets/img/farming-plant-rice.png");
-  if (event.eventType === "FARMING_TASK") return require("../../assets/img/farming-plant-rice.png");
-  return require("../../assets/img/farming-plant-rice.png");
+  if (event.eventType === "FIELD_SCHOOL") return require("../../assets/img/training.png");
+  if (event.eventType === "FARMING_TASK") return require("../../assets/img/farming-plant-rice.jpg");
+  return require("../../assets/img/farming-plant-rice.jpg");
 };
 
 const buildEventText = (event: ScheduleItem) => {
@@ -85,7 +84,17 @@ const StaffScheduleScreen = () => {
   const { profile } = useProfileStore();
   const insets = useSafeAreaInsets();
   const isStaff = profile?.actorKind === "STAFF";
-  const isWeb = Platform.OS === "web";
+
+  // ✅ giống StaffManageScreen: lấy chiều cao tabbar để đặt nút floating không bị chìm
+  const tabBarHeight = useBottomTabBarHeight();
+  const CONTAINER_MAX_W = 480;
+  const [contentWidth, setContentWidth] = useState<number>(0);
+
+  const TAB_FALLBACK = 110; // fallback nếu tabBarHeight bị 0 (một số máy / web)
+  const tabH = Math.max(tabBarHeight || 0, TAB_FALLBACK);
+  const BUTTON_H = 56;
+  const floatingBottom = tabH + 12;
+
   const { height: WIN_H } = Dimensions.get("window");
   const MODAL_H = Math.min(WIN_H * 0.9, 720);
 
@@ -464,9 +473,6 @@ const StaffScheduleScreen = () => {
     </View>
   );
 
-  // ✅ Fix “Invalid prop ... to React.Fragment”: không dùng Fragment để gắn props
-  // Ở đây ta dùng View wrapper thay cho <>...</>
-
   if (!isStaff) {
     return (
       <MobileFrame withBottomPadding>
@@ -483,16 +489,20 @@ const StaffScheduleScreen = () => {
     <MobileFrame withBottomPadding>
       <ScrollView
         className="flex-1"
-        // ✅ Bỏ background xám: không set backgroundColor #F2F2F7 nữa
         contentContainerStyle={{
           paddingTop: 32,
-          paddingBottom: 72,
+          // ✅ giống StaffManageScreen: chừa đúng chỗ cho floating button + tabbar
+          paddingBottom: floatingBottom + BUTTON_H + 24,
           paddingHorizontal: 16,
           gap: 16,
         }}
         showsVerticalScrollIndicator={false}
       >
-        <View style={{ alignSelf: "center", width: "100%", maxWidth: 480, gap: 16 }}>
+        <View
+          // ✅ giống StaffManageScreen: đo width thật của khung content
+          onLayout={(e) => setContentWidth(e.nativeEvent.layout.width)}
+          style={{ alignSelf: "center", width: "100%", maxWidth: CONTAINER_MAX_W, gap: 16 }}
+        >
           <Card className="rounded-2xl bg-[#DFF5D1] px-6 py-4 items-center">
             <Text className="text-xl font-semibold text-slate-900">Công tác và Tập huấn</Text>
           </Card>
@@ -541,34 +551,29 @@ const StaffScheduleScreen = () => {
         </View>
       </ScrollView>
 
-      {/* Floating plus button */}
-      <View pointerEvents="box-none" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
-        <View pointerEvents="box-none" style={{ position: "absolute", left: 0, right: 0, bottom: 0 }}>
-          <View pointerEvents="box-none" style={{ marginHorizontal: "auto" as any, width: "100%", maxWidth: 480 }}>
-            <Pressable
-              onPress={openCreateModal}
-              style={{
-                position: "absolute",
-                right: 16,
-                bottom: insets.bottom + 122,
-                height: 56,
-                width: 56,
-                borderRadius: 28,
-                backgroundColor: "#007AFF",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Feather name="plus" size={26} color="#fff" />
-            </Pressable>
-          </View>
+      {/* ✅ Floating add button (giống StaffManageScreen) */}
+      <View
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: floatingBottom,
+          zIndex: 9999,
+          elevation: 50,
+          paddingHorizontal: 16,
+          alignItems: "center",
+        }}
+        pointerEvents="box-none"
+      >
+        <View style={{ width: contentWidth || "100%", maxWidth: CONTAINER_MAX_W }}>
+          <AppButton title="Thêm lịch" onPress={openCreateModal} />
         </View>
       </View>
 
       {/* Create/Edit modal */}
-      <Modal transparent visible={Boolean(modalMode)} animationType="fade" onRequestClose={() => setModalMode(null)}>
+      <Modal transparent visible={Boolean(modalMode)} animationType="fade" onRequestClose={closeAllModals}>
         <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.30)" }}>
-          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setModalMode(null)} />
+          <Pressable style={StyleSheet.absoluteFillObject} onPress={closeAllModals} />
 
           <KeyboardAvoidingView
             behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -601,7 +606,7 @@ const StaffScheduleScreen = () => {
                 <Text style={{ fontSize: 17, fontWeight: "600", color: "#111" }}>{modalTitle}</Text>
 
                 <Pressable
-                  onPress={() => setModalMode(null)}
+                  onPress={closeAllModals}
                   style={{
                     position: "absolute",
                     right: 16,
@@ -643,28 +648,37 @@ const StaffScheduleScreen = () => {
                   {/* Title */}
                   <View style={{ gap: 8 }}>
                     <Text style={{ fontSize: 12, fontWeight: "600", color: "#6C757D" }}>Tiêu đề</Text>
-                  <TextInput
-                    value={formState.title}
-                    onChangeText={(value) => setFormState((prev) => ({ ...prev, title: value }))}
-                    placeholder="Nhập tiêu đề"
-                    style={{
-                      borderWidth: 1,
-                      borderColor: "rgba(0,0,0,0.06)",
-                      borderRadius: 16,
-                      paddingHorizontal: 16,
-                      paddingVertical: 12,
-                      color: "#111",
-                      fontSize: 16,
-                      backgroundColor: "#fff",
-                    }}
-                    placeholderTextColor="#9ca3af"
-                    selectionColor="#111"
-                  />
-                </View>
+                    <TextInput
+                      value={formState.title}
+                      onChangeText={(value) => setFormState((prev) => ({ ...prev, title: value }))}
+                      placeholder="Nhập tiêu đề"
+                      style={{
+                        borderWidth: 1,
+                        borderColor: "rgba(0,0,0,0.06)",
+                        borderRadius: 16,
+                        paddingHorizontal: 16,
+                        paddingVertical: 12,
+                        color: "#111",
+                        fontSize: 16,
+                        backgroundColor: "#fff",
+                      }}
+                      placeholderTextColor="#9ca3af"
+                      selectionColor="#111"
+                    />
+                  </View>
 
                   {/* Event type */}
                   {modalMode === "edit" ? (
-                    <View style={{ gap: 6, borderWidth: 1, borderColor: "rgba(0,0,0,0.06)", borderRadius: 16, paddingHorizontal: 16, paddingVertical: 12 }}>
+                    <View
+                      style={{
+                        gap: 6,
+                        borderWidth: 1,
+                        borderColor: "rgba(0,0,0,0.06)",
+                        borderRadius: 16,
+                        paddingHorizontal: 16,
+                        paddingVertical: 12,
+                      }}
+                    >
                       <Text style={{ fontSize: 12, fontWeight: "600", color: "#6C757D" }}>Loại sự kiện</Text>
                       <Text style={{ fontSize: 14, fontWeight: "600", color: "#111" }}>
                         {EVENT_TYPES.find((opt) => opt.value === formState.eventType)?.label || formState.eventType}
@@ -715,13 +729,16 @@ const StaffScheduleScreen = () => {
                         justifyContent: "space-between",
                       }}
                     >
-                      <Text style={{ fontSize: 16, fontWeight: "600", color: "#111" }}>{formatDateTimeDisplay(formState.startDate)}</Text>
+                      <Text style={{ fontSize: 16, fontWeight: "600", color: "#111" }}>
+                        {formatDateTimeDisplay(formState.startDate)}
+                      </Text>
                       <Feather name="chevron-down" size={18} color="#0A84FF" />
                     </Pressable>
 
                     {formState.eventType === "MEETING" ? (
                       <Text style={{ fontSize: 13, color: "#6C757D", lineHeight: 18 }}>
-                        Lịch họp thường lặp lại mỗi 28 ngày kể từ ngày đã chọn. Nếu trùng Tết hoặc ngày bận, bạn có thể chỉnh lại thủ công.
+                        Lịch họp thường lặp lại mỗi 28 ngày kể từ ngày đã chọn. Nếu trùng Tết hoặc ngày bận, bạn có thể
+                        chỉnh lại thủ công.
                       </Text>
                     ) : null}
                   </View>
@@ -729,49 +746,49 @@ const StaffScheduleScreen = () => {
                   {/* Duration */}
                   <View style={{ gap: 8 }}>
                     <Text style={{ fontSize: 12, fontWeight: "600", color: "#6C757D" }}>Thời lượng (phút)</Text>
-                  <TextInput
-                    keyboardType="numeric"
-                    value={formState.durationMinutes}
-                    onChangeText={(value) =>
-                      setFormState((prev) => ({ ...prev, durationMinutes: value.replace(/[^0-9]/g, "") }))
-                    }
-                    placeholder="Nhập thời lượng"
-                    style={{
-                      borderWidth: 1,
-                      borderColor: "rgba(0,0,0,0.06)",
-                      borderRadius: 16,
-                      paddingHorizontal: 16,
-                      paddingVertical: 12,
-                      color: "#111",
-                      fontSize: 16,
-                      backgroundColor: "#fff",
-                    }}
-                    placeholderTextColor="#9ca3af"
-                    selectionColor="#111"
-                  />
-                </View>
+                    <TextInput
+                      keyboardType="numeric"
+                      value={formState.durationMinutes}
+                      onChangeText={(value) =>
+                        setFormState((prev) => ({ ...prev, durationMinutes: value.replace(/[^0-9]/g, "") }))
+                      }
+                      placeholder="Nhập thời lượng"
+                      style={{
+                        borderWidth: 1,
+                        borderColor: "rgba(0,0,0,0.06)",
+                        borderRadius: 16,
+                        paddingHorizontal: 16,
+                        paddingVertical: 12,
+                        color: "#111",
+                        fontSize: 16,
+                        backgroundColor: "#fff",
+                      }}
+                      placeholderTextColor="#9ca3af"
+                      selectionColor="#111"
+                    />
+                  </View>
 
                   {/* Location */}
                   <View style={{ gap: 8 }}>
                     <Text style={{ fontSize: 12, fontWeight: "600", color: "#6C757D" }}>Địa điểm</Text>
-                  <TextInput
-                    value={formState.locationName}
-                    onChangeText={(value) => setFormState((prev) => ({ ...prev, locationName: value }))}
-                    placeholder="Nhập địa điểm"
-                    style={{
-                      borderWidth: 1,
-                      borderColor: "rgba(0,0,0,0.06)",
-                      borderRadius: 16,
-                      paddingHorizontal: 16,
-                      paddingVertical: 12,
-                      color: "#111",
-                      fontSize: 16,
-                      backgroundColor: "#fff",
-                    }}
-                    placeholderTextColor="#9ca3af"
-                    selectionColor="#111"
-                  />
-                </View>
+                    <TextInput
+                      value={formState.locationName}
+                      onChangeText={(value) => setFormState((prev) => ({ ...prev, locationName: value }))}
+                      placeholder="Nhập địa điểm"
+                      style={{
+                        borderWidth: 1,
+                        borderColor: "rgba(0,0,0,0.06)",
+                        borderRadius: 16,
+                        paddingHorizontal: 16,
+                        paddingVertical: 12,
+                        color: "#111",
+                        fontSize: 16,
+                        backgroundColor: "#fff",
+                      }}
+                      placeholderTextColor="#9ca3af"
+                      selectionColor="#111"
+                    />
+                  </View>
 
                   {/* Description */}
                   <View style={{ gap: 8 }}>
@@ -780,31 +797,40 @@ const StaffScheduleScreen = () => {
                       multiline
                       numberOfLines={4}
                       value={formState.description}
-                    onChangeText={(value) => setFormState((prev) => ({ ...prev, description: value }))}
-                    placeholder="Nhập mô tả"
-                    textAlignVertical="top"
-                    style={{
-                      borderWidth: 1,
-                      borderColor: "rgba(0,0,0,0.06)",
-                      borderRadius: 16,
-                      paddingHorizontal: 16,
-                      paddingVertical: 12,
-                      color: "#111",
-                      fontSize: 16,
-                      backgroundColor: "#fff",
-                      minHeight: 110,
-                    }}
-                    placeholderTextColor="#9ca3af"
-                    selectionColor="#111"
-                  />
-                </View>
+                      onChangeText={(value) => setFormState((prev) => ({ ...prev, description: value }))}
+                      placeholder="Nhập mô tả"
+                      textAlignVertical="top"
+                      style={{
+                        borderWidth: 1,
+                        borderColor: "rgba(0,0,0,0.06)",
+                        borderRadius: 16,
+                        paddingHorizontal: 16,
+                        paddingVertical: 12,
+                        color: "#111",
+                        fontSize: 16,
+                        backgroundColor: "#fff",
+                        minHeight: 110,
+                      }}
+                      placeholderTextColor="#9ca3af"
+                      selectionColor="#111"
+                    />
+                  </View>
 
                   {saveError ? <Text style={{ fontSize: 14, color: "#e53935" }}>{saveError}</Text> : null}
                 </ScrollView>
               </View>
 
-              {/* Footer (✅ không dùng Fragment) */}
-              <View style={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 20, borderTopWidth: 1, borderTopColor: "rgba(0,0,0,0.06)", gap: 10 }}>
+              {/* Footer */}
+              <View
+                style={{
+                  paddingHorizontal: 24,
+                  paddingTop: 16,
+                  paddingBottom: 20,
+                  borderTopWidth: 1,
+                  borderTopColor: "rgba(0,0,0,0.06)",
+                  gap: 10,
+                }}
+              >
                 {modalMode === "edit" ? (
                   <View style={{ gap: 10 }}>
                     <AppButton title="Xóa lịch" onPress={handleDelete} loading={saveLoading} bgColor="#e53935" />
@@ -812,7 +838,7 @@ const StaffScheduleScreen = () => {
                   </View>
                 ) : (
                   <View style={{ gap: 10 }}>
-                    <AppButton title="Hủy" onPress={() => setModalMode(null)} bgColor="#e53935" />
+                    <AppButton title="Hủy" onPress={closeAllModals} bgColor="#e53935" />
                     <AppButton title="Tạo lịch" onPress={handleCreate} loading={saveLoading} />
                   </View>
                 )}
@@ -871,7 +897,12 @@ const StaffScheduleScreen = () => {
 
             <Pressable
               onPress={() => setEventTypePickerOpen(false)}
-              style={{ paddingHorizontal: 16, paddingVertical: 12, alignItems: "center", backgroundColor: "rgba(0,0,0,0.04)" }}
+              style={{
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+                alignItems: "center",
+                backgroundColor: "rgba(0,0,0,0.04)",
+              }}
             >
               <Text style={{ fontSize: 14, fontWeight: "600", color: "#111" }}>Đóng</Text>
             </Pressable>
@@ -895,12 +926,35 @@ const StaffScheduleScreen = () => {
           >
             <Pressable
               onPress={(e) => e.stopPropagation()}
-              style={{ width: "100%", maxWidth: 420, backgroundColor: "#fff", borderRadius: 16, overflow: "hidden", maxHeight: "85%" }}
+              style={{
+                width: "100%",
+                maxWidth: 420,
+                backgroundColor: "#fff",
+                borderRadius: 16,
+                overflow: "hidden",
+                maxHeight: "85%",
+              }}
             >
-              <View style={{ paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "rgba(0,0,0,0.10)" }}>
+              <View
+                style={{
+                  paddingHorizontal: 16,
+                  paddingVertical: 12,
+                  borderBottomWidth: 1,
+                  borderBottomColor: "rgba(0,0,0,0.10)",
+                }}
+              >
                 <Text style={{ fontSize: 16, fontWeight: "600", color: "#111" }}>Chọn nhóm</Text>
 
-                <View style={{ marginTop: 8, borderRadius: 12, borderWidth: 1, borderColor: "rgba(0,0,0,0.10)", paddingHorizontal: 12, paddingVertical: 8 }}>
+                <View
+                  style={{
+                    marginTop: 8,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: "rgba(0,0,0,0.10)",
+                    paddingHorizontal: 12,
+                    paddingVertical: 8,
+                  }}
+                >
                   <TextInput
                     value={groupSearch}
                     onChangeText={setGroupSearch}
@@ -914,7 +968,9 @@ const StaffScheduleScreen = () => {
 
               <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled contentContainerStyle={{ flexGrow: 1 }}>
                 {filteredGroups.length === 0 ? (
-                  <Text style={{ paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: "#666" }}>Chưa có nhóm phù hợp.</Text>
+                  <Text style={{ paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: "#666" }}>
+                    Chưa có nhóm phù hợp.
+                  </Text>
                 ) : (
                   filteredGroups.map((group) => {
                     const checked = groupPickerSelection.includes(group.groupCode);
@@ -937,7 +993,9 @@ const StaffScheduleScreen = () => {
                         }}
                       >
                         <View style={{ flex: 1, paddingRight: 12 }}>
-                          <Text style={{ fontSize: 14, fontWeight: "600", color: "#111" }}>{group.groupName || group.groupCode}</Text>
+                          <Text style={{ fontSize: 14, fontWeight: "600", color: "#111" }}>
+                            {group.groupName || group.groupCode}
+                          </Text>
                           <Text style={{ fontSize: 12, color: "#666", marginTop: 2 }}>
                             {group.branchName ? `Chi nhánh: ${group.branchName}` : "Nhóm"}
                           </Text>
@@ -959,7 +1017,16 @@ const StaffScheduleScreen = () => {
                 )}
               </ScrollView>
 
-              <View style={{ flexDirection: "row", gap: 10, paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1, borderTopColor: "rgba(0,0,0,0.10)" }}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  gap: 10,
+                  paddingHorizontal: 16,
+                  paddingVertical: 12,
+                  borderTopWidth: 1,
+                  borderTopColor: "rgba(0,0,0,0.10)",
+                }}
+              >
                 <View style={{ flex: 1 }}>
                   <AppButton
                     title="Hủy"

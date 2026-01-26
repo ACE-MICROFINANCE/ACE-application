@@ -46,12 +46,12 @@ const DashboardRemindersCard = ({
   loan: LoanCurrentResponse | null;
   includeLoanReminder: boolean;
   loading: boolean;
-}) => {
-  const icons = {
-    farming: require('../../assets/img/farming-plant-rice.png'),
-    loan: require('../../assets/img/loan-payment.png'),
-    meeting: require('../../assets/img/community-meeting.png'),
-  };
+  }) => {
+    const icons = {
+      farming: require('../../assets/img/farming-plant-rice.jpg'),
+      loan: require('../../assets/img/loan-payment.png'),
+      meeting: require('../../assets/img/community-meeting.png'),
+    };
 
   const reminders = useMemo(() => {
     if (loading) {

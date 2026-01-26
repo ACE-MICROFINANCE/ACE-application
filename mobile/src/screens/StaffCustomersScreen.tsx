@@ -2,7 +2,6 @@
 import {
   ActivityIndicator,
   Alert,
-  Animated,
   Modal,
   Platform,
   Dimensions,
@@ -15,7 +14,6 @@ import {
   StyleSheet,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import { MobileFrame } from '@components/layout/MobileFrame';
 import { Card } from '@components/ui/Card';
 import { AppButton } from '@components/ui/AppButton';
@@ -27,6 +25,7 @@ import {
   type StaffCustomerDetail,
   type StaffCustomerItem,
 } from '@services/appApi';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 
 type ModalMode = 'create' | 'edit' | null;
 
@@ -47,13 +46,22 @@ const formatBranchGroup = (branchName?: string | null, groupName?: string | null
   return `${branchText} • ${groupText}`;
 };
 
-// ✅ FIX: Pressable thường không nhận Animated.Value ổn định -> dùng AnimatedPressable
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
-
 const StaffCustomersScreen = () => {
   const { profile } = useProfileStore();
   const isStaff = profile?.actorKind === 'STAFF';
   const insets = useSafeAreaInsets();
+
+  // ✅ giống StaffManageScreen: lấy tabbar height để đặt FAB không bị chìm
+  const tabBarHeight = useBottomTabBarHeight();
+  const CONTAINER_MAX_W = 480;
+  const [contentWidth, setContentWidth] = useState<number>(0);
+
+  const TAB_FALLBACK = 110; // fallback nếu tabBarHeight không trả về
+  const tabH = Math.max(tabBarHeight || 0, TAB_FALLBACK);
+
+  const BUTTON_H = 56;
+  const floatingBottom = tabH + 12;
+
   const { height: WIN_H } = Dimensions.get('window');
   const MODAL_H = Math.min(WIN_H * 0.86, 720);
 
@@ -82,9 +90,6 @@ const StaffCustomersScreen = () => {
   const [showResetPassword, setShowResetPassword] = useState(false);
   const [lockLoading, setLockLoading] = useState(false);
   const [accessibilityLoading, setAccessibilityLoading] = useState(false);
-
-  // ✅ Animated value cho FAB
-  const fabScale = useRef(new Animated.Value(1)).current;
 
   const fetchCustomers = async (q?: string) => {
     setLoading(true);
@@ -285,10 +290,20 @@ const StaffCustomersScreen = () => {
     <MobileFrame withBottomPadding>
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ paddingTop: 32, paddingBottom: 56, paddingHorizontal: 16, gap: 16 }}
+        // ✅ chừa đúng chỗ cho button + tabbar (không bị chìm)
+        contentContainerStyle={{
+          paddingTop: 32,
+          paddingBottom: floatingBottom + BUTTON_H + 24,
+          paddingHorizontal: 16,
+          gap: 16,
+        }}
         showsVerticalScrollIndicator={false}
       >
-        <View style={{ alignSelf: 'center', width: '100%', maxWidth: 480, gap: 16 }}>
+        <View
+          // ✅ đo width thật khung content để FAB canh đúng 480
+          onLayout={(e) => setContentWidth(e.nativeEvent.layout.width)}
+          style={{ alignSelf: 'center', width: '100%', maxWidth: CONTAINER_MAX_W, gap: 16 }}
+        >
           <Card className="items-center rounded-2xl bg-[#E6F4EA] px-6 py-4 shadow-md">
             <Text className="text-lg font-semibold text-[#1f2933] text-center">Quản lý đối tác</Text>
           </Card>
@@ -352,7 +367,9 @@ const StaffCustomersScreen = () => {
                       <Text className="text-xs text-[#666]">
                         Chi nhánh - Nhóm: {formatBranchGroup(customer.branchName, customer.groupName)}
                       </Text>
-                      {customer.phoneNumber ? <Text className="text-xs text-[#666]">SĐT: {customer.phoneNumber}</Text> : null}
+                      {customer.phoneNumber ? (
+                        <Text className="text-xs text-[#666]">SĐT: {customer.phoneNumber}</Text>
+                      ) : null}
                     </View>
                   </Pressable>
                 );
@@ -362,23 +379,30 @@ const StaffCustomersScreen = () => {
         </View>
       </ScrollView>
 
-      {/* FAB */}
-      <View pointerEvents="box-none" style={{ position: 'absolute', inset: 0 }}>
-        <View className="pointer-events-none absolute inset-x-0 bottom-0 z-50">
-          <View className="mx-auto w-full max-w-md relative pointer-events-auto">
-            <AnimatedPressable
-              onPress={openCreate}
-              onPressIn={() => Animated.spring(fabScale, { toValue: 0.95, useNativeDriver: true }).start()}
-              onPressOut={() => Animated.spring(fabScale, { toValue: 1, useNativeDriver: true }).start()}
-              className="absolute right-4 h-14 w-14 items-center justify-center rounded-full bg-[#007AFF] shadow-[0_12px_30px_rgba(0,0,0,0.25)]"
-              style={{
-                bottom: insets.bottom + 122,
-                transform: [{ scale: fabScale }], // ✅ FIX: scale luôn là Animated.Value, component là AnimatedPressable
-              }}
-            >
-              <Ionicons name="add" size={26} color="#fff" />
-            </AnimatedPressable>
-          </View>
+      {/* ✅ Button: canh đúng khung 480 + không chìm tabbar */}
+      <View
+        pointerEvents="box-none"
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          bottom: floatingBottom,
+          zIndex: 9999,
+          elevation: 50,
+          paddingHorizontal: 16,
+          alignItems: 'center',
+        }}
+      >
+        <View
+          pointerEvents="box-none"
+          style={{
+            width: contentWidth || '100%',
+            maxWidth: CONTAINER_MAX_W,
+            position: 'relative',
+            height: BUTTON_H,
+          }}
+        >
+          <AppButton title="Thêm đối tác mới" onPress={openCreate} />
         </View>
       </View>
 
@@ -419,6 +443,7 @@ const StaffCustomersScreen = () => {
                       className="rounded-2xl border border-black/5 px-4 py-3 text-base"
                     />
                   </View>
+
                   <View className="space-y-2">
                     <Text className="text-xs font-medium text-[#6C757D]">Mật khẩu ban đầu</Text>
                     <TextInput
@@ -429,6 +454,7 @@ const StaffCustomersScreen = () => {
                       className="rounded-2xl border border-black/5 px-4 py-3 text-base"
                     />
                   </View>
+
                   {saveError ? <Text className="text-sm text-red-500">{saveError}</Text> : null}
                   <AppButton title="Tạo tài khoản" onPress={handleCreateAccount} loading={saveLoading} />
                 </>
@@ -462,7 +488,9 @@ const StaffCustomersScreen = () => {
                           <View className="space-y-1">
                             <Text className="text-sm font-semibold text-[#111]">Khóa tài khoản</Text>
                             <Text className="text-xs text-[#6C757D]">
-                              {selectedDetail.credential ? 'Bật để vô hiệu hóa đăng nhập' : 'Khách hàng chưa có tài khoản'}
+                              {selectedDetail.credential
+                                ? 'Bật để vô hiệu hóa đăng nhập'
+                                : 'Khách hàng chưa có tài khoản'}
                             </Text>
                           </View>
                           <Switch
@@ -496,7 +524,9 @@ const StaffCustomersScreen = () => {
                           <View className="flex-row items-center justify-between">
                             <Text className="text-sm font-semibold text-[#111]">Mật khẩu tạm thời hiện tại</Text>
                             <Pressable onPress={() => setShowTempPassword((prev) => !prev)}>
-                              <Text className="text-xs font-medium text-[#007AFF]">{showTempPassword ? 'Ẩn' : 'Hiện'}</Text>
+                              <Text className="text-xs font-medium text-[#007AFF]">
+                                {showTempPassword ? 'Ẩn' : 'Hiện'}
+                              </Text>
                             </Pressable>
                           </View>
                           <Text className="text-sm text-[#111]">{showTempPassword ? tempPassword : '********'}</Text>

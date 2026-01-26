@@ -75,40 +75,6 @@ const TabItem: React.FC<TabItemProps> = ({ routeKey, isFocused, iconSource, onPr
     };
   }, [bounce, isFocused]);
 
-  const content = (
-    <View
-      className="h-14 w-14 items-center justify-center rounded-full border-4 shadow-sm overflow-hidden"
-      style={[
-        isFocused ? styles.activeRing : styles.inactiveRing,
-        Platform.OS === 'web'
-          ? undefined
-          : null,
-      ]}
-    >
-      {iconSource ? (
-        <Image
-          source={iconSource}
-          resizeMode="contain"
-          className="h-12 w-12 rounded-full"
-          style={{ borderRadius: 9999 }}
-        />
-      ) : null}
-    </View>
-  );
-
-  if (Platform.OS === 'web') {
-    return (
-      <Pressable
-        key={routeKey}
-        onPress={onPress}
-        className="flex-1 items-center justify-center py-1"
-        style={styles.webPressable}
-      >
-        {content}
-      </Pressable>
-    );
-  }
-
   return (
     <Pressable
       key={routeKey}
@@ -123,9 +89,7 @@ const TabItem: React.FC<TabItemProps> = ({ routeKey, isFocused, iconSource, onPr
         className="h-14 w-14 items-center justify-center rounded-full border-4 shadow-sm overflow-hidden"
         style={[
           isFocused ? styles.activeRing : styles.inactiveRing,
-          {
-            transform: [{ translateY: bounce }],
-          },
+          { transform: [{ translateY: bounce }] },
         ]}
       >
         {iconSource ? (

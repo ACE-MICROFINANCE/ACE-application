@@ -45,9 +45,9 @@ const formatDuration = (start?: string | null, end?: string | null, durationMinu
 
 const getAvatarUrl = (event: ScheduleItem) => {
   if (event.eventType === 'MEETING') return require('../../assets/img/community-meeting.png');
-  if (event.eventType === 'FIELD_SCHOOL') return require('../../assets/img/farming-plant-rice.png');
-  if (event.eventType === 'FARMING_TASK') return require('../../assets/img/farming-plant-rice.png'); // CHANGED: dùng farming icon thay thế
-  return require('../../assets/img/farming-plant-rice.png');
+  if (event.eventType === 'FIELD_SCHOOL') return require('../../assets/img/farming-plant-rice.jpg');
+  if (event.eventType === 'FARMING_TASK') return require('../../assets/img/farming-plant-rice.jpg'); // CHANGED: dùng farming icon thay thế
+  return require('../../assets/img/farming-plant-rice.jpg');
 };
 
 const buildEventText = (event: ScheduleItem) => {

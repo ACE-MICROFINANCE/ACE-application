@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Image, Platform, Text, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import * as Location from 'expo-location';
 import { MobileFrame } from '@components/layout/MobileFrame';
 import { Card } from '@components/ui/Card';
+import { AppButton } from '@components/ui/AppButton';
 import { useAuth } from '@contexts/AuthContext';
 import { useProfileStore } from '@store/profileStore';
 import { appApi, type LoanCurrentResponse, type ScheduleItem, type WeatherResponse } from '@services/appApi';
@@ -224,11 +226,13 @@ const WeatherCard = () => {
 };
 
 const DashboardScreen = () => {
+  const navigation = useNavigation<any>();
   const { customer } = useAuth();
   const { profile } = useProfileStore();
   const isStaff = profile?.actorKind === 'STAFF';
   const isAdmin = isStaff && profile?.role === 'ADMIN';
-  const includeLoanReminder = !(isStaff || isAdmin);
+  const isSuperAdmin = isStaff && profile?.role === 'SUPER_ADMIN';
+  const includeLoanReminder = !(isStaff || isAdmin || isSuperAdmin);
   const [loan, setLoan] = useState<LoanCurrentResponse | null>(null);
   const [events, setEvents] = useState<ScheduleItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -240,6 +244,11 @@ const DashboardScreen = () => {
       setLoading(true);
       setError(null);
       try {
+        if (isSuperAdmin) {
+          setLoan(null);
+          setEvents([]);
+          return;
+        }
         const [loanRes, eventsRes] = await Promise.all([
           appApi.getCurrentLoan().catch(() => null),
           appApi.getSchedule().catch(() => [] as ScheduleItem[]),
@@ -257,8 +266,7 @@ const DashboardScreen = () => {
     return () => {
       mounted = false;
     };
-  }, []);
-
+  }, [isSuperAdmin]);
   const welcomeName = customer?.fullName || 'Khách hàng ACE';
 
   if (loading) {
@@ -293,7 +301,20 @@ const DashboardScreen = () => {
 
         <WeatherCard />
 
-        <DashboardRemindersCard events={events} loan={loan} includeLoanReminder={includeLoanReminder} loading={loading} />
+        {isSuperAdmin ? (
+          <Card className="rounded-2xl bg-white shadow-lg p-6">
+            <Text className="text-lg font-semibold text-[#111] mb-2">Quản lý Admin</Text>
+            <Text className="text-sm text-[#555] mb-4">Tạo và xóa tài khoản Admin.</Text>
+            <AppButton title="Đi đến màn Quản lý Admin" onPress={() => navigation.navigate('AdminManager' as never)} />
+          </Card>
+        ) : (
+          <DashboardRemindersCard
+            events={events}
+            loan={loan}
+            includeLoanReminder={includeLoanReminder}
+            loading={loading}
+          />
+        )}
       </View>
     </MobileFrame>
   );

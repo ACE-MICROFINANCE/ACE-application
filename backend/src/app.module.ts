@@ -17,6 +17,7 @@ import { StaffUsersModule } from './modules/staff-users/staff-users.module'; // 
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { TtsModule } from './modules/tts/tts.module';
 import { ContactsModule } from './modules/contacts/contacts.module';
+import { SuperAdminModule } from './modules/super-admin/super-admin.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { ContactsModule } from './modules/contacts/contacts.module';
     NotificationsModule,
     TtsModule,
     ContactsModule,
+    SuperAdminModule,
   ],
 })
 export class AppModule {}

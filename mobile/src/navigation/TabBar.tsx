@@ -22,16 +22,7 @@ const iconMap: Record<string, any> = {
   Account: require('../../assets/img/account_icon.jpg'),
   StaffCustomers: require('../../assets/img/staff_management_icon.jpg'),
   StaffManage: require('../../assets/img/staff_management_icon.jpg'), // fallback nếu không có contact_sso
-};
-
-const labelMap: Record<string, string> = {
-  Loans: 'Khoản vay',
-  Savings: 'Tiết kiệm',
-  Schedule: 'Lịch',
-  Info: 'Thông tin',
-  Account: 'Tài khoản',
-  StaffCustomers: 'Quản lý khách hàng',
-  StaffManage: 'Quản lý nhân viên',
+  AdminManager: require('../../assets/img/staff_management_icon.jpg'),
 };
 
 type TabItemProps = {
@@ -216,8 +207,8 @@ const styles = StyleSheet.create({
     position: 'relative',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     overflow: 'visible', // CHANGED: cho icon nhảy vượt ra ngoài
   },
   activeRing: {
@@ -229,3 +220,4 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.92)',
   },
 });
+

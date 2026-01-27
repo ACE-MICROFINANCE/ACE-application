@@ -9,6 +9,7 @@ import InfoScreen from '@screens/InfoScreen';
 import AccountScreen from '@screens/AccountScreen';
 import StaffCustomersScreen from '@screens/StaffCustomersScreen';
 import StaffManageScreen from '@screens/StaffManageScreen';
+import AdminManagerScreen from '@screens/AdminManagerScreen';
 import { TabBar } from './TabBar';
 import { useAuthStore } from '@store/authStore';
 import { useProfileStore } from '@store/profileStore';
@@ -22,6 +23,7 @@ export type MainTabParamList = {
   Account: undefined;
   StaffCustomers: undefined;
   StaffManage: undefined;
+  AdminManager: undefined;
 };
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -31,8 +33,9 @@ export const MainTabNavigator = () => {
   const { profile } = useProfileStore();
   const isStaff = profile?.actorKind === 'STAFF';
   const isAdmin = isStaff && profile?.role === 'ADMIN';
+  const isSuperAdmin = isStaff && profile?.role === 'SUPER_ADMIN';
 
-  const isCustomerMode = !isStaff && !isAdmin;
+  const isCustomerMode = !isStaff && !isAdmin && !isSuperAdmin;
   const navigatorKey = `${profile?.actorKind ?? 'guest'}-${profile?.role ?? 'none'}`;
 
   return (
@@ -44,17 +47,23 @@ export const MainTabNavigator = () => {
       }}
       tabBar={(props) => <TabBar {...props} />}
     >
-      <Tab.Screen name="Dashboard" component={DashboardScreen} />
       {isCustomerMode ? (
         <>
+          <Tab.Screen name="Dashboard" component={DashboardScreen} />
           <Tab.Screen name="Loans" component={LoansScreen} />
           <Tab.Screen name="Savings" component={SavingsScreen} />
           <Tab.Screen name="Schedule" component={CustomerScheduleScreen} />
           <Tab.Screen name="Info" component={InfoScreen} />
           <Tab.Screen name="Account" component={AccountScreen} />
         </>
+      ) : isSuperAdmin ? (
+        <>
+          <Tab.Screen name="AdminManager" component={AdminManagerScreen} />
+          <Tab.Screen name="Account" component={AccountScreen} />
+        </>
       ) : isAdmin ? (
         <>
+          <Tab.Screen name="Dashboard" component={DashboardScreen} />
           {/* <Tab.Screen name="Schedule" component={StaffScheduleScreen} /> */}
           <Tab.Screen name="StaffCustomers" component={StaffCustomersScreen} />
           <Tab.Screen name="StaffManage" component={StaffManageScreen} />
@@ -62,6 +71,7 @@ export const MainTabNavigator = () => {
         </>
       ) : (
         <>
+          <Tab.Screen name="Dashboard" component={DashboardScreen} />
           <Tab.Screen name="Schedule" component={StaffScheduleScreen} />
           <Tab.Screen name="StaffCustomers" component={StaffCustomersScreen} />
           <Tab.Screen name="Account" component={AccountScreen} />

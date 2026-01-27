@@ -32,7 +32,7 @@ const AccountScreen = () => {
   const staffRole = merged?.role;
   const isCustomer = actorKind === 'CUSTOMER';
   const isStaff = actorKind === 'STAFF';
-  const isAdmin = isStaff && staffRole === 'ADMIN';
+  const isAdmin = isStaff && (staffRole === 'ADMIN' || staffRole === 'SUPER_ADMIN');
 
   useEffect(() => {
     let mounted = true;
@@ -134,10 +134,10 @@ const AccountScreen = () => {
       <View className="pt-6 pb-4">
         <Card className="rounded-2xl bg-white shadow-lg p-6 space-y-4">
           <View className="items-center">
-            <Text className="text-lg font-semibold text-[#333]">Thông tin tài khoản</Text>
+            <Text className="text-lg font-semibold text-[#333]">Account Information</Text>
           </View>
 
-          {loading ? <Text className="text-center text-sm text-[#666]">Đang tải...</Text> : null}
+          {loading ? <Text className="text-center text-sm text-[#666]">Loading...</Text> : null}
           {error ? <Text className="text-center text-sm text-red-500">{error}</Text> : null}
 
           <View className="space-y-2 opacity-100">
@@ -152,11 +152,11 @@ const AccountScreen = () => {
           </View>
 
           <View className="space-y-3 pt-2">
-            <AppButton title="Đổi mật khẩu" bgColor="#1d63b3" className="mt-0" onPress={() => setChangeOpen(true)} />
-            {isCustomer && !isAdmin ? (
+            <AppButton title="Change password" bgColor="#1d63b3" className="mt-0" onPress={() => setChangeOpen(true)} />
+            {isCustomer ? (
               <>
                 <AppButton
-                  title="Gửi góp ý"
+                  title="Send feedback"
                   bgColor="#f39c12"
                   className="mt-0"
                   onPress={() => {
@@ -166,7 +166,7 @@ const AccountScreen = () => {
                   }}
                 />
                 <AppButton
-                  title="Liên hệ CCO"
+                  title="Contact CCO"
                   bgColor="#10b981"
                   className="mt-0"
                   onPress={() => {
@@ -180,7 +180,7 @@ const AccountScreen = () => {
               </>
             ) : null}
             <AppButton
-              title="Đăng xuất"
+              title="Logout"
               bgColor="#e53935"
               className="mt-0"
               onPress={async () => {
@@ -199,7 +199,7 @@ const AccountScreen = () => {
         <View className="flex-1 bg-black/40 items-center justify-center px-4">
           <View className="w-full max-w-md rounded-[28px] border border-black/5 bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)] overflow-hidden">
             <View className="flex-row items-center justify-center border-b border-black/5 px-6 py-5">
-              <Text className="text-[17px] font-semibold text-[#111]">Đổi mật khẩu</Text>
+              <Text className="text-[17px] font-semibold text-[#111]">Change password</Text>
               {!mustChangePassword ? (
                 <Pressable
                   className="absolute right-4 top-4 h-8 w-8 items-center justify-center rounded-full border border-black/10 bg-black/5"
@@ -262,7 +262,7 @@ const AccountScreen = () => {
                       setFeedbackMsg('Cảm ơn bạn đã gửi góp ý!');
                       setFeedback('');
                     } catch {
-                      setFeedbackMsg('Gửi góp ý thất bại, thử lại sau.');
+                      setFeedbackMsg('Send feedback thất bại, thử lại sau.');
                     } finally {
                       setFeedbackSending(false);
                     }

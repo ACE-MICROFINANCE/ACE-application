@@ -28,8 +28,9 @@
     "extra": {
       "eas": {
         "projectId": "3e4a2d40-0d87-41ee-95d9-ecfb1bf469fa"
-      },
-      "API_BASE_URL": "https://api.anhchiem.org"
+      }
+      ,
+      "API_BASE_URL": "http://localhost:3001"
     },
     "plugins": [
       "expo-font"

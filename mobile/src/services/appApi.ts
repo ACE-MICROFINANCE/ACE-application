@@ -82,7 +82,7 @@ export type StaffUserItem = {
   id: number;
   fullName?: string | null;
   email?: string | null;
-  role?: 'ADMIN' | 'BRANCH_MANAGER' | string | null;
+  role?: 'ADMIN' | 'BRANCH_MANAGER' | 'SUPER_ADMIN' | string | null;
   branchCode?: string | null;
   branchName?: string | null;
   isActive?: boolean | null;
@@ -263,6 +263,18 @@ export const appApi = {
   },
   deleteStaffUser: async (id: number) => {
     const { data } = await apiClient.delete(`/staff-users/${id}`);
+    return data;
+  },
+  getAdmins: async (): Promise<StaffUserItem[]> => {
+    const { data } = await apiClient.get('/super-admin/admins');
+    return data;
+  },
+  createAdmin: async (payload: { fullName?: string | null; email: string; password: string }) => {
+    const { data } = await apiClient.post('/super-admin/admins', payload);
+    return data;
+  },
+  deleteAdmin: async (id: number) => {
+    const { data } = await apiClient.delete(`/super-admin/admins/${id}`);
     return data;
   },
   getSchedule: async (): Promise<ScheduleItem[]> => {

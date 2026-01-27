@@ -28,7 +28,7 @@ type EventSeed = {
 
 type StaffSeed = {
   email: string;
-  role: 'ADMIN' | 'BRANCH_MANAGER';
+  role: 'ADMIN' | 'BRANCH_MANAGER' | 'SUPER_ADMIN';
   branchCode?: string | null;
   fullName?: string | null;
 };
@@ -102,6 +102,12 @@ const staffSeed: StaffSeed[] = [
     role: 'ADMIN',
     branchCode: null,
     fullName: 'Nguyễn Viết Nam',
+  },
+  {
+    email: 'superadmin@anhchiem.org',
+    role: 'SUPER_ADMIN',
+    branchCode: null,
+    fullName: 'ACE Super Admin',
   },
 ];
 

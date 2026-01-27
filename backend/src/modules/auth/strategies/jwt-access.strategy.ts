@@ -7,7 +7,7 @@ export interface JwtPayload {
   sub: string; // CHANGED: actor id as string
   actorKind: 'CUSTOMER' | 'STAFF'; // CHANGED: RBAC actor kind
   memberNo?: string;
-  role?: 'ADMIN' | 'BRANCH_MANAGER';
+  role?: 'ADMIN' | 'BRANCH_MANAGER' | 'SUPER_ADMIN';
   branchCode?: string | null;
   groupCode?: string | null;
   accessibilityEnabled?: boolean; // CHANGED: carry accessibility flag for customer tokens

@@ -232,7 +232,7 @@ const AdminManagerScreen = () => {
                 <TextInput
                   value={formState.fullName}
                   onChangeText={(v) => setFormState((prev) => ({ ...prev, fullName: v }))}
-                  placeholder="Nhập họ và tên"
+                  placeholder="Enter full name"
                   className="rounded-2xl border border-black/5 px-4 py-3 text-base"
                 />
               </View>
@@ -241,7 +241,7 @@ const AdminManagerScreen = () => {
                 <TextInput
                   value={formState.email}
                   onChangeText={(v) => setFormState((prev) => ({ ...prev, email: v }))}
-                  placeholder="Nhập email"
+                  placeholder="Enter email"
                   keyboardType="email-address"
                   autoCapitalize="none"
                   className="rounded-2xl border border-black/5 px-4 py-3 text-base"
@@ -253,7 +253,7 @@ const AdminManagerScreen = () => {
                   secureTextEntry
                   value={formState.password}
                   onChangeText={(v) => setFormState((prev) => ({ ...prev, password: v }))}
-                  placeholder="Nhập mật khẩu"
+                  placeholder="Enter password"
                   className="rounded-2xl border border-black/5 px-4 py-3 text-base"
                 />
               </View>

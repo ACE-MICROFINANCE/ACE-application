@@ -154,6 +154,11 @@ model Event {
   locationName     String?
   durationMinutes  Int?
   createdByStaffId BigInt?
+  status           String             @default("PENDING_APPROVAL")
+  hidden           Boolean            @default(false)
+  approvedAt       DateTime?
+  rejectedAt       DateTime?
+  updatedAt        DateTime           @updatedAt
   importedAt       DateTime           @default(now())
   createdByStaff   StaffUser?         @relation("EventCreatedBy", fields: [createdByStaffId], references: [id])
   targetGroups     EventTargetGroup[]

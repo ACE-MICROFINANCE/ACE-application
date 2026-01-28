@@ -1,9 +1,9 @@
 ﻿import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Image,
   Modal,
+  Switch,
   Platform,
   Pressable,
   ScrollView,
@@ -30,13 +30,36 @@ import {
   type StaffGroupItem,
 } from "@services/appApi";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+import { useIsFocused } from "@react-navigation/native";
 
 const EVENT_TYPES: Array<{ value: string; label: string }> = [
   { value: "MEETING", label: "Họp nhóm" },
-  { value: "FIELD_SCHOOL", label: "Tập huấn" },
-  { value: "FARMING_TASK", label: "Nông vụ" },
-  { value: "OTHER", label: "Khác" },
+  { value: "FIELD_SCHOOL", label: "Tập huấn xã hội" },
+  { value: "FARMING_TASK", label: "Tập huấn nông nghiệp" },
+  { value: "NOTICE", label: "Thông báo" },
+  // { value: "OTHER", label: "Khác" },
 ];
+
+const isNoticeType = (t?: string | null) => t === "NOTICE" || t === "Thông báo";
+const getRawStatus = (event: ScheduleItem) => event.displayStatus || event.status || "PENDING_APPROVAL";
+const normalizeStatusForRole = (event: ScheduleItem, isBA: boolean, isBM: boolean) => {
+  const raw = getRawStatus(event);
+  if (isBA && raw === "UPDATED") return "PENDING_APPROVAL";
+  return raw;
+};
+const shouldHideFromBA = (event: ScheduleItem) => {
+  const raw = normalizeStatusForRole(event, true, false);
+  if (event.hidden === true) return true;
+  if (raw === "HIDDEN") return true;
+  if (raw === "EXPIRED") return true;
+  if (raw === "REJECTED") {
+    if (event.rejectedAt) {
+      const diffMs = Date.now() - new Date(event.rejectedAt).getTime();
+      if (diffMs > 24 * 60 * 60 * 1000) return true;
+    }
+  }
+  return false;
+};
 
 const formatDate = (val?: string | null) => {
   if (!val) return "";
@@ -62,10 +85,24 @@ const startOfToday = () => {
   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
 };
 
+const formatDateWithTime = (iso?: string | null, includeTime = true) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (!Number.isFinite(d.getTime())) return "";
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mo = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  if (!includeTime) return `${dd}/${mo}/${yyyy}`;
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${hh}:${mm}, ${dd}/${mo}/${yyyy}`;
+};
+
 const getAvatarUrl = (event: ScheduleItem) => {
   if (event.eventType === "MEETING") return require("../../assets/img/community-meeting.png");
   if (event.eventType === "FIELD_SCHOOL") return require("../../assets/img/training.png");
   if (event.eventType === "FARMING_TASK") return require("../../assets/img/farming-plant-rice.jpg");
+  if (event.eventType === "NOTICE" || event.eventType === "Thông báo") return require("../../assets/img/training.png");
   return require("../../assets/img/farming-plant-rice.jpg");
 };
 
@@ -83,7 +120,10 @@ const buildEventText = (event: ScheduleItem) => {
 const StaffScheduleScreen = () => {
   const { profile } = useProfileStore();
   const insets = useSafeAreaInsets();
+  const isFocused = useIsFocused();
   const isStaff = profile?.actorKind === "STAFF";
+  const isBA = profile?.role === "BA";
+  const isBM = profile?.role === "BM";
 
   // ✅ giống StaffManageScreen: lấy chiều cao tabbar để đặt nút floating không bị chìm
   const tabBarHeight = useBottomTabBarHeight();
@@ -110,12 +150,18 @@ const StaffScheduleScreen = () => {
   const [detailLoading, setDetailLoading] = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
   const [eventTypePickerOpen, setEventTypePickerOpen] = useState(false);
 
   const [groupSearch, setGroupSearch] = useState("");
   const [groupPickerOpen, setGroupPickerOpen] = useState(false);
   const [groupPickerSelection, setGroupPickerSelection] = useState<string[]>([]);
+  const [groupModal, setGroupModal] = useState<{ open: boolean; groups: Array<{ groupName?: string | null; groupCode?: string }> }>({
+    open: false,
+    groups: [],
+  });
+  const [refreshing, setRefreshing] = useState(false);
 
   const [datePickerMode, setDatePickerMode] = useState<"date" | "time" | null>(null);
   const [tempDate, setTempDate] = useState<Date | null>(null);
@@ -175,6 +221,11 @@ const StaffScheduleScreen = () => {
       setIsLoading(false);
     }
   };
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchSchedule();
+    setRefreshing(false);
+  };
 
   const fetchStaffGroups = async () => {
     try {
@@ -231,6 +282,13 @@ const StaffScheduleScreen = () => {
     }
   }, [isStaff]);
 
+  useEffect(() => {
+    if (!isStaff) return;
+    if (isFocused) {
+      fetchSchedule();
+    }
+  }, [isFocused, isStaff]);
+
   const filteredGroups = useMemo(() => {
     const q = groupSearch.trim().toLowerCase();
     if (!q) return staffGroups;
@@ -242,13 +300,14 @@ const StaffScheduleScreen = () => {
     );
   }, [groupSearch, staffGroups]);
 
-  const upcomingEvents = useMemo(() => {
-    const today = startOfToday().getTime();
-    return (events || []).filter((evt) => {
-      const d = new Date(evt.startDate).getTime();
-      return Number.isFinite(d) && d >= today;
-    });
-  }, [events]);
+  // Backend đã sort; chỉ lọc theo role
+  const displayedEvents = (events || []).filter((e) => {
+    if (isBA) return !shouldHideFromBA(e);
+    return true;
+  });
+
+  const modalStatusRaw = selectedEvent ? normalizeStatusForRole(selectedEvent, isBA, isBM) : "PENDING_APPROVAL";
+  const modalStatus = isBM && selectedEvent?.hidden ? "HIDDEN" : modalStatusRaw;
 
   const modalTitle =
     modalMode === "edit"
@@ -256,9 +315,9 @@ const StaffScheduleScreen = () => {
       : formState.eventType === "MEETING"
       ? "Thêm lịch họp"
       : formState.eventType === "FIELD_SCHOOL"
-      ? "Thêm lịch tập huấn"
+      ? "Thêm lịch tập huấn xã hội"
       : formState.eventType === "FARMING_TASK"
-      ? "Thêm lịch nông vụ"
+      ? "Thêm lịch tập huấn nông nghiệp"
       : "Thêm lịch";
 
   const validateAudience = () => {
@@ -269,6 +328,28 @@ const StaffScheduleScreen = () => {
     return true;
   };
 
+  const buildUpdatePayload = () => {
+    return {
+      title: formState.title.trim() || undefined,
+      description: formState.description.trim() || undefined,
+      startDate: formState.startDate ? new Date(formState.startDate).toISOString() : undefined,
+      durationMinutes: isNoticeType(formState.eventType)
+        ? undefined
+        : formState.durationMinutes
+        ? Number(formState.durationMinutes)
+        : undefined,
+      locationName: formState.locationName.trim() || undefined,
+      audienceType: formState.audienceMode,
+      targetGroups:
+        formState.audienceMode === "GROUPS"
+          ? formState.selectedGroupCodes.map((groupCode) => {
+              const group = staffGroups.find((g) => g.groupCode === groupCode);
+              return { groupCode, groupName: group?.groupName };
+            })
+          : undefined,
+    };
+  };
+
   const handleSaveEdit = async () => {
     if (!selectedEvent) return;
     if (!validateAudience()) return;
@@ -277,22 +358,7 @@ const StaffScheduleScreen = () => {
     setSaveError(null);
 
     try {
-      const payload = {
-        title: formState.title.trim() || undefined,
-        description: formState.description.trim() || undefined,
-        startDate: formState.startDate ? new Date(formState.startDate).toISOString() : undefined,
-        durationMinutes: formState.durationMinutes ? Number(formState.durationMinutes) : undefined,
-        locationName: formState.locationName.trim() || undefined,
-        audienceType: formState.audienceMode,
-        targetGroups:
-          formState.audienceMode === "GROUPS"
-            ? formState.selectedGroupCodes.map((groupCode) => {
-                const group = staffGroups.find((g) => g.groupCode === groupCode);
-                return { groupCode, groupName: group?.groupName };
-              })
-            : undefined,
-      };
-
+      const payload = buildUpdatePayload();
       await appApi.updateSchedule(selectedEvent.id as number, payload);
       setModalMode(null);
       await fetchSchedule();
@@ -312,9 +378,11 @@ const StaffScheduleScreen = () => {
       setSaveError("Vui lòng chọn thời gian bắt đầu.");
       return;
     }
-    if (!formState.durationMinutes || Number(formState.durationMinutes) <= 0) {
-      setSaveError("Vui lòng nhập thời lượng hợp lệ.");
-      return;
+    if (formState.eventType !== "NOTICE") {
+      if (!formState.durationMinutes || Number(formState.durationMinutes) <= 0) {
+        setSaveError("Vui lòng nhập thời lượng hợp lệ.");
+        return;
+      }
     }
     if (!validateAudience()) return;
 
@@ -327,7 +395,12 @@ const StaffScheduleScreen = () => {
         description: formState.description.trim() || undefined,
         eventType: formState.eventType,
         startDate: new Date(formState.startDate).toISOString(),
-        durationMinutes: Number(formState.durationMinutes),
+        durationMinutes:
+          formState.eventType === "NOTICE"
+            ? undefined
+            : formState.durationMinutes
+            ? Number(formState.durationMinutes)
+            : undefined,
         locationName: formState.locationName.trim() || undefined,
         audienceType: formState.audienceMode,
         targetGroups:
@@ -349,51 +422,31 @@ const StaffScheduleScreen = () => {
     }
   };
 
-  const handleDelete = async () => {
-    if (!selectedEvent) return;
-
-    const confirmed = await new Promise<boolean>((resolve) => {
-      Alert.alert("Xóa lịch?", "Bạn có chắc muốn xóa lịch này không?", [
-        { text: "Hủy", style: "cancel", onPress: () => resolve(false) },
-        { text: "Xóa", style: "destructive", onPress: () => resolve(true) },
-      ]);
-    });
-
-    if (!confirmed) return;
-
-    setSaveLoading(true);
-    setSaveError(null);
-
-    try {
-      await appApi.deleteEvent(selectedEvent.id as number);
-      setModalMode(null);
-      await fetchSchedule();
-    } catch (e: any) {
-      setSaveError(e?.response?.data?.message ?? "Xóa lịch thất bại.");
-    } finally {
-      setSaveLoading(false);
-    }
-  };
-
   const handleOpenDatePicker = () => {
     const base = formState.startDate ? new Date(formState.startDate) : new Date();
+    const isNotice = formState.eventType === "NOTICE" || formState.eventType === "Thông báo";
     if (Platform.OS === "android") {
       DateTimePickerAndroid.open({
         value: base,
         mode: "date",
         onChange: (event, selectedDate) => {
           if (!selectedDate || event.type === "dismissed") return;
-          const pickedDate = selectedDate;
-          DateTimePickerAndroid.open({
-            value: pickedDate,
-            mode: "time",
-            onChange: (evt, selectedTime) => {
-              if (!selectedTime || evt.type === "dismissed") return;
-              const finalDate = new Date(pickedDate);
-              finalDate.setHours(selectedTime.getHours(), selectedTime.getMinutes(), 0, 0);
-              setFormState((prev) => ({ ...prev, startDate: finalDate.toISOString() }));
-            },
-          });
+          const pickedDate = new Date(selectedDate);
+          if (isNotice) {
+            pickedDate.setHours(0, 0, 0, 0);
+            setFormState((prev) => ({ ...prev, startDate: pickedDate.toISOString() }));
+          } else {
+            DateTimePickerAndroid.open({
+              value: pickedDate,
+              mode: "time",
+              onChange: (evt, selectedTime) => {
+                if (!selectedTime || evt.type === "dismissed") return;
+                const finalDate = new Date(pickedDate);
+                finalDate.setHours(selectedTime.getHours(), selectedTime.getMinutes(), 0, 0);
+                setFormState((prev) => ({ ...prev, startDate: finalDate.toISOString() }));
+              },
+            });
+          }
         },
       });
       return;
@@ -409,6 +462,15 @@ const StaffScheduleScreen = () => {
       return;
     }
     const dateVal = selected || tempDate || new Date();
+    const isNotice = formState.eventType === "NOTICE" || formState.eventType === "Thông báo";
+    if (isNotice) {
+      const finalDate = new Date(dateVal);
+      finalDate.setHours(0, 0, 0, 0);
+      setFormState((prev) => ({ ...prev, startDate: finalDate.toISOString() }));
+      setDatePickerMode(null);
+      setTempDate(null);
+      return;
+    }
     setTempDate(dateVal);
     setDatePickerMode("time");
   };
@@ -496,6 +558,7 @@ const StaffScheduleScreen = () => {
           paddingHorizontal: 16,
           gap: 16,
         }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         showsVerticalScrollIndicator={false}
       >
         <View
@@ -518,34 +581,104 @@ const StaffScheduleScreen = () => {
                 <Text className="text-sm text-red-500">{error}</Text>
                 <AppButton title="Thử lại" onPress={fetchSchedule} />
               </View>
-            ) : !upcomingEvents.length ? (
+            ) : !displayedEvents.length ? (
               <View className="px-4 py-6">
                 <Text className="text-center text-sm text-[#666]">Chưa có sự kiện sắp tới.</Text>
               </View>
             ) : (
-              upcomingEvents.map((event, index) => (
-                <Pressable
-                  key={String(event.id)}
-                  onPress={() => openEditModal(event)}
-                  className="flex-row items-center gap-4 px-4 py-4"
-                  android_ripple={{ color: "rgba(0,0,0,0.03)" }}
-                  style={({ pressed }) => ({
-                    backgroundColor: pressed ? "rgba(0,0,0,0.03)" : "transparent",
-                    borderBottomWidth: index === upcomingEvents.length - 1 ? 0 : 1,
-                    borderBottomColor: "rgba(0,0,0,0.05)",
-                  })}
-                >
-                  <View className="relative h-12 w-12 overflow-hidden rounded-full bg-black/5">
-                    <Image source={getAvatarUrl(event)} style={{ width: 48, height: 48 }} resizeMode="cover" />
-                  </View>
-                  <View className="flex-1" style={{ gap: 4 }}>
-                    <Text className="text-sm font-semibold text-[#0A84FF]">{formatDate(event.startDate)}</Text>
-                    <Text className="text-sm text-[#1C1C1E]" numberOfLines={2}>
-                      {buildEventText(event)}
-                    </Text>
-                  </View>
-                </Pressable>
-              ))
+              displayedEvents.map((event, index) => {
+                const targetText =
+                  event.targetText ||
+                  (event.targetType === "BRANCH_ALL"
+                    ? `Toàn chi nhánh`
+                    : event.targetGroups && event.targetGroups.length
+                    ? `Nhóm: ${event.targetGroups
+                        .slice(0, 2)
+                        .map((g) => g.groupName || g.groupCode)
+                        .join(", ")}${event.targetGroups.length > 2 ? ` +${event.targetGroups.length - 2}` : ""}`
+                    : "Toàn chi nhánh");
+                let status = normalizeStatusForRole(event, isBA, isBM);
+                if (isBM && event.hidden) status = "HIDDEN";
+                const badge = isBA
+                  ? status === "APPROVED"
+                    ? { text: "Đã duyệt", bg: "#DCFCE7", color: "#166534" }
+                    : status === "REJECTED"
+                    ? { text: "Đã từ chối", bg: "#FEE2E2", color: "#B91C1C" }
+                    : { text: "Chờ duyệt", bg: "#FEF3C7", color: "#92400E" }
+                  : status === "APPROVED"
+                  ? { text: "Đã duyệt", bg: "#DCFCE7", color: "#166534" }
+                  : status === "UPDATED"
+                  ? { text: "Chờ duyệt", bg: "#FEF3C7", color: "#92400E" }
+                  : status === "REJECTED"
+                  ? { text: "Đã từ chối", bg: "#FEE2E2", color: "#B91C1C" }
+                  : status === "EXPIRED"
+                  ? { text: "Đã qua", bg: "#E5E7EB", color: "#374151" }
+                  : status === "HIDDEN"
+                  ? { text: "Ẩn", bg: "#F3F4F6", color: "#6B7280" }
+                  : { text: "Chờ duyệt", bg: "#FEF3C7", color: "#92400E" };
+
+                const handlePress = () => {
+                  openEditModal(event); // BM & BA đều tạm dùng modal edit/detail
+                };
+
+                return (
+                  <Pressable
+                    key={String(event.id)}
+                    onPress={handlePress}
+                    className="flex-row items-center gap-4 px-4 py-4"
+                    android_ripple={{ color: "rgba(0,0,0,0.03)" }}
+                    style={({ pressed }) => ({
+                      backgroundColor: pressed ? "rgba(0,0,0,0.03)" : "transparent",
+                      borderBottomWidth: index === displayedEvents.length - 1 ? 0 : 1,
+                      borderBottomColor: "rgba(0,0,0,0.05)",
+                    })}
+                  >
+                    <View className="relative h-12 w-12 overflow-hidden rounded-full bg-black/5">
+                      <Image source={getAvatarUrl(event)} style={{ width: 48, height: 48 }} resizeMode="cover" />
+                    </View>
+                    <View className="flex-1" style={{ gap: 4 }}>
+                      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                        <Text className="text-sm font-semibold text-[#111]" numberOfLines={1}>
+                          {event.title || event.eventType || "Sự kiện"}
+                        </Text>
+                        <View
+                          style={{
+                            paddingHorizontal: 10,
+                            paddingVertical: 4,
+                            backgroundColor: badge.bg,
+                            borderRadius: 999,
+                          }}
+                        >
+                          <Text style={{ fontSize: 11, fontWeight: "700", color: badge.color }}>{badge.text}</Text>
+                        </View>
+                      </View>
+
+                      <Text className="text-xs text-[#555]" numberOfLines={2}>
+                        {isNoticeType(event.eventType)
+                          ? formatDateWithTime(event.startDate, false)
+                          : `${formatDateWithTime(event.startDate, true)}${
+                              event.durationMinutes != null && event.durationMinutes > 0
+                                ? ` • ${event.durationMinutes} phút`
+                                : ""
+                            }`}
+                      </Text>
+
+                      <Pressable
+                        onPress={() =>
+                          event.targetType === "GROUPS" && event.targetGroups?.length
+                            ? setGroupModal({ open: true, groups: event.targetGroups })
+                            : undefined
+                        }
+                        hitSlop={4}
+                      >
+                        <Text className="text-xs text-[#0A84FF]" numberOfLines={2}>
+                          {targetText}
+                        </Text>
+                      </Pressable>
+                    </View>
+                  </Pressable>
+                );
+              })
             )}
           </View>
         </View>
@@ -624,10 +757,52 @@ const StaffScheduleScreen = () => {
                   <Text style={{ fontSize: 18, color: "#333" }}>×</Text>
                 </Pressable>
               </View>
+              {/* {modalMode === "edit" && isBM ? (
+                <View style={{ flexDirection: "row", gap: 10, paddingHorizontal: 24, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "rgba(0,0,0,0.06)" }}>
+                  <AppButton
+                    title="Duyệt"
+                    onPress={async () => {
+                      if (!selectedEvent) return;
+                      setActionLoading(true);
+                      try {
+                        await appApi.approveSchedule(selectedEvent.id as number);
+                        await fetchSchedule();
+                        closeAllModals();
+                      } catch (e: any) {
+                        setSaveError(e?.response?.data?.message ?? "Không thể duyệt lịch.");
+                      } finally {
+                        setActionLoading(false);
+                      }
+                    }}
+                    fullWidth={false}
+                    disabled={actionLoading || saveLoading}
+                  />
+                  <AppButton
+                    title="Từ chối"
+                    onPress={async () => {
+                      if (!selectedEvent) return;
+                      setActionLoading(true);
+                      try {
+                        await appApi.rejectSchedule(selectedEvent.id as number);
+                        await fetchSchedule();
+                        closeAllModals();
+                      } catch (e: any) {
+                        setSaveError(e?.response?.data?.message ?? "Không thể từ chối lịch.");
+                      } finally {
+                        setActionLoading(false);
+                      }
+                    }}
+                    bgColor="#FEE2E2"
+                    textClassName="text-red-600"
+                    fullWidth={false}
+                    disabled={actionLoading || saveLoading}
+                  />
+                </View>
+              ) : null} */}
 
-              {/* Body */}
-              <View style={{ flex: 1, minHeight: 0 }}>
-                <ScrollView
+      {/* Body */}
+      <View style={{ flex: 1, minHeight: 0 }}>
+        <ScrollView
                   style={{ flex: 1 }}
                   keyboardShouldPersistTaps="handled"
                   nestedScrollEnabled
@@ -730,7 +905,9 @@ const StaffScheduleScreen = () => {
                       }}
                     >
                       <Text style={{ fontSize: 16, fontWeight: "600", color: "#111" }}>
-                        {formatDateTimeDisplay(formState.startDate)}
+                        {isNoticeType(formState.eventType)
+                          ? formatDateWithTime(formState.startDate, false)
+                          : formatDateTimeDisplay(formState.startDate)}
                       </Text>
                       <Feather name="chevron-down" size={18} color="#0A84FF" />
                     </Pressable>
@@ -744,29 +921,31 @@ const StaffScheduleScreen = () => {
                   </View>
 
                   {/* Duration */}
-                  <View style={{ gap: 8 }}>
-                    <Text style={{ fontSize: 12, fontWeight: "600", color: "#6C757D" }}>Thời lượng (phút)</Text>
-                    <TextInput
-                      keyboardType="numeric"
-                      value={formState.durationMinutes}
-                      onChangeText={(value) =>
-                        setFormState((prev) => ({ ...prev, durationMinutes: value.replace(/[^0-9]/g, "") }))
-                      }
-                      placeholder="Nhập thời lượng"
-                      style={{
-                        borderWidth: 1,
-                        borderColor: "rgba(0,0,0,0.06)",
-                        borderRadius: 16,
-                        paddingHorizontal: 16,
-                        paddingVertical: 12,
-                        color: "#111",
-                        fontSize: 16,
-                        backgroundColor: "#fff",
-                      }}
-                      placeholderTextColor="#9ca3af"
-                      selectionColor="#111"
-                    />
-                  </View>
+                  {formState.eventType !== "NOTICE" && formState.eventType !== "Thông báo" ? (
+                    <View style={{ gap: 8 }}>
+                      <Text style={{ fontSize: 12, fontWeight: "600", color: "#6C757D" }}>Thời lượng (phút)</Text>
+                      <TextInput
+                        keyboardType="numeric"
+                        value={formState.durationMinutes}
+                        onChangeText={(value) =>
+                          setFormState((prev) => ({ ...prev, durationMinutes: value.replace(/[^0-9]/g, "") }))
+                        }
+                        placeholder="Nhập thời lượng"
+                        style={{
+                          borderWidth: 1,
+                          borderColor: "rgba(0,0,0,0.06)",
+                          borderRadius: 16,
+                          paddingHorizontal: 16,
+                          paddingVertical: 12,
+                          color: "#111",
+                          fontSize: 16,
+                          backgroundColor: "#fff",
+                        }}
+                        placeholderTextColor="#9ca3af"
+                        selectionColor="#111"
+                      />
+                    </View>
+                  ) : null}
 
                   {/* Location */}
                   <View style={{ gap: 8 }}>
@@ -816,6 +995,47 @@ const StaffScheduleScreen = () => {
                     />
                   </View>
 
+                  {modalMode === "edit" && isBM ? (
+                    <View className="space-y-3 rounded-2xl border border-black/5 bg-white px-4 py-3">
+                      <View className="flex-row items-center justify-between">
+                        <View className="space-y-1">
+                          <Text className="text-sm font-semibold text-[#111]">Ẩn sự kiện</Text>
+                          <Text className="text-xs text-[#6C757D]">Ẩn khỏi danh sách của khách hảng</Text>
+                        </View>
+                        <Switch
+                          value={Boolean(detail?.hidden ?? selectedEvent?.hidden)}
+                          onValueChange={async (next) => {
+                            if (!selectedEvent) return;
+                            setActionLoading(true);
+                            try {
+                              await appApi.hideSchedule(selectedEvent.id as number, next);
+                              setEvents((prev) =>
+                                (prev || []).map((ev) =>
+                                  String(ev.id) === String(selectedEvent.id)
+                                    ? { ...ev, hidden: next, displayStatus: next ? "HIDDEN" : ev.displayStatus }
+                                    : ev,
+                                ),
+                              );
+                              setDetail((prev) => (prev ? { ...prev, hidden: next } : prev));
+                              if (next && isBA) {
+                                // BA sẽ không thấy event ẩn; đóng modal để tránh bối rối
+                                closeAllModals();
+                              }
+                              await fetchSchedule();
+                            } catch {
+                              setSaveError("Không thể cập nhật trạng thái ẩn.");
+                            } finally {
+                              setActionLoading(false);
+                            }
+                          }}
+                          disabled={actionLoading || saveLoading}
+                          trackColor={{ false: "#E5E5EA", true: "#34C759" }}
+                          thumbColor="#fff"
+                        />
+                      </View>
+                    </View>
+                  ) : null}
+
                   {saveError ? <Text style={{ fontSize: 14, color: "#e53935" }}>{saveError}</Text> : null}
                 </ScrollView>
               </View>
@@ -831,15 +1051,86 @@ const StaffScheduleScreen = () => {
                   gap: 10,
                 }}
               >
-                {modalMode === "edit" ? (
-                  <View style={{ gap: 10 }}>
-                    <AppButton title="Xóa lịch" onPress={handleDelete} loading={saveLoading} bgColor="#e53935" />
-                    <AppButton title="Lưu" onPress={handleSaveEdit} loading={saveLoading} />
-                  </View>
-                ) : (
+                {modalMode === "create" ? (
                   <View style={{ gap: 10 }}>
                     <AppButton title="Hủy" onPress={closeAllModals} bgColor="#e53935" />
                     <AppButton title="Tạo lịch" onPress={handleCreate} loading={saveLoading} />
+                  </View>
+                ) : (
+                  <View style={{ gap: 10 }}>
+                    {isBM ? (
+                      (() => {
+                        const isPendingForApprove =
+                          modalStatus === "PENDING_APPROVAL" ||
+                          modalStatus === "PENDING" ||
+                          modalStatus === "UPDATED";
+                        if (isPendingForApprove) {
+                          return (
+                            <View style={{ flexDirection: "row", gap: 10 }}>
+                              <View style={{ flex: 1 }}>
+                                <AppButton
+                                  title="Duyệt"
+                                  onPress={async () => {
+                                    if (!selectedEvent) return;
+                                    if (!validateAudience()) return;
+                                    setActionLoading(true);
+                                    setSaveError(null);
+                                    try {
+                                      const payload = buildUpdatePayload();
+                                      await appApi.updateSchedule(selectedEvent.id as number, payload);
+                                      await appApi.approveSchedule(selectedEvent.id as number);
+                                      await fetchSchedule();
+                                      closeAllModals();
+                                    } catch (e: any) {
+                                      setSaveError(e?.response?.data?.message ?? "Không thể duyệt lịch.");
+                                    } finally {
+                                      setActionLoading(false);
+                                    }
+                                  }}
+                                  bgColor="#34C759"
+                                  textClassName="text-white"
+                                  fullWidth
+                                  disabled={actionLoading || saveLoading}
+                                />
+                              </View>
+                              <View style={{ flex: 1 }}>
+                                <AppButton
+                                  title="Từ chối"
+                                  onPress={async () => {
+                                    if (!selectedEvent) return;
+                                    setActionLoading(true);
+                                    setSaveError(null);
+                                    try {
+                                      await appApi.rejectSchedule(selectedEvent.id as number);
+                                      await fetchSchedule();
+                                      closeAllModals();
+                                    } catch (e: any) {
+                                      setSaveError(e?.response?.data?.message ?? "Không thể từ chối lịch.");
+                                    } finally {
+                                      setActionLoading(false);
+                                    }
+                                  }}
+                                  bgColor="#FEE2E2"
+                                  textClassName="text-red-600"
+                                  fullWidth
+                                  disabled={actionLoading || saveLoading}
+                                />
+                              </View>
+                            </View>
+                          );
+                        }
+                        return (
+                          <AppButton
+                            title="Lưu"
+                            onPress={handleSaveEdit}
+                            loading={saveLoading || actionLoading}
+                            disabled={actionLoading}
+                          />
+                        );
+                      })()
+                    ) : (
+                      <AppButton title="Lưu" onPress={handleSaveEdit} loading={saveLoading} />
+                    )}
                   </View>
                 )}
               </View>
@@ -856,19 +1147,25 @@ const StaffScheduleScreen = () => {
         presentationStyle={Platform.OS === "ios" ? "overFullScreen" : undefined}
         onRequestClose={() => setEventTypePickerOpen(false)}
       >
-        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.30)" }}>
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.30)",
+            justifyContent: "center",
+            alignItems: "center",
+            paddingHorizontal: 16,
+          }}
+        >
           <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setEventTypePickerOpen(false)} />
           <Pressable
             onPress={(e) => e.stopPropagation()}
             style={{
               width: "100%",
-              maxWidth: 420,
+              maxWidth: 520,
               backgroundColor: "#fff",
-              borderRadius: 16,
+              borderRadius: 20,
               overflow: "hidden",
               alignSelf: "center",
-              marginHorizontal: 16,
-              marginTop: "40%",
             }}
           >
             {EVENT_TYPES.map((opt) => {
@@ -1061,6 +1358,43 @@ const StaffScheduleScreen = () => {
           onChange={datePickerMode === "date" ? handleDateChange : handleTimeChange}
         />
       ) : null}
+
+      {/* Modal xem toàn bộ nhóm */}
+      <Modal
+        transparent
+        visible={groupModal.open}
+        animationType="fade"
+        onRequestClose={() => setGroupModal({ open: false, groups: [] })}
+      >
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.30)", justifyContent: "center", paddingHorizontal: 20 }}>
+          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setGroupModal({ open: false, groups: [] })} />
+          <View style={{ backgroundColor: "#fff", borderRadius: 20, padding: 16, maxHeight: "70%" }}>
+            <Text style={{ fontSize: 16, fontWeight: "700", color: "#111", marginBottom: 12 }}>Nhóm mục tiêu</Text>
+            <ScrollView>
+              {groupModal.groups.length === 0 ? (
+                <Text style={{ color: "#666" }}>Không có nhóm.</Text>
+              ) : (
+                groupModal.groups.map((g, idx) => (
+                  <View
+                    key={`${g.groupCode}-${idx}`}
+                    style={{
+                      paddingVertical: 8,
+                      borderBottomWidth: idx === groupModal.groups.length - 1 ? 0 : 1,
+                      borderBottomColor: "rgba(0,0,0,0.06)",
+                    }}
+                  >
+                    <Text style={{ fontSize: 14, fontWeight: "600", color: "#111" }}>
+                      {g.groupName || g.groupCode}
+                    </Text>
+                    <Text style={{ fontSize: 12, color: "#666" }}>{g.groupCode}</Text>
+                  </View>
+                ))
+              )}
+            </ScrollView>
+            <AppButton title="Đóng" onPress={() => setGroupModal({ open: false, groups: [] })} />
+          </View>
+        </View>
+      </Modal>
     </MobileFrame>
   );
 };

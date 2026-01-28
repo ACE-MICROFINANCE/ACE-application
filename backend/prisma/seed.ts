@@ -28,7 +28,7 @@ type EventSeed = {
 
 type StaffSeed = {
   email: string;
-  role: 'ADMIN' | 'BRANCH_MANAGER' | 'SUPER_ADMIN';
+  role: 'ADMIN' | 'SUPER_ADMIN' | 'BA' | 'BM';
   branchCode?: string | null;
   fullName?: string | null;
 };
@@ -67,27 +67,53 @@ const staffSeed: StaffSeed[] = [
   },
   {
     email: 'staff.area1@anhchiem.org',
-    role: 'BRANCH_MANAGER',
+    role: 'BM',
     branchCode: '001',
     fullName: 'Staff Dien Bien 1',
   },
   {
     email: 'staff.area2@anhchiem.org',
-    role: 'BRANCH_MANAGER',
+    role: 'BM',
     branchCode: '002',
     fullName: 'Staff Dien Bien 2',
   },
   {
     email: 'staff.area3@anhchiem.org',
-    role: 'BRANCH_MANAGER',
+    role: 'BM',
     branchCode: '003',
     fullName: 'Staff Dien Bien 3',
   },
   {
     email: 'staff.area4@anhchiem.org',
-    role: 'BRANCH_MANAGER',
+    role: 'BM',
     branchCode: '004',
     fullName: 'Staff Muong Ang',
+  },
+
+  // branch assistants (BA) mỗi chi nhánh
+  {
+    email: 'ba.area1@anhchiem.org',
+    role: 'BA',
+    branchCode: '001',
+    fullName: 'BA Dien Bien 1',
+  },
+  {
+    email: 'ba.area2@anhchiem.org',
+    role: 'BA',
+    branchCode: '002',
+    fullName: 'BA Dien Bien 2',
+  },
+  {
+    email: 'ba.area3@anhchiem.org',
+    role: 'BA',
+    branchCode: '003',
+    fullName: 'BA Dien Bien 3',
+  },
+  {
+    email: 'ba.area4@anhchiem.org',
+    role: 'BA',
+    branchCode: '004',
+    fullName: 'BA Muong Ang',
   },
 
   // new admins

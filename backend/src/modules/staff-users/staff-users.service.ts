@@ -51,8 +51,9 @@ export class StaffUsersService {
   }
 
   async create(dto: CreateStaffUserDto) {
-    if (dto.role === 'BRANCH_MANAGER' && !dto.branchCode) {
-      throw new BadRequestException('Quản lý chi nhánh phải có mã chi nhánh.'); // CHANGED: Vietnamese message
+    const roleNeedsBranch = dto.role === 'BM' || dto.role === 'BA';
+    if (roleNeedsBranch && !dto.branchCode) {
+      throw new BadRequestException('Nhân sự chi nhánh phải có mã chi nhánh.'); // CHANGED: Vietnamese message
     }
     if (dto.role === 'ADMIN' && dto.branchCode) {
       throw new BadRequestException('Admin không được gán mã chi nhánh.'); // CHANGED: Vietnamese message
@@ -89,11 +90,10 @@ export class StaffUsersService {
     }
 
     const role = dto.role ?? existing.role;
-    const branchCode =
-      role === 'ADMIN' ? null : dto.branchCode ?? existing.branchCode ?? null;
-
-    if (role === 'BRANCH_MANAGER' && !branchCode) {
-      throw new BadRequestException('Quản lý chi nhánh phải có mã chi nhánh.'); // CHANGED: Vietnamese message
+    const branchCode = role === 'ADMIN' ? null : dto.branchCode ?? existing.branchCode ?? null;
+    const roleNeedsBranch = role === 'BM' || role === 'BA';
+    if (roleNeedsBranch && !branchCode) {
+      throw new BadRequestException('Nhân sự chi nhánh phải có mã chi nhánh.'); // CHANGED: Vietnamese message
     }
 
     return this.prisma.staffUser.update({

@@ -180,7 +180,7 @@ export class CustomersService {
     customer: { branchCode?: string | null },
     staff: { role?: string; branchCode?: string | null },
   ) {
-    if (staff.role === 'BRANCH_MANAGER' && staff.branchCode) {
+    if (staff.role === 'BM' && staff.branchCode) {
       if (customer.branchCode !== staff.branchCode) {
         throw new ForbiddenException('Bạn không có quyền thao tác khách hàng ngoài chi nhánh.');
       }
@@ -194,7 +194,7 @@ export class CustomersService {
   ) {
     const query = q?.trim();
     const where: Prisma.CustomerWhereInput = {
-      ...(staff.role === 'BRANCH_MANAGER' && staff.branchCode
+      ...(staff.role === 'BM' && staff.branchCode
         ? { branchCode: staff.branchCode }
         : {}),
       ...(query

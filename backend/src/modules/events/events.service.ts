@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { addDays, addMinutes, differenceInMinutes } from 'date-fns';
+import { addDays, addMinutes, differenceInMinutes, isBefore } from 'date-fns';
 import { PrismaService } from '../../database/prisma.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
@@ -18,6 +18,7 @@ const MS_PER_DAY = 1000 * 60 * 60 * 24;
 type StaffContext = {
   userId: string;
   branchCode?: string | null;
+  role?: string | null;
 };
 
 type ActorContext = {
@@ -25,7 +26,7 @@ type ActorContext = {
   actorKind?: 'CUSTOMER' | 'STAFF' | string; // CHANGED: support schedule by actorKind
   branchCode?: string | null;
   groupCode?: string | null;
-  role?: 'ADMIN' | 'BRANCH_MANAGER' | string | null; // CHANGED: allow admin schedule
+  role?: 'ADMIN' | 'SUPER_ADMIN' | 'BA' | 'BM' | string | null; // CHANGED: allow staff roles
 };
 
 type StaffEventFilters = {
@@ -73,6 +74,51 @@ export class EventsService {
     }));
   }
 
+  private normalizeTarget(event: any) {
+    // audienceType: BRANCH_ALL | GROUPS
+    if (event.audienceType === 'GROUPS') {
+      const groups = this.mapTargetGroups(event.targetGroups ?? []);
+      const names = groups.map((g) => g.groupName || g.groupCode).filter(Boolean);
+      let targetText = 'Nhóm';
+      if (names.length > 0) {
+        const shown = names.slice(0, 2).join(', ');
+        const extra = names.length > 2 ? ` +${names.length - 2}` : '';
+        targetText = `Nhóm: ${shown}${extra}`;
+      }
+      return {
+        targetType: 'GROUPS' as const,
+        groups,
+        targetText,
+      };
+    }
+
+    const branchCode = event.branchCode ?? '---';
+    const branchName = event.branchName ?? '';
+    const targetText = branchName
+      ? `Toàn chi nhánh: ${branchCode}-${branchName}`
+      : `Toàn chi nhánh: ${branchCode}`;
+
+    return {
+      targetType: 'BRANCH_ALL' as const,
+      branchCode,
+      branchName: branchName || null,
+      targetText,
+    };
+  }
+
+  private computeDisplayStatus(event: any, now: Date = new Date()) {
+    const { startDate, endDate } = this.getEffectiveEventDates(event, now);
+    const effectiveEnd = endDate ?? startDate;
+    const isExpired = isBefore(effectiveEnd, now);
+
+    if (event.hidden) return 'HIDDEN';
+    if (isExpired) return 'EXPIRED';
+    if (event.status === 'UPDATED') return 'UPDATED';
+    if (event.status === 'REJECTED') return 'REJECTED';
+    if (event.status === 'APPROVED') return 'APPROVED';
+    return 'PENDING_APPROVAL';
+  }
+
   private getEffectiveEventDates(
     event: { eventType: string; startDate: Date; endDate?: Date | null; durationMinutes?: number | null },
     now: Date = new Date(),
@@ -98,7 +144,9 @@ export class EventsService {
   }
 
   private mapStaffEvent(event: any, now: Date = new Date()) {
-    const effectiveDates = this.getEffectiveEventDates(event, now); // CHANGED: normalize meeting dates
+    const effectiveDates = this.getEffectiveEventDates(event, now); // normalize meeting dates
+    const displayStatus = this.computeDisplayStatus(event, now);
+    const isExpired = displayStatus === 'EXPIRED';
     return {
       id: Number(event.id),
       title: event.title,
@@ -110,7 +158,16 @@ export class EventsService {
       locationName: event.locationName,
       audienceType: event.audienceType,
       branchCode: event.branchCode,
+      status: event.status,
+      hidden: event.hidden,
+      approvedAt: event.approvedAt,
+      rejectedAt: event.rejectedAt,
+      updatedAt: event.updatedAt ?? null,
+      displayStatus,
+      isExpired,
+      target: this.normalizeTarget(event),
       targetGroups: this.mapTargetGroups(event.targetGroups ?? []),
+      daysUntilEvent: this.daysUntil(effectiveDates.startDate),
       createdByStaffId: event.createdByStaffId ? Number(event.createdByStaffId) : null,
     };
   }
@@ -138,6 +195,10 @@ export class EventsService {
           audienceType: dto.audienceType,
           branchCode, // CHANGED: branch from staff token
           createdByStaffId: BigInt(staff.userId), // CHANGED: staff creator
+          status: 'PENDING_APPROVAL',
+          hidden: false,
+          approvedAt: null,
+          rejectedAt: null,
         },
       });
 
@@ -190,12 +251,61 @@ export class EventsService {
     const events = await this.prisma.event.findMany({
       where,
       include: { targetGroups: true },
-      orderBy: { startDate: 'desc' },
+      orderBy: { startDate: 'asc' }, // initial sort; will re-sort with status priority
     });
 
     const now = new Date();
     const mapped = events.map((event) => this.mapStaffEvent(event, now)); // CHANGED: normalize meeting dates
-    return mapped.sort((a, b) => a.startDate.getTime() - b.startDate.getTime()); // CHANGED: sort by effective startDate
+
+    const priority: Record<string, number> = {
+      PENDING_APPROVAL: 0,
+      APPROVED: 1,
+      UPDATED: 2,
+      HIDDEN: 3,
+      EXPIRED: 4,
+      REJECTED: 5,
+    };
+
+    const getEffectiveStatus = (ev: any) => {
+      const raw = ev.displayStatus || ev.status || 'PENDING_APPROVAL';
+      if (staff.role === 'BM' && ev.hidden === true) return 'HIDDEN';
+      if (staff.role === 'BA' && raw === 'UPDATED') return 'PENDING_APPROVAL';
+      return raw;
+    };
+
+    // Role-based filtering
+    let filtered = mapped;
+    if (staff.role === 'BA') {
+      const cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      filtered = mapped.filter((ev) => {
+        const eff = getEffectiveStatus(ev);
+        if (ev.hidden) return false;
+        if (eff === 'HIDDEN' || eff === 'EXPIRED') return false;
+        if (eff === 'REJECTED') {
+          if (!ev.rejectedAt) return false;
+          return ev.rejectedAt >= cutoff;
+        }
+        return (
+          eff === 'PENDING_APPROVAL' ||
+          ev.status === 'PENDING' || // legacy fallback
+          eff === 'APPROVED' ||
+          eff === 'UPDATED'
+        );
+      });
+    }
+
+    // Sorting: by status priority (role-aware), then startDate asc, then id asc
+    return filtered.sort((a, b) => {
+      const sa = getEffectiveStatus(a);
+      const sb = getEffectiveStatus(b);
+      const pa = priority[sa] ?? 99;
+      const pb = priority[sb] ?? 99;
+      if (pa !== pb) return pa - pb;
+      const da = a.startDate.getTime();
+      const db = b.startDate.getTime();
+      if (da !== db) return da - db;
+      return (a.id ?? 0) - (b.id ?? 0);
+    });
   }
 
   private async resolveRecipients(event: any): Promise<Array<{ actorKind: 'CUSTOMER' | 'STAFF'; actorId: string }>> {
@@ -300,6 +410,9 @@ export class EventsService {
     if (existing.branchCode !== branchCode) {
       throw new ForbiddenException('Event does not belong to your branch'); // CHANGED: branch guard
     }
+    if (staff.role === 'BA' && existing.hidden) {
+      throw new ForbiddenException('Cannot update hidden event');
+    }
 
     const nextAudienceType =
       dto.audienceType ?? (dto.targetGroups ? 'GROUPS' : existing.audienceType); // CHANGED: allow groups update
@@ -315,6 +428,7 @@ export class EventsService {
       eventType: dto.eventType ?? undefined,
       locationName: dto.locationName ?? undefined,
       audienceType: audienceTypeUpdate,
+      // status/approval fields will be set below based on role
     };
 
     const startDate = dto.startDate ? this.parseIsoDate(dto.startDate) : existing.startDate;
@@ -333,6 +447,26 @@ export class EventsService {
     }
 
     const shouldUpdateTargets = dto.audienceType !== undefined || dto.targetGroups !== undefined;
+
+    // BA updates: manage status transitions
+    if (staff.role === 'BA') {
+      if (existing.hidden) {
+        throw new ForbiddenException('Cannot update hidden event');
+      }
+      if (existing.status === 'APPROVED') {
+        updateData.status = 'UPDATED';
+        updateData.approvedAt = null;
+        updateData.rejectedAt = null;
+      } else if (existing.status === 'PENDING_APPROVAL' || existing.status === 'UPDATED') {
+        updateData.status = existing.status; // keep as is (PENDING_APPROVAL or UPDATED)
+        updateData.rejectedAt = null; // allow resubmission
+      } else {
+        // for other statuses (e.g., REJECTED) default to PENDING_APPROVAL on edit
+        updateData.status = 'PENDING_APPROVAL';
+        updateData.approvedAt = null;
+        updateData.rejectedAt = null;
+      }
+    }
 
     const updated = await this.prisma.$transaction(async (tx) => {
       const event = await tx.event.update({
@@ -378,7 +512,63 @@ export class EventsService {
     return mapped;
   }
 
+  async approveEvent(staff: StaffContext, id: string) {
+    const branchCode = this.ensureBranchCode(staff);
+    const eventId = BigInt(id);
+    const existing = await this.prisma.event.findUnique({ where: { id: eventId } });
+    if (!existing) throw new NotFoundException('Event not found');
+    if (existing.branchCode !== branchCode) throw new ForbiddenException('Event does not belong to your branch');
+
+    const updated = await this.prisma.event.update({
+      where: { id: eventId },
+      data: {
+        status: existing.status === 'UPDATED' ? 'UPDATED' : 'APPROVED',
+        approvedAt: new Date(),
+        rejectedAt: null,
+        hidden: false,
+      },
+      include: { targetGroups: true },
+    });
+    return this.mapStaffEvent(updated);
+  }
+
+  async rejectEvent(staff: StaffContext, id: string) {
+    const branchCode = this.ensureBranchCode(staff);
+    const eventId = BigInt(id);
+    const existing = await this.prisma.event.findUnique({ where: { id: eventId } });
+    if (!existing) throw new NotFoundException('Event not found');
+    if (existing.branchCode !== branchCode) throw new ForbiddenException('Event does not belong to your branch');
+
+    const updated = await this.prisma.event.update({
+      where: { id: eventId },
+      data: {
+        status: 'REJECTED',
+        rejectedAt: new Date(),
+        approvedAt: null,
+        hidden: false,
+      },
+      include: { targetGroups: true },
+    });
+    return this.mapStaffEvent(updated);
+  }
+
+  async hideEvent(staff: StaffContext, id: string, hidden: boolean) {
+    const branchCode = this.ensureBranchCode(staff);
+    const eventId = BigInt(id);
+    const existing = await this.prisma.event.findUnique({ where: { id: eventId } });
+    if (!existing) throw new NotFoundException('Event not found');
+    if (existing.branchCode !== branchCode) throw new ForbiddenException('Event does not belong to your branch');
+
+    const updated = await this.prisma.event.update({
+      where: { id: eventId },
+      data: { hidden },
+      include: { targetGroups: true },
+    });
+    return this.mapStaffEvent(updated);
+  }
+
   async deleteStaffEvent(staff: StaffContext, id: string) {
+    // Soft-hide instead of hard delete; BM only should call this (controller already restricts)
     const branchCode = this.ensureBranchCode(staff);
     const eventId = BigInt(id);
     const existing = await this.prisma.event.findUnique({
@@ -392,14 +582,12 @@ export class EventsService {
       throw new ForbiddenException('Event does not belong to your branch'); // CHANGED: branch guard
     }
 
-    const eventToDelete = this.mapStaffEvent(existing);
-    await this.prisma.$transaction(async (tx) => {
-      await tx.eventTargetGroup.deleteMany({ where: { eventId } });
-      await tx.event.delete({ where: { id: eventId } });
+    const updated = await this.prisma.event.update({
+      where: { id: eventId },
+      data: { hidden: true },
+      include: { targetGroups: true },
     });
-
-    await this.dispatchScheduleNotification(scheduleTemplates.canceled, eventToDelete);
-    return { success: true };
+    return this.mapStaffEvent(updated);
   }
 
   async getCustomerEvents(customerId: string | bigint) {
@@ -562,12 +750,16 @@ export class EventsService {
 
   async getScheduleForActor(actor: ActorContext) {
     if (actor?.actorKind === 'STAFF') {
-      if (actor.role === 'ADMIN') {
-        return this.getUpcomingEventsForAdmin(); // CHANGED: admin sees all upcoming events
+      if (actor.role === 'ADMIN' || actor.role === 'SUPER_ADMIN') {
+        return this.getUpcomingEventsForAdmin(); // admin-level views everything
       }
-      return this.getUpcomingEventsForBranch(actor.branchCode); // CHANGED: staff sees branch schedule
+      // BA/BM use the same staff list rules (status/hidden filtering, sorting)
+      return this.listStaffEvents(
+        { userId: actor.userId, branchCode: actor.branchCode, role: actor.role },
+        {},
+      );
     }
-    return this.getUpcomingEvents(actor.userId); // CHANGED: customer schedule
+    return this.getUpcomingEvents(actor.userId); // customer schedule
   }
 
   async getEventDetail(id: string | number) {
@@ -582,6 +774,7 @@ export class EventsService {
     }
 
     const effectiveDates = this.getEffectiveEventDates(event); // CHANGED: normalize meeting dates
+    const displayStatus = this.computeDisplayStatus(event);
     return {
       id: Number(event.id),
       title: event.title,
@@ -592,7 +785,14 @@ export class EventsService {
       locationName: event.locationName,
       durationMinutes: event.durationMinutes,
       audienceType: event.audienceType, // CHANGED: expose audience type
+      status: event.status,
+      hidden: event.hidden,
+      approvedAt: event.approvedAt,
+      rejectedAt: event.rejectedAt,
+      updatedAt: event.updatedAt ?? null,
+      displayStatus,
       targetGroups: this.mapTargetGroups(event.targetGroups ?? []), // CHANGED: expose target groups
+      target: this.normalizeTarget(event),
     };
   }
 }

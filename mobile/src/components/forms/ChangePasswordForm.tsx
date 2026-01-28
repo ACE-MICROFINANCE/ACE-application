@@ -6,7 +6,47 @@ import { AppButton } from '@components/ui/AppButton';
 import { TextInputField } from '@components/ui/TextInputField';
 import { useAuth } from '@contexts/AuthContext';
 
-export const ChangePasswordForm = ({ onSuccess }: { onSuccess: () => void }) => {
+type Props = { onSuccess: () => void; locale?: 'vi' | 'en' };
+
+const dict = {
+  vi: {
+    oldLabel: 'Mật khẩu hiện tại',
+    oldPlaceholder: 'Nhập mật khẩu hiện tại (6 số)',
+    newLabel: 'Mật khẩu mới',
+    newPlaceholder: 'Nhập mật khẩu mới (6 số)',
+    confirmLabel: 'Nhập lại mật khẩu mới',
+    confirmPlaceholder: 'Nhập lại mật khẩu mới',
+    onlyDigits: 'Mật khẩu chỉ gồm số',
+    min6: 'Tối thiểu 6 ký tự',
+    requiredOld: 'Vui lòng nhập mật khẩu hiện tại',
+    requiredNew: 'Vui lòng nhập mật khẩu mới',
+    requiredConfirm: 'Vui lòng nhập lại mật khẩu mới',
+    confirmNotMatch: 'Mật khẩu nhập lại không khớp',
+    success: 'Đổi mật khẩu thành công.',
+    fail: 'Không thể đổi mật khẩu',
+    submit: 'Đổi mật khẩu',
+  },
+  en: {
+    oldLabel: 'Current password',
+    oldPlaceholder: 'Enter current password (6 digits)',
+    newLabel: 'New password',
+    newPlaceholder: 'Enter new password (6 digits)',
+    confirmLabel: 'Repeat new password',
+    confirmPlaceholder: 'Repeat new password',
+    onlyDigits: 'Password must contain digits only',
+    min6: 'Minimum 6 characters',
+    requiredOld: 'Please enter current password',
+    requiredNew: 'Please enter new password',
+    requiredConfirm: 'Please confirm new password',
+    confirmNotMatch: 'Passwords do not match',
+    success: 'Password changed successfully.',
+    fail: 'Unable to change password',
+    submit: 'Change password',
+  },
+};
+
+export const ChangePasswordForm = ({ onSuccess, locale = 'vi' }: Props) => {
+  const tr = locale === 'en' ? dict.en : dict.vi;
   const { changePassword, mustChangePassword } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -17,18 +57,18 @@ export const ChangePasswordForm = ({ onSuccess }: { onSuccess: () => void }) => 
         oldPassword: mustChangePassword
           ? Yup.string()
           : Yup.string()
-              .matches(/^[0-9]+$/, 'Mật khẩu chỉ gồm số')
-              .min(6, 'Tối thiểu 6 ký tự')
-              .required('Vui lòng nhập mật khẩu hiện tại'),
+              .matches(/^[0-9]+$/, tr.onlyDigits)
+              .min(6, tr.min6)
+              .required(tr.requiredOld),
         newPassword: Yup.string()
-          .matches(/^[0-9]+$/, 'Mật khẩu chỉ gồm số')
-          .min(6, 'Tối thiểu 6 ký tự')
-          .required('Vui lòng nhập mật khẩu mới'),
+          .matches(/^[0-9]+$/, tr.onlyDigits)
+          .min(6, tr.min6)
+          .required(tr.requiredNew),
         confirmNewPassword: Yup.string()
-          .oneOf([Yup.ref('newPassword')], 'Mật khẩu nhập lại không khớp')
-          .required('Vui lòng nhập lại mật khẩu mới'),
+          .oneOf([Yup.ref('newPassword')], tr.confirmNotMatch)
+          .required(tr.requiredConfirm),
       }),
-    [mustChangePassword],
+    [mustChangePassword, tr],
   );
 
   return (
@@ -41,10 +81,10 @@ export const ChangePasswordForm = ({ onSuccess }: { onSuccess: () => void }) => 
         try {
           const oldVal = mustChangePassword ? '' : values.oldPassword;
           await changePassword(oldVal, values.newPassword);
-          setSuccess('Đổi mật khẩu thành công.');
+          setSuccess(tr.success);
           onSuccess();
         } catch (e: any) {
-          setError(e?.response?.data?.message || 'Không thể đổi mật khẩu');
+          setError(e?.response?.data?.message || tr.fail);
         } finally {
           setSubmitting(false);
         }
@@ -54,8 +94,8 @@ export const ChangePasswordForm = ({ onSuccess }: { onSuccess: () => void }) => 
         <View className="w-full">
           {!mustChangePassword && (
             <TextInputField
-              label="Mật khẩu hiện tại"
-              placeholder="Nhập mật khẩu hiện tại (6 số)"
+              label={tr.oldLabel}
+              placeholder={tr.oldPlaceholder}
               secureTextEntry
               secureToggle
               keyboardType="numeric"
@@ -66,8 +106,8 @@ export const ChangePasswordForm = ({ onSuccess }: { onSuccess: () => void }) => 
             />
           )}
           <TextInputField
-            label="Mật khẩu mới"
-            placeholder="Nhập mật khẩu mới (6 số)"
+            label={tr.newLabel}
+            placeholder={tr.newPlaceholder}
             secureTextEntry
             secureToggle
             keyboardType="numeric"
@@ -77,8 +117,8 @@ export const ChangePasswordForm = ({ onSuccess }: { onSuccess: () => void }) => 
             error={touched.newPassword ? errors.newPassword : undefined}
           />
           <TextInputField
-            label="Nhập lại mật khẩu mới"
-            placeholder="Nhập lại mật khẩu mới"
+            label={tr.confirmLabel}
+            placeholder={tr.confirmPlaceholder}
             secureTextEntry
             secureToggle
             keyboardType="numeric"
@@ -89,7 +129,7 @@ export const ChangePasswordForm = ({ onSuccess }: { onSuccess: () => void }) => 
           />
           {error && <Text className="text-sm text-red-500 mb-2">{error}</Text>}
           {success && <Text className="text-sm text-emerald-600 mb-2">{success}</Text>}
-          <AppButton title="Đổi mật khẩu" onPress={handleSubmit as any} loading={isSubmitting} />
+          <AppButton title={tr.submit} onPress={handleSubmit as any} loading={isSubmitting} />
         </View>
       )}
     </Formik>

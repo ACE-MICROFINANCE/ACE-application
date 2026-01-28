@@ -49,6 +49,7 @@ const formatBranchGroup = (branchName?: string | null, groupName?: string | null
 const StaffCustomersScreen = () => {
   const { profile } = useProfileStore();
   const isStaff = profile?.actorKind === 'STAFF';
+  const isBA = profile?.role === 'BA';
   const insets = useSafeAreaInsets();
 
   // ✅ giống StaffManageScreen: lấy tabbar height để đặt FAB không bị chìm
@@ -483,25 +484,27 @@ const StaffCustomersScreen = () => {
                         </Text>
                       </View>
 
-                      <View className="space-y-2 rounded-2xl border border-black/5 bg-white px-4 py-3">
-                        <View className="flex-row items-center justify-between">
-                          <View className="space-y-1">
-                            <Text className="text-sm font-semibold text-[#111]">Khóa tài khoản</Text>
-                            <Text className="text-xs text-[#6C757D]">
-                              {selectedDetail.credential
-                                ? 'Bật để vô hiệu hóa đăng nhập'
-                                : 'Khách hàng chưa có tài khoản'}
-                            </Text>
+                      {!isBA ? (
+                        <View className="space-y-2 rounded-2xl border border-black/5 bg-white px-4 py-3">
+                          <View className="flex-row items-center justify-between">
+                            <View className="space-y-1">
+                              <Text className="text-sm font-semibold text-[#111]">Khóa tài khoản</Text>
+                              <Text className="text-xs text-[#6C757D]">
+                                {selectedDetail.credential
+                                  ? 'Bật để vô hiệu hóa đăng nhập'
+                                  : 'Khách hàng chưa có tài khoản'}
+                              </Text>
+                            </View>
+                            <Switch
+                              value={Boolean(selectedDetail.credential && !selectedDetail.credential.isActive)}
+                              onValueChange={(nextSelected) => handleToggleLock(nextSelected)}
+                              disabled={!selectedDetail.credential || lockLoading}
+                              trackColor={{ false: '#E5E5EA', true: '#34C759' }}
+                              thumbColor="#fff"
+                            />
                           </View>
-                          <Switch
-                            value={Boolean(selectedDetail.credential && !selectedDetail.credential.isActive)}
-                            onValueChange={(nextSelected) => handleToggleLock(nextSelected)}
-                            disabled={!selectedDetail.credential || lockLoading}
-                            trackColor={{ false: '#E5E5EA', true: '#34C759' }}
-                            thumbColor="#fff"
-                          />
                         </View>
-                      </View>
+                      ) : null}
 
                       <View className="space-y-2 rounded-2xl border border-black/5 bg-white px-4 py-3">
                         <View className="flex-row items-center justify-between">

@@ -5,6 +5,18 @@ export type ScheduleItem = {
   title: string;
   eventType: 'MEETING' | 'FIELD_SCHOOL' | 'FARMING_TASK' | string;
   startDate: string;
+  endDate?: string | null;
+  durationMinutes?: number | null;
+  status?: string | null;
+  displayStatus?: string | null;
+  hidden?: boolean | null;
+  approvedAt?: string | null;
+  rejectedAt?: string | null;
+  updatedAt?: string | null;
+  targetType?: 'BRANCH_ALL' | 'GROUPS' | string;
+  targetText?: string | null;
+  targetGroups?: Array<{ groupCode: string; groupName?: string | null }>;
+  branchCode?: string | null;
   daysUntilEvent?: number; // CHANGED: hẹn ngày tới giống web
 };
 
@@ -82,7 +94,7 @@ export type StaffUserItem = {
   id: number;
   fullName?: string | null;
   email?: string | null;
-  role?: 'ADMIN' | 'BRANCH_MANAGER' | 'SUPER_ADMIN' | string | null;
+  role?: 'ADMIN' | 'SUPER_ADMIN' | 'BA' | 'BM' | string | null;
   branchCode?: string | null;
   branchName?: string | null;
   isActive?: boolean | null;
@@ -108,14 +120,14 @@ export type ContactsResponse = {
 export type CreateStaffUserPayload = {
   email: string;
   password: string;
-  role: 'ADMIN' | 'BRANCH_MANAGER' | string;
+  role: 'ADMIN' | 'SUPER_ADMIN' | 'BA' | 'BM' | string;
   branchCode?: string | null;
   fullName?: string | null;
 };
 
 export type UpdateStaffUserPayload = {
   email?: string | null;
-  role?: 'ADMIN' | 'BRANCH_MANAGER' | string | null;
+  role?: 'ADMIN' | 'SUPER_ADMIN' | 'BA' | 'BM' | string | null;
   branchCode?: string | null;
   fullName?: string | null;
 };
@@ -129,6 +141,21 @@ export type ScheduleDetail = {
   locationName?: string | null;
   durationMinutes?: number | null;
   audienceType?: string | null;
+  eventType?: string | null;
+  status?: string | null;
+  hidden?: boolean | null;
+  approvedAt?: string | null;
+  rejectedAt?: string | null;
+  updatedAt?: string | null;
+  displayStatus?: string | null;
+  target?: {
+    targetType: 'BRANCH_ALL' | 'GROUPS';
+    targetText?: string | null;
+    branchCode?: string | null;
+    branchName?: string | null;
+    groups?: Array<{ groupCode: string; groupName?: string | null }>;
+  } | null;
+  targetGroups?: Array<{ groupCode: string; groupName?: string | null }>;
 };
 
 export type ScheduleUpdatePayload = {
@@ -289,16 +316,24 @@ export const appApi = {
     const { data } = await apiClient.patch(`/events/${id}`, payload); // CHANGED: staff update schedule
     return data;
   },
+  approveSchedule: async (id: number) => {
+    const { data } = await apiClient.post(`/events/${id}/approve`);
+    return data;
+  },
+  rejectSchedule: async (id: number) => {
+    const { data } = await apiClient.post(`/events/${id}/reject`);
+    return data;
+  },
+  hideSchedule: async (id: number, hidden: boolean) => {
+    const { data } = await apiClient.post(`/events/${id}/hide`, { hidden });
+    return data;
+  },
   createSchedule: async (payload: ScheduleCreatePayload) => {
     const { data } = await apiClient.post('/events', payload); // CHANGED: staff create schedule
     return data;
   },
   createEvent: async (payload: ScheduleCreatePayload) => {
     const { data } = await apiClient.post('/events', payload); // CHANGED: alias create schedule
-    return data;
-  },
-  deleteEvent: async (id: number) => {
-    const { data } = await apiClient.delete(`/events/${id}`); // CHANGED: staff delete schedule
     return data;
   },
   getStaffGroups: async (): Promise<StaffGroupItem[]> => {

@@ -5,9 +5,13 @@ import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  // Allow dev/frontends (Expo web/exp.direct/expo.dev/localhost). Adjust FRONTEND_URL in prod.
+  // Broad CORS for dev/testing (expo web/tunnel). Tighten for production if needed.
   app.enableCors({
-    origin: (process.env.FRONTEND_URL || 'http://localhost:3000').split(','),
+    origin: true, // allow all origins (includes *.exp.direct / *.expo.dev)
     credentials: true,
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    allowedHeaders: 'Content-Type, Authorization, X-Requested-With',
   });
   app.useGlobalPipes(
     new ValidationPipe({

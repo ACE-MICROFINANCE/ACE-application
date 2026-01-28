@@ -28,14 +28,14 @@ export class CustomersController {
   }
 
   @UseGuards(JwtAccessGuard, RolesGuard)
-  @Roles('BRANCH_MANAGER')
+  @Roles('BA', 'BM')
   @Get('staff/groups')
   async listStaffGroups(@Req() req: any) {
     return this.customersService.getGroupsForBranch(req.user?.branchCode); // CHANGED: list groups by staff branch
   }
 
   @UseGuards(JwtAccessGuard, RolesGuard)
-  @Roles('ADMIN', 'BRANCH_MANAGER') // CHANGED: staff/admin list customers
+  @Roles('ADMIN', 'BM', 'BA') // allow BA manage/view customers
   @Get('staff/customers')
   async listStaffCustomers(@Req() req: any, @Query('q') q?: string) {
     return this.customersService.listCustomersForStaff(
@@ -45,7 +45,7 @@ export class CustomersController {
   }
 
   @UseGuards(JwtAccessGuard, RolesGuard)
-  @Roles('ADMIN', 'BRANCH_MANAGER') // CHANGED: staff/admin customer detail
+  @Roles('ADMIN', 'BM', 'BA') // allow BA view customer detail
   @Get('staff/customers/:memberNo')
   async getCustomerDetail(@Req() req: any, @Param('memberNo') memberNo: string) {
     return this.customersService.getCustomerDetailForStaff(memberNo, {
@@ -55,7 +55,7 @@ export class CustomersController {
   }
 
   @UseGuards(JwtAccessGuard, RolesGuard)
-  @Roles('ADMIN', 'BRANCH_MANAGER') // CHANGED: staff/admin create customer account
+  @Roles('ADMIN', 'BM', 'BA') // allow BA create account
   @Post('staff/customers/accounts')
   async createCustomerAccount(@Req() req: any, @Body() dto: CreateCustomerAccountDto) {
     return this.customersService.createCustomerAccountForStaff(
@@ -66,7 +66,7 @@ export class CustomersController {
   }
 
   @UseGuards(JwtAccessGuard, RolesGuard)
-  @Roles('ADMIN', 'BRANCH_MANAGER') // CHANGED: staff/admin reset password
+  @Roles('ADMIN', 'BM', 'BA') // allow BA reset password
   @Post('staff/customers/:memberNo/reset-password')
   async resetCustomerPassword(
     @Req() req: any,
@@ -80,7 +80,7 @@ export class CustomersController {
   }
 
   @UseGuards(JwtAccessGuard, RolesGuard)
-  @Roles('ADMIN', 'BRANCH_MANAGER') // CHANGED: staff/admin lock/unlock
+  @Roles('ADMIN', 'BM', 'BA') // allow BA lock/unlock
   @Patch('staff/customers/:memberNo/lock')
   async lockCustomer(
     @Req() req: any,
@@ -94,7 +94,7 @@ export class CustomersController {
   }
 
   @UseGuards(JwtAccessGuard, RolesGuard)
-  @Roles('ADMIN', 'BRANCH_MANAGER') // CHANGED: staff/admin toggle accessibility
+  @Roles('ADMIN', 'BM', 'BA') // allow BA toggle accessibility
   @Patch('staff/customers/:memberNo/accessibility')
   async toggleAccessibility(
     @Req() req: any,

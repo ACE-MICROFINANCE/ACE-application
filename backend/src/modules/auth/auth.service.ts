@@ -51,7 +51,7 @@ export class AuthService {
 
   private toStaffProfile(staff: {
     email: string;
-    role: 'ADMIN' | 'BRANCH_MANAGER' | 'SUPER_ADMIN';
+    role: 'ADMIN' | 'SUPER_ADMIN' | 'BA' | 'BM';
     branchCode?: string | null;
     fullName?: string | null;
   }) {
@@ -130,10 +130,16 @@ export class AuthService {
         throw new UnauthorizedException('Thông tin đăng nhập không đúng.');
       }
 
-      const staffRole =
-        staff.role === 'ADMIN' || staff.role === 'BRANCH_MANAGER' || staff.role === 'SUPER_ADMIN'
-          ? staff.role
-          : null; // CHANGED: narrow staff role
+      const rawRole = staff.role as string;
+      const mappedRole =
+        rawRole === 'BRANCH_MANAGER' || rawRole === 'BM'
+          ? 'BM'
+          : rawRole === 'BA' || rawRole === 'Branch Assistant'
+          ? 'BA'
+          : rawRole === 'ADMIN' || rawRole === 'SUPER_ADMIN'
+          ? (rawRole as 'ADMIN' | 'SUPER_ADMIN')
+          : null;
+      const staffRole = mappedRole;
       if (!staffRole) {
         throw new UnauthorizedException('Thông tin đăng nhập không đúng.');
       }

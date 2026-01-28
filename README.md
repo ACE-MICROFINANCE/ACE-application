@@ -91,13 +91,29 @@ npm run dev    # runs at 3000
 ```
 
 ## Roles and Access
-- CUSTOMER: logs in with memberNo + password; sees full customer dashboard (loan, savings, schedule, info, account).
-- STAFF (BRANCH_MANAGER): logs in with email + password; scoped to branchCode; manages schedules for their branch.
-- ADMIN: logs in with email + password; manages staff users and branches list.
+- CUSTOMER: memberNo + password; thấy dashboard khách hàng (loan, savings, schedule, info, account).
+- STAFF:
+  - BA (Branch Assistant): tạo/cập nhật lịch chi nhánh; không duyệt/ẩn.
+  - BM (Branch Manager): duyệt/từ chối/ẩn/bỏ ẩn lịch chi nhánh.
+- ADMIN: quản lý staff users/branches.
+- SUPER_ADMIN: quản lý admin accounts (Admin Manager), chỉ 2 tab (AdminManager, Account) trên mobile.
+
+### Lịch / Schedule (staff)
+- Trạng thái DB: PENDING_APPROVAL, APPROVED, REJECTED, UPDATED; hidden (boolean); EXPIRED, HIDDEN là derived cho UI.
+- BA nhìn thấy: PENDING_APPROVAL, APPROVED, UPDATED (hiển thị như “Chờ duyệt”), REJECTED trong 24h; không thấy HIDDEN/EXPIRED.
+- BM nhìn thấy tất cả, có badge “Ẩn” nếu hidden.
+- BM actions: POST /events/:id/approve, /reject, /hide { hidden }.
+- BA update lịch đã duyệt sẽ thành UPDATED (BM sẽ thấy “Đã chỉnh sửa”).
+- Sort GET /events: theo thời gian bắt đầu hiệu dụng DESC, rồi updatedAt DESC, rồi id DESC (FE không tự sort lại).
 
 ## Accessibility (Trợ năng)
 - Mobile: Staff can toggle “Trợ năng” per customer in StaffCustomersScreen; when enabled, app surfaces accessibility-friendly flows (e.g., simplified navigation, voice-friendly prompts – pending UX work) for that customer’s account.
 - Backend: Accessibility flag is stored on the customer record and can be toggled via staff API (setCustomerAccessibilityForStaff); value is returned in /me and staff customer detail endpoints so mobile can render the toggle and adapt UI.
+
+## Recent Changes (Jan 2026)
+- Thêm SUPER_ADMIN và Admin Manager (mobile) để tạo/xóa ADMIN.
+- Chuẩn hóa role staff thành BA/BM; lịch/states PENDING_APPROVAL/APPROVED/REJECTED/UPDATED, hidden toggle; sort theo thời gian (DESC); REJECTED hiển thị BA ≤24h.
+- Mobile staff schedule: badge theo role, BM có duyệt/từ chối/ẩn, BA chỉ tạo/sửa; “Thông báo” không yêu cầu thời lượng.
 
 ## Core Business Rules
 - Single login endpoint: POST /auth/login accepts { identifier, password }.

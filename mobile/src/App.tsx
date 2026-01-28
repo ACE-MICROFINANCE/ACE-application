@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { queryClient } from '@lib/queryClient';
 import { AuthProvider, useAuth } from '@contexts/AuthContext';
 import { AuthNavigator } from '@navigation/AuthNavigator';
@@ -162,15 +163,17 @@ const RootNavigation = () => {
 
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <SafeAreaProvider>
-        <AuthProvider>
-          <BootGate>
-            <RootNavigation />
-            <StatusBar style="dark" />
-          </BootGate>
-        </AuthProvider>
-      </SafeAreaProvider>
-    </QueryClientProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <QueryClientProvider client={queryClient}>
+        <SafeAreaProvider>
+          <AuthProvider>
+            <BootGate>
+              <RootNavigation />
+              <StatusBar style="dark" />
+            </BootGate>
+          </AuthProvider>
+        </SafeAreaProvider>
+      </QueryClientProvider>
+    </GestureHandlerRootView>
   );
 }

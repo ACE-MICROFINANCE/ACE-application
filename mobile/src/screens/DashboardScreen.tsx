@@ -244,7 +244,7 @@ const DashboardScreen = () => {
       setLoading(true);
       setError(null);
       try {
-        if (isSuperAdmin) {
+        if (isSuperAdmin || isStaff) {
           setLoan(null);
           setEvents([]);
           return;
@@ -266,7 +266,7 @@ const DashboardScreen = () => {
     return () => {
       mounted = false;
     };
-  }, [isSuperAdmin]);
+  }, [isSuperAdmin, isStaff]);
   const welcomeName = customer?.fullName || 'Khách hàng ACE';
 
   if (loading) {
@@ -307,14 +307,14 @@ const DashboardScreen = () => {
             <Text className="text-sm text-[#555] mb-4">Tạo và xóa tài khoản Admin.</Text>
             <AppButton title="Đi đến màn Quản lý Admin" onPress={() => navigation.navigate('AdminManager' as never)} />
           </Card>
-        ) : (
+        ) : !isStaff ? (
           <DashboardRemindersCard
             events={events}
             loan={loan}
             includeLoanReminder={includeLoanReminder}
             loading={loading}
           />
-        )}
+        ) : null}
       </View>
     </MobileFrame>
   );

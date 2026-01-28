@@ -32,7 +32,70 @@ const AccountScreen = () => {
   const staffRole = merged?.role;
   const isCustomer = actorKind === 'CUSTOMER';
   const isStaff = actorKind === 'STAFF';
-  const isAdmin = isStaff && (staffRole === 'ADMIN' || staffRole === 'SUPER_ADMIN');
+  const isSuperAdmin = isStaff && staffRole === 'SUPER_ADMIN';
+  const isAdmin = isStaff && staffRole === 'ADMIN';
+
+  const t = isSuperAdmin
+    ? {
+        accountTitle: 'Account Information',
+        loading: 'Loading...',
+        changePassword: 'Change password',
+        sendFeedback: 'Send feedback',
+        contactCco: 'Contact CCO',
+        logout: 'Logout',
+        noContact: 'No contact number.',
+        feedbackTitle: 'Send feedback',
+        feedbackPlaceholder: 'Enter your feedback...',
+        feedbackSend: 'Send',
+        feedbackEmpty: 'Please enter feedback content.',
+        feedbackSuccess: 'Thanks for your feedback!',
+        feedbackFail: 'Send feedback failed, please try again.',
+        close: 'Close',
+        changePwdTitle: 'Change password',
+        contactError: 'No contact number.',
+      }
+    : {
+        accountTitle: 'Thông tin tài khoản',
+        loading: 'Đang tải...',
+        changePassword: 'Đổi mật khẩu',
+        sendFeedback: 'Gửi phản hồi',
+        contactCco: 'Liên hệ CCO',
+        logout: 'Đăng xuất',
+        noContact: 'Chưa có số liên hệ.',
+        feedbackTitle: 'Gửi phản hồi',
+        feedbackPlaceholder: 'Nhập nội dung bạn muốn gửi...',
+        feedbackSend: 'Gửi',
+        feedbackEmpty: 'Vui lòng nhập nội dung phản hồi.',
+        feedbackSuccess: 'Cảm ơn bạn đã gửi góp ý!',
+        feedbackFail: 'Gửi phản hồi thất bại, thử lại sau.',
+        close: 'Đóng',
+        changePwdTitle: 'Đổi mật khẩu',
+        contactError: 'Chưa có số liên hệ.',
+      };
+
+  const lbl = isSuperAdmin
+    ? {
+        fullName: 'Full name',
+        customerId: 'Customer ID',
+        idCard: 'ID/Passport',
+        phone: 'Phone',
+        group: 'Group/Area',
+        loanCycle: 'Loan cycle',
+        joined: 'Joined date',
+        role: 'Role',
+        branch: 'Branch',
+      }
+    : {
+        fullName: 'Họ tên',
+        customerId: 'Mã khách hàng',
+        idCard: 'Số CMT/CCCD',
+        phone: 'Điện thoại',
+        group: 'Nhóm/Vùng',
+        loanCycle: 'Vòng vay',
+        joined: 'Ngày tham gia',
+        role: 'Vai trò',
+        branch: 'Chi nhánh',
+      };
 
   useEffect(() => {
     let mounted = true;
@@ -79,11 +142,11 @@ const AccountScreen = () => {
         if (!mounted) return;
         const phone = res?.socialPhone ?? null;
         setSocialPhone(phone);
-        setContactError(phone ? null : 'Chưa có số liên hệ.');
+        setContactError(phone ? null : t.noContact);
       } catch {
         if (mounted) {
           setSocialPhone(null);
-          setContactError('Chưa có số liên hệ.');
+          setContactError(t.noContact);
         }
       }
     })();
@@ -105,25 +168,25 @@ const AccountScreen = () => {
 
     if (isCustomer) {
       const idCode = merged?.customerId || merged?.memberNo;
-      if (isMeaningful(merged?.fullName)) r.push({ label: 'Họ tên', value: merged.fullName });
-      if (isMeaningful(idCode)) r.push({ label: 'Mã khách hàng', value: idCode });
-      if (isMeaningful(merged?.idCardNumber)) r.push({ label: 'Số CMT/CCCD', value: merged.idCardNumber });
-      if (isMeaningful(merged?.phoneNumber)) r.push({ label: 'Điện thoại', value: merged.phoneNumber });
+      if (isMeaningful(merged?.fullName)) r.push({ label: lbl.fullName, value: merged.fullName });
+      if (isMeaningful(idCode)) r.push({ label: lbl.customerId, value: idCode });
+      if (isMeaningful(merged?.idCardNumber)) r.push({ label: lbl.idCard, value: merged.idCardNumber });
+      if (isMeaningful(merged?.phoneNumber)) r.push({ label: lbl.phone, value: merged.phoneNumber });
       const group = merged?.groupName || merged?.groupCode;
-      if (isMeaningful(group)) r.push({ label: 'Nhóm/Vùng', value: group });
-      if (isMeaningful(merged?.loanCycle)) r.push({ label: 'Vòng vay', value: merged.loanCycle });
+      if (isMeaningful(group)) r.push({ label: lbl.group, value: group });
+      if (isMeaningful(merged?.loanCycle)) r.push({ label: lbl.loanCycle, value: merged.loanCycle });
       if (merged?.membershipStartDate) {
-        r.push({ label: 'Ngày tham gia', value: formatDate(merged.membershipStartDate) });
+        r.push({ label: lbl.joined, value: formatDate(merged.membershipStartDate) });
       }
     } else if (isStaff) {
-      if (isMeaningful(merged?.fullName)) r.push({ label: 'Họ tên', value: merged.fullName });
+      if (isMeaningful(merged?.fullName)) r.push({ label: lbl.fullName, value: merged.fullName });
       if (isMeaningful(merged?.email)) r.push({ label: 'Email', value: merged.email });
-      if (isMeaningful(merged?.role)) r.push({ label: 'Vai trò', value: merged.role });
+      if (isMeaningful(merged?.role)) r.push({ label: lbl.role, value: merged.role });
       const branchText =
         merged?.branchCode || merged?.branchName
           ? `${merged.branchCode ?? ''}${merged.branchName ? ` - ${merged.branchName}` : ''}`.trim()
           : '';
-      if (isMeaningful(branchText)) r.push({ label: 'Chi nhánh', value: branchText });
+      if (isMeaningful(branchText)) r.push({ label: lbl.branch, value: branchText });
     }
 
     return r;
@@ -134,10 +197,10 @@ const AccountScreen = () => {
       <View className="pt-6 pb-4">
         <Card className="rounded-2xl bg-white shadow-lg p-6 space-y-4">
           <View className="items-center">
-            <Text className="text-lg font-semibold text-[#333]">Account Information</Text>
+            <Text className="text-lg font-semibold text-[#333]">{t.accountTitle}</Text>
           </View>
 
-          {loading ? <Text className="text-center text-sm text-[#666]">Loading...</Text> : null}
+          {loading ? <Text className="text-center text-sm text-[#666]">{t.loading}</Text> : null}
           {error ? <Text className="text-center text-sm text-red-500">{error}</Text> : null}
 
           <View className="space-y-2 opacity-100">
@@ -152,11 +215,11 @@ const AccountScreen = () => {
           </View>
 
           <View className="space-y-3 pt-2">
-            <AppButton title="Change password" bgColor="#1d63b3" className="mt-0" onPress={() => setChangeOpen(true)} />
+            <AppButton title={t.changePassword} bgColor="#1d63b3" className="mt-0" onPress={() => setChangeOpen(true)} />
             {isCustomer ? (
               <>
                 <AppButton
-                  title="Send feedback"
+                  title={t.sendFeedback}
                   bgColor="#f39c12"
                   className="mt-0"
                   onPress={() => {
@@ -166,12 +229,12 @@ const AccountScreen = () => {
                   }}
                 />
                 <AppButton
-                  title="Contact CCO"
+                  title={t.contactCco}
                   bgColor="#10b981"
                   className="mt-0"
                   onPress={() => {
                     if (!socialPhone) {
-                      setContactError('Chưa có số liên hệ.');
+                      setContactError(t.contactError);
                       return;
                     }
                     Linking.openURL(`tel:${socialPhone}`);
@@ -180,7 +243,7 @@ const AccountScreen = () => {
               </>
             ) : null}
             <AppButton
-              title="Logout"
+              title={t.logout}
               bgColor="#e53935"
               className="mt-0"
               onPress={async () => {
@@ -199,7 +262,7 @@ const AccountScreen = () => {
         <View className="flex-1 bg-black/40 items-center justify-center px-4">
           <View className="w-full max-w-md rounded-[28px] border border-black/5 bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)] overflow-hidden">
             <View className="flex-row items-center justify-center border-b border-black/5 px-6 py-5">
-              <Text className="text-[17px] font-semibold text-[#111]">Change password</Text>
+              <Text className="text-[17px] font-semibold text-[#111]">{t.changePwdTitle}</Text>
               {!mustChangePassword ? (
                 <Pressable
                   className="absolute right-4 top-4 h-8 w-8 items-center justify-center rounded-full border border-black/10 bg-black/5"
@@ -210,7 +273,7 @@ const AccountScreen = () => {
               ) : null}
             </View>
             <View className="px-6 pt-5 pb-[20px]">
-              <ChangePasswordForm onSuccess={() => setChangeOpen(false)} />
+              <ChangePasswordForm onSuccess={() => setChangeOpen(false)} locale={isSuperAdmin ? 'en' : 'vi'} />
             </View>
           </View>
         </View>
@@ -225,10 +288,10 @@ const AccountScreen = () => {
             >
               <Text className="text-lg text-[#333]">×</Text>
             </Pressable>
-            <Text className="text-lg font-semibold text-center text-[#333] mb-3">Gửi phản hồi</Text>
+            <Text className="text-lg font-semibold text-center text-[#333] mb-3">{t.feedbackTitle}</Text>
               <TextInput
                 className="w-full min-h-[120px] rounded-2xl border border-[#d9d9d9] px-3 py-2 text-base text-[#333]"
-                placeholder="Nhập nội dung bạn muốn gửi..."
+                placeholder={t.feedbackPlaceholder}
                 placeholderTextColor="#9ca3af"
                 multiline
                 value={feedback}
@@ -237,7 +300,7 @@ const AccountScreen = () => {
             {feedbackMsg ? (
               <Text
                 className={`mt-2 text-sm ${
-                  feedbackMsg.includes('thất bại') ? 'text-red-500' : 'text-emerald-600'
+                  feedbackMsg.includes('fail') || feedbackMsg.includes('thất bại') ? 'text-red-500' : 'text-emerald-600'
                 }`}
               >
                 {feedbackMsg}
@@ -246,23 +309,23 @@ const AccountScreen = () => {
             <View className="mt-3 flex-row gap-2">
               <View className="flex-1">
                 <AppButton
-                  title="Gửi"
+                  title={t.feedbackSend}
                   loading={feedbackSending}
                   disabled={feedbackSending}
                   onPress={async () => {
                     const content = feedback.trim();
                     if (!content) {
-                      setFeedbackMsg('Vui lòng nhập nội dung phản hồi.');
+                      setFeedbackMsg(t.feedbackEmpty);
                       return;
                     }
                     try {
                       setFeedbackSending(true);
                       setFeedbackMsg(null);
                       await appApi.sendFeedback(content);
-                      setFeedbackMsg('Cảm ơn bạn đã gửi góp ý!');
+                      setFeedbackMsg(t.feedbackSuccess);
                       setFeedback('');
                     } catch {
-                      setFeedbackMsg('Send feedback thất bại, thử lại sau.');
+                      setFeedbackMsg(t.feedbackFail);
                     } finally {
                       setFeedbackSending(false);
                     }

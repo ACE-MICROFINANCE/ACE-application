@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import { JwtAccessGuard } from '../../common/guards/jwt-access.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -11,14 +11,14 @@ export class EventsController {
   constructor(private readonly eventsService: EventsService) {}
 
   @UseGuards(JwtAccessGuard, RolesGuard)
-  @Roles('BRANCH_MANAGER')
+  @Roles('BM', 'BA')
   @Post('events')
   async createEvent(@Req() req: any, @Body() dto: CreateEventDto) {
     return this.eventsService.createStaffEvent(req.user, dto); // CHANGED: staff create event
   }
 
   @UseGuards(JwtAccessGuard, RolesGuard)
-  @Roles('BRANCH_MANAGER')
+  @Roles('BM', 'BA')
   @Get('events')
   async listStaffEvents(
     @Req() req: any,
@@ -30,17 +30,39 @@ export class EventsController {
   }
 
   @UseGuards(JwtAccessGuard, RolesGuard)
-  @Roles('BRANCH_MANAGER')
+  @Roles('BM', 'BA')
   @Patch('events/:id')
   async updateEvent(@Req() req: any, @Param('id') id: string, @Body() dto: UpdateEventDto) {
     return this.eventsService.updateStaffEvent(req.user, id, dto); // CHANGED: staff update
   }
 
+  // PUT alias to avoid breaking existing clients while matching spec
   @UseGuards(JwtAccessGuard, RolesGuard)
-  @Roles('BRANCH_MANAGER')
-  @Delete('events/:id')
-  async deleteEvent(@Req() req: any, @Param('id') id: string) {
-    return this.eventsService.deleteStaffEvent(req.user, id); // CHANGED: staff delete
+  @Roles('BM', 'BA')
+  @Put('events/:id')
+  async updateEventPut(@Req() req: any, @Param('id') id: string, @Body() dto: UpdateEventDto) {
+    return this.eventsService.updateStaffEvent(req.user, id, dto);
+  }
+
+  @UseGuards(JwtAccessGuard, RolesGuard)
+  @Roles('BM')
+  @Post('events/:id/approve')
+  async approve(@Req() req: any, @Param('id') id: string) {
+    return this.eventsService.approveEvent(req.user, id);
+  }
+
+  @UseGuards(JwtAccessGuard, RolesGuard)
+  @Roles('BM')
+  @Post('events/:id/reject')
+  async reject(@Req() req: any, @Param('id') id: string) {
+    return this.eventsService.rejectEvent(req.user, id);
+  }
+
+  @UseGuards(JwtAccessGuard, RolesGuard)
+  @Roles('BM')
+  @Post('events/:id/hide')
+  async hide(@Req() req: any, @Param('id') id: string, @Body() body: { hidden: boolean }) {
+    return this.eventsService.hideEvent(req.user, id, body?.hidden ?? true);
   }
 
   @UseGuards(JwtAccessGuard)

@@ -29,11 +29,25 @@ import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 type ModalMode = "create" | "edit" | null;
 
 type StatusBadge = { text: string; className: string };
+type RoleChip = { text: string; className: string };
 
 const buildStatusBadge = (isActive?: boolean | null): StatusBadge => {
   return isActive
     ? { text: "Đang hoạt động", className: "border-emerald-100 bg-emerald-50 text-emerald-700" }
     : { text: "Bị khóa", className: "border-rose-100 bg-rose-50 text-rose-700" };
+};
+
+const buildRoleChip = (role?: string | null): RoleChip | null => {
+  switch (role) {
+    case "BA":
+      return { text: "BA", className: "border-indigo-100 bg-indigo-50 text-indigo-700" };
+    case "BM":
+      return { text: "BM", className: "border-amber-100 bg-amber-50 text-amber-700" };
+    case "ADMIN":
+      return { text: "ADMIN", className: "border-slate-200 bg-slate-100 text-slate-700" };
+    default:
+      return null;
+  }
 };
 
 const StaffManageScreen = () => {
@@ -65,7 +79,7 @@ const StaffManageScreen = () => {
   const [formState, setFormState] = useState({
     fullName: "",
     email: "",
-    role: "BRANCH_MANAGER",
+    role: "BM",
     branchCode: "",
     password: "",
   });
@@ -86,6 +100,11 @@ const StaffManageScreen = () => {
   );
 
   const filteredBranches = useMemo(() => branchOptions, [branchOptions]);
+  const roleOptions = [
+    { value: "BA", label: "Trợ lý chi nhánh" },
+    { value: "BM", label: "Quản lý chi nhánh" },
+    { value: "ADMIN", label: "Admin" },
+  ];
 
   const fetchBranches = async () => {
     try {
@@ -137,7 +156,7 @@ const StaffManageScreen = () => {
     setFormState({
       fullName: "",
       email: "",
-      role: "BRANCH_MANAGER",
+      role: "BM",
       branchCode: "",
       password: "",
     });
@@ -153,7 +172,7 @@ const StaffManageScreen = () => {
     setFormState({
       fullName: staff.fullName ?? "",
       email: staff.email ?? "",
-      role: staff.role ?? "BRANCH_MANAGER",
+      role: staff.role ?? "BM",
       branchCode: staff.branchCode ?? "",
       password: "",
     });
@@ -173,8 +192,12 @@ const StaffManageScreen = () => {
     if (!fullName) return setSaveError("Vui lòng nhập họ và tên.");
     if (!email) return setSaveError("Vui lòng nhập email.");
     if (!password) return setSaveError("Vui lòng nhập mật khẩu ban đầu.");
-    if (formState.role === "BRANCH_MANAGER" && !formState.branchCode) {
-      return setSaveError("Vui lòng chọn chi nhánh cho quản lý chi nhánh.");
+    const roleNeedsBranch = ["BM", "BA"].includes(formState.role);
+    if (roleNeedsBranch && !formState.branchCode) {
+      return setSaveError("Vui lòng chọn chi nhánh cho nhân sự chi nhánh.");
+    }
+    if (formState.role === "ADMIN" && formState.branchCode) {
+      return setSaveError("Admin không gán chi nhánh.");
     }
     setSaveLoading(true);
     setSaveError(null);
@@ -184,7 +207,7 @@ const StaffManageScreen = () => {
         email,
         password,
         role: formState.role,
-        branchCode: formState.role === "BRANCH_MANAGER" ? formState.branchCode : undefined,
+        branchCode: roleNeedsBranch ? formState.branchCode : undefined,
       };
       await appApi.createStaffUser(payload);
       setModalMode(null);
@@ -202,8 +225,12 @@ const StaffManageScreen = () => {
     const email = formState.email.trim();
     if (!fullName) return setSaveError("Vui lòng nhập họ và tên.");
     if (!email) return setSaveError("Vui lòng nhập email.");
-    if (formState.role === "BRANCH_MANAGER" && !formState.branchCode) {
-      return setSaveError("Vui lòng chọn chi nhánh cho quản lý chi nhánh.");
+    const roleNeedsBranch = ["BM", "BA"].includes(formState.role);
+    if (roleNeedsBranch && !formState.branchCode) {
+      return setSaveError("Vui lòng chọn chi nhánh cho nhân sự chi nhánh.");
+    }
+    if (formState.role === "ADMIN" && formState.branchCode) {
+      return setSaveError("Admin không gán chi nhánh.");
     }
     setSaveLoading(true);
     setSaveError(null);
@@ -212,7 +239,7 @@ const StaffManageScreen = () => {
         fullName,
         email,
         role: formState.role,
-        branchCode: formState.role === "BRANCH_MANAGER" ? formState.branchCode : undefined,
+        branchCode: roleNeedsBranch ? formState.branchCode : undefined,
       };
       await appApi.updateStaffUser(selectedStaff.id, payload);
       setModalMode(null);
@@ -349,9 +376,15 @@ const StaffManageScreen = () => {
               <Text className="px-4 py-6 text-center text-sm text-[#666]">Chưa có nhân viên.</Text>
             ) : (
               staffUsers
-                .filter((staff) => staff.role !== "ADMIN" && staff.email !== "admin@ace.vn")
+                .filter(
+                  (staff) =>
+                    staff.role !== "ADMIN" &&
+                    staff.role !== "SUPER_ADMIN" &&
+                    staff.email !== "admin@ace.vn",
+                )
                 .map((staff, idx, arr) => {
                   const badge = buildStatusBadge(staff.isActive ?? false);
+                  const roleChip = buildRoleChip(staff.role);
                   return (
                     <Pressable
                       key={staff.id}
@@ -369,9 +402,19 @@ const StaffManageScreen = () => {
                           <Text className="text-sm font-semibold text-[#111]">
                             {staff.fullName ?? staff.email ?? "Nhân viên"}
                           </Text>
-                          <Text className={`rounded-full border px-3 py-1 text-xs font-semibold ${badge.className}`}>
-                            {badge.text}
-                          </Text>
+                          <View className="flex-row items-center gap-2">
+                            <Text className={`rounded-full border px-3 py-1 text-xs font-semibold ${badge.className}`}>
+                              {badge.text}
+                            </Text>
+                            {roleChip ? (
+                              <Text
+                                className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${roleChip.className}`}
+                                style={{ lineHeight: 14 }}
+                              >
+                                {roleChip.text}
+                              </Text>
+                            ) : null}
+                          </View>
                         </View>
                         <Text className="text-xs text-[#666]">
                           Chi nhánh: {staff.branchCode ? `${staff.branchCode}-${staff.branchName ?? ''}` : '-'}
@@ -454,6 +497,32 @@ const StaffManageScreen = () => {
                     placeholder="Nhập email"
                     className="rounded-2xl border border-black/5 px-4 py-3 text-base"
                   />
+                </View>
+
+                <View className="space-y-2">
+                  <Text className="text-xs font-medium text-[#6C757D]">Vai trò</Text>
+                  <View className="flex-row flex-wrap gap-2">
+                    {(modalMode === "edit" ? roleOptions.filter((r) => r.value !== "ADMIN") : roleOptions).map((opt) => {
+                      const active = formState.role === opt.value;
+                      return (
+                        <Pressable
+                          key={opt.value}
+                          onPress={() =>
+                            setFormState((prev) => ({
+                              ...prev,
+                              role: opt.value,
+                              branchCode: opt.value === "ADMIN" ? "" : prev.branchCode,
+                            }))
+                          }
+                          className={`rounded-full border px-4 py-2 ${
+                            active ? "border-[#0A84FF] bg-[#E7F2FF]" : "border-black/10 bg-white"
+                          }`}
+                        >
+                          <Text className={`text-sm font-semibold ${active ? "text-[#0A84FF]" : "text-[#111]"}`}>{opt.label}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
                 </View>
 
                 <View className="space-y-2">

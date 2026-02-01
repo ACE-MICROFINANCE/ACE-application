@@ -8,6 +8,10 @@ import { CreateCustomerAccountDto } from './dto/create-customer-account.dto'; //
 import { ResetCustomerPasswordDto } from './dto/reset-customer-password.dto'; // CHANGED: staff reset password
 import { UpdateCustomerLockDto } from './dto/update-customer-lock.dto'; // CHANGED: lock/unlock customer
 import { UpdateCustomerAccessibilityDto } from './dto/update-customer-accessibility.dto'; // CHANGED: toggle accessibility
+import { CreateGroupDto } from './dto/create-group.dto';
+import { UpdateGroupDto } from './dto/update-group.dto';
+import { CreateGroupRequestDto, UpdateGroupRequestDto } from './dto/create-group-request.dto';
+import { RejectGroupRequestDto } from './dto/reject-group-request.dto';
 
 @Controller()
 export class CustomersController {
@@ -30,8 +34,149 @@ export class CustomersController {
   @UseGuards(JwtAccessGuard, RolesGuard)
   @Roles('BA', 'BM')
   @Get('staff/groups')
-  async listStaffGroups(@Req() req: any) {
-    return this.customersService.getGroupsForBranch(req.user?.branchCode); // CHANGED: list groups by staff branch
+  async listStaffGroups(@Req() req: any, @Query('branchCode') branchCode?: string) {
+    return this.customersService.listStaffGroupsWithCounts(
+      { role: req.user?.role, branchCode: req.user?.branchCode },
+      branchCode,
+    );
+  }
+
+  @UseGuards(JwtAccessGuard, RolesGuard)
+  @Roles('BM')
+  @Post('staff/groups')
+  async createGroup(@Req() req: any, @Body() dto: CreateGroupDto) {
+    return this.customersService.createGroup(
+      { role: req.user?.role, branchCode: req.user?.branchCode },
+      dto,
+    );
+  }
+
+  @UseGuards(JwtAccessGuard, RolesGuard)
+  @Roles('BM')
+  @Patch('staff/groups/:id')
+  async updateGroup(@Req() req: any, @Param('id') id: string, @Body() dto: UpdateGroupDto) {
+    return this.customersService.updateGroup(
+      { role: req.user?.role, branchCode: req.user?.branchCode },
+      Number(id),
+      dto,
+    );
+  }
+
+  // BA propose create group
+  @UseGuards(JwtAccessGuard, RolesGuard)
+  @Roles('BA')
+  @Post('staff/group-requests')
+  async proposeCreate(@Req() req: any, @Body() dto: CreateGroupRequestDto) {
+    const staffCtx: { id?: string | null; role?: string | null; branchCode?: string | null } = {
+      id: req.user?.userId,
+      role: req.user?.role,
+      branchCode: req.user?.branchCode,
+    };
+    return this.customersService.proposeCreateGroupRequest(
+      staffCtx,
+      dto,
+    );
+  }
+
+  // BA propose update group
+  @UseGuards(JwtAccessGuard, RolesGuard)
+  @Roles('BA')
+  @Post('staff/group-requests/update')
+  async proposeUpdate(@Req() req: any, @Body() dto: UpdateGroupRequestDto & { targetGroupId: number }) {
+    const staffCtx: { id?: string | null; role?: string | null; branchCode?: string | null } = {
+      id: req.user?.userId,
+      role: req.user?.role,
+      branchCode: req.user?.branchCode,
+    };
+    return this.customersService.proposeUpdateGroupRequest(
+      staffCtx,
+      dto,
+    );
+  }
+
+  // BA view own requests
+  @UseGuards(JwtAccessGuard, RolesGuard)
+  @Roles('BA')
+  @Get('staff/group-requests/mine')
+  async myRequests(@Req() req: any) {
+    const staffCtx: { id?: string | null; role?: string | null; branchCode?: string | null } = {
+      id: req.user?.userId,
+      role: req.user?.role,
+      branchCode: req.user?.branchCode,
+    };
+    return this.customersService.listMyGroupRequests(
+      staffCtx,
+    );
+  }
+
+  // BM list requests
+  @UseGuards(JwtAccessGuard, RolesGuard)
+  @Roles('BM')
+  @Get('staff/group-requests')
+  async listRequests(@Req() req: any, @Query('status') status?: string, @Query('branchCode') branchCode?: string) {
+    const staffCtx: { id?: string | null; role?: string | null; branchCode?: string | null } = {
+      id: req.user?.userId,
+      role: req.user?.role,
+      branchCode: req.user?.branchCode,
+    };
+    return this.customersService.listGroupRequestsForBranch(
+      staffCtx,
+      status,
+      branchCode,
+    );
+  }
+
+  // BM approve
+  @UseGuards(JwtAccessGuard, RolesGuard)
+  @Roles('BM')
+  @Post('staff/group-requests/:id/approve')
+  async approveRequest(@Req() req: any, @Param('id') id: string) {
+    const staffCtx: { id?: string | null; role?: string | null; branchCode?: string | null } = {
+      id: req.user?.userId,
+      role: req.user?.role,
+      branchCode: req.user?.branchCode,
+    };
+    return this.customersService.approveGroupRequest(
+      staffCtx,
+      Number(id),
+    );
+  }
+
+  // BM reject
+  @UseGuards(JwtAccessGuard, RolesGuard)
+  @Roles('BM')
+  @Post('staff/group-requests/:id/reject')
+  async rejectRequest(@Req() req: any, @Param('id') id: string, @Body() dto: RejectGroupRequestDto) {
+    const staffCtx: { id?: string | null; role?: string | null; branchCode?: string | null } = {
+      id: req.user?.userId,
+      role: req.user?.role,
+      branchCode: req.user?.branchCode,
+    };
+    return this.customersService.rejectGroupRequest(
+      staffCtx,
+      Number(id),
+      dto?.reason,
+    );
+  }
+
+  @UseGuards(JwtAccessGuard, RolesGuard)
+  @Roles('BA', 'BM')
+  @Get('staff/unmapped-groups')
+  async listUnmapped(@Req() req: any, @Query() query: any) {
+    return this.customersService.listUnmappedGroups(
+      { role: req.user?.role, branchCode: req.user?.branchCode },
+      { q: query.q, limit: query.limit ? Number(query.limit) : undefined, offset: query.offset ? Number(query.offset) : undefined },
+    );
+  }
+
+  @UseGuards(JwtAccessGuard, RolesGuard)
+  @Roles('BM')
+  @Post('staff/groups/:id/backfill')
+  async backfillGroup(@Req() req: any, @Param('id') id: string) {
+    return this.customersService.backfillGroup(
+      { role: req.user?.role, branchCode: req.user?.branchCode },
+      Number(id),
+    );
   }
 
   @UseGuards(JwtAccessGuard, RolesGuard)

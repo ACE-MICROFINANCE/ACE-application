@@ -7,9 +7,14 @@ import { TextInputField } from '@components/ui/TextInputField';
 import apiClient from '@lib/apiClient';
 
 const ForgotSchema = Yup.object().shape({
-  memberNo: Yup.string()
-    .matches(/^[0-9]+$/, 'Mã khách hàng phải là số')
-    .required('Vui lòng nhập mã khách hàng'),
+  identifier: Yup.string()
+    .required('Vui lòng nhập thông tin')
+    .test('identifier-format', 'Thông tin không hợp lệ.', (value) => {
+      if (!value) return false;
+      const v = value.trim();
+      if (v.includes('@')) return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+      return /^[0-9]+$/.test(v);
+    }),
 });
 
 export const ForgotPasswordForm = () => {
@@ -18,16 +23,21 @@ export const ForgotPasswordForm = () => {
 
   return (
     <Formik
-      initialValues={{ memberNo: '' }}
+      initialValues={{ identifier: '' }}
       validationSchema={ForgotSchema}
       onSubmit={async (values, { setSubmitting, resetForm }) => {
         setError(null);
         setInfo(null);
+        const raw = values.identifier.trim();
+        const isEmail = raw.includes('@');
         try {
-          await apiClient.post('/auth/request-password-reset', { memberNo: values.memberNo.trim() });
-          setInfo(
-            'Yêu cầu đặt lại mật khẩu đã được gửi tới nhân viên ACE. Nhân viên sẽ liên hệ và cấp mật khẩu tạm cho bạn.',
-          );
+          if (isEmail) {
+            await apiClient.post('/auth/staff/forgot-password', { email: raw.toLowerCase() });
+            setInfo('Hệ thống đã gửi mật khẩu tạm thời.');
+          } else {
+            await apiClient.post('/auth/request-password-reset', { memberNo: raw });
+            setInfo('Nếu mã khách hàng tồn tại, nhân viên sẽ liên hệ để hỗ trợ.');
+          }
           resetForm();
         } catch (e: any) {
           setError('Không thể gửi yêu cầu lúc này, vui lòng thử lại.');
@@ -39,21 +49,16 @@ export const ForgotPasswordForm = () => {
       {({ handleChange, handleBlur, handleSubmit, values, errors, touched, isSubmitting }) => (
         <View className="w-full space-y-3">
           <TextInputField
-            label="Mã khách hàng (memberNo)"
-            keyboardType="numeric"
-            placeholder="Nhập mã khách hàng"
-            onChangeText={handleChange('memberNo')}
-            onBlur={handleBlur('memberNo')}
-            value={values.memberNo}
-            error={touched.memberNo ? errors.memberNo : undefined}
+            label="Mã khách hàng hoặc Email"
+            keyboardType="default"
+            placeholder="Mã khách hàng hoặc Email"
+            onChangeText={handleChange('identifier')}
+            onBlur={handleBlur('identifier')}
+            value={values.identifier}
+            error={touched.identifier ? errors.identifier : undefined}
           />
 
-          <AppButton
-            title="Gửi yêu cầu"
-            onPress={handleSubmit as any}
-            loading={isSubmitting}
-            className="mt-2"
-          />
+          <AppButton title="Gửi yêu cầu" onPress={handleSubmit as any} loading={isSubmitting} className="mt-2" />
 
           {info ? <Text className="text-sm text-[#333]">{info}</Text> : null}
           {error ? <Text className="text-sm text-red-500">{error}</Text> : null}

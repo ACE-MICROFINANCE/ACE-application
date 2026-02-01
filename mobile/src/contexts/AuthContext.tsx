@@ -42,7 +42,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [authStore, profileStore]);
 
   const persistTokens = async (payload: AuthResponse) => {
-    const flag = payload.mustChangePassword ?? payload.customer?.mustChangePassword ?? false;
+    const flag =
+      payload.mustChangePassword ??
+      payload.customer?.mustChangePassword ??
+      // @ts-expect-error profile only present for staff
+      (payload as any)?.profile?.mustChangePassword ??
+      false;
     await authStore.setTokens(payload.accessToken, payload.refreshToken, flag);
     setAccessToken(payload.accessToken);
     setRefreshToken(payload.refreshToken);
@@ -61,6 +66,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const changePassword = async (oldPassword: string | undefined, newPassword: string) => {
     const response = await authService.changePassword(oldPassword, newPassword);
+
+    // Nếu backend không trả accessToken (staff change password), giữ nguyên token hiện tại
+    if (!response.accessToken && accessToken) {
+      await authStore.setTokens(accessToken, refreshToken, false);
+      setMustChangePassword(false);
+      await profileStore.refreshProfile();
+      setCustomer(profileStore.profile ?? customer);
+      return response;
+    }
+
     await persistTokens(response);
     setMustChangePassword(false);
     await profileStore.refreshProfile();

@@ -178,11 +178,11 @@ export class MemberDebugSyncService {
 
     const rawGroupName = String(bijliData.GroupName ?? '').trim();
     if (rawGroupName) {
-      const resolved = this.branchGroupMapService.resolveGroupName(rawGroupName, {
+      const resolved = await this.branchGroupMapService.resolveGroupName(rawGroupName, {
         memberNo: normalized,
       });
-      if (!resolved.found && resolved.reason === 'CONFLICT') {
-        errors.push(`GroupName conflict: ${rawGroupName}`);
+      if (!resolved.found && resolved.reason === 'AMBIGUOUS') {
+        errors.push(`GroupName ambiguous: ${rawGroupName}`);
       } else if (!resolved.found) {
         warnings.push(`GroupName not mapped: ${rawGroupName}`);
       }

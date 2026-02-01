@@ -19,6 +19,7 @@ model Customer {
   villageName          String?
   groupCode            String?
   groupName            String?
+  groupNameKey         String?
   branchCode           String?
   branchName           String?
   membershipStartDate  DateTime?
@@ -35,6 +36,7 @@ model Customer {
   refreshTokens        RefreshToken[]
 
   @@index([branchCode, groupCode])
+  @@index([groupNameKey])
 }
 
 model CustomerCredential {
@@ -67,6 +69,11 @@ model StaffUser {
   branchCode   String?
   fullName     String?
   isActive     Boolean  @default(true)
+  mustChangePassword      Boolean   @default(false)
+  passwordUpdatedAt       DateTime?
+  tempPasswordEncrypted   String?
+  tempPasswordIssuedAt    DateTime?
+  lastPasswordExpiryReminderAt DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   events       Event[]  @relation("EventCreatedBy")
@@ -174,6 +181,73 @@ model EventTargetGroup {
   @@unique([eventId, groupCode])
   @@index([groupCode])
   @@index([eventId])
+}
+
+model Group {
+  id           BigInt   @id @default(autoincrement())
+  branchCode   String
+  groupCode    String
+  groupName    String
+  groupNameKey String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([branchCode, groupCode])
+  @@index([groupNameKey])
+  @@index([branchCode, groupNameKey])
+}
+
+enum GroupRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum GroupRequestType {
+  CREATE
+  UPDATE
+}
+
+model GroupRequest {
+  id                   BigInt              @id @default(autoincrement())
+  type                 GroupRequestType
+  status               GroupRequestStatus  @default(PENDING)
+  branchCode           String
+  targetGroupId        BigInt?
+  proposedGroupCode    String?
+  proposedGroupName    String
+  proposedGroupNameKey String
+  createdByStaffId     BigInt
+  reviewedByStaffId    BigInt?
+  reviewedAt           DateTime?
+  rejectReason         String?
+  expiresAt            DateTime?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  @@index([branchCode, status])
+  @@index([createdByStaffId, status])
+  @@index([expiresAt])
+  @@index([targetGroupId])
+}
+
+enum UnmappedReason {
+  NOT_FOUND
+  AMBIGUOUS
+}
+
+model UnmappedGroupName {
+  id             BigInt         @id @default(autoincrement())
+  rawGroupName   String
+  groupNameKey   String
+  reason         UnmappedReason
+  candidateCount Int?
+  count          Int            @default(1)
+  lastSeenAt     DateTime       @default(now())
+  sampleMemberNo String?
+
+  @@unique([groupNameKey, reason])
+  @@index([lastSeenAt])
 }
 
 model Feedback {

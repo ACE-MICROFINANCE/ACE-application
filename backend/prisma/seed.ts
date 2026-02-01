@@ -1,6 +1,8 @@
 /* prisma/seed.ts */
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const prisma = new PrismaClient();
 
@@ -31,6 +33,12 @@ type StaffSeed = {
   role: 'ADMIN' | 'SUPER_ADMIN' | 'BA' | 'BM';
   branchCode?: string | null;
   fullName?: string | null;
+};
+
+type BranchGroupMapRecord = {
+  Branch: string;
+  GroupCode: string;
+  GroupName: string;
 };
 
 // ================== CUSTOMERS: CHỈ CÓ memberNo ================== //
@@ -193,11 +201,79 @@ const eventsSeed: EventSeed[] = branches.flatMap((branchCode, idx) => {
   ];
 });
 
+// ================== GROUP IMPORT ================== //
+const normalizeGroupNameKey = (value?: string | null) => {
+  if (!value) return null;
+  return value.replace(/[\t\r\n]+/g, ' ').trim().replace(/\s+/g, ' ').toUpperCase();
+};
+
+async function importGroupsIfEmpty() {
+  const count = await prisma.group.count();
+  if (count > 0) {
+    console.log(`✅ Group table already has ${count} rows, skip import.`);
+    return;
+  }
+
+  const candidates = [
+    path.join(process.cwd(), 'src', 'branch-group-map.json'),
+    path.join(process.cwd(), 'backend', 'src', 'branch-group-map.json'),
+    path.join(process.cwd(), 'branch-group-map.json'),
+  ];
+  const filePath = candidates.find((p) => fs.existsSync(p));
+  if (!filePath) {
+    console.warn('⚠️ branch-group-map.json not found, skip group import.');
+    return;
+  }
+
+  const raw = fs.readFileSync(filePath, 'utf8');
+  const parsed = JSON.parse(raw) as BranchGroupMapRecord[];
+
+  const byKey = new Map<string, BranchGroupMapRecord[]>();
+  for (const rec of parsed) {
+    const key = normalizeGroupNameKey(rec.GroupName);
+    const branchRaw = String(rec.Branch ?? '').trim();
+    const groupCode = String(rec.GroupCode ?? '').trim();
+    if (!key || !branchRaw || !groupCode) continue;
+    const arr = byKey.get(key) ?? [];
+    arr.push(rec);
+    byKey.set(key, arr);
+  }
+
+  const dupKeys = Array.from(byKey.entries())
+    .filter(([, arr]) => arr.length > 1)
+    .map(([k, arr]) => `${k}: ${arr.map((r) => `${r.Branch}/${r.GroupCode}`).join(', ')}`);
+  if (dupKeys.length) {
+    throw new Error(
+      `Duplicate groupNameKey detected in branch-group-map.json:\n${dupKeys.join('\n')}`,
+    );
+  }
+
+  const data = Array.from(byKey.entries()).map(([key, [rec]]) => {
+    const [branchCode] = String(rec.Branch ?? '').trim().split('-');
+    return {
+      branchCode: branchCode?.trim() || '',
+      groupCode: String(rec.GroupCode ?? '').trim(),
+      groupName: String(rec.GroupName ?? '').trim(),
+      groupNameKey: key,
+    };
+  });
+
+  if (!data.length) {
+    console.warn('⚠️ No groups to import from JSON.');
+    return;
+  }
+
+  await prisma.group.createMany({ data, skipDuplicates: true });
+  console.log(`✅ Imported ${data.length} groups from ${filePath}`);
+}
+
 // ================== MAIN SEED ================== //
 
 async function main() {
   console.log('🔐 Tạo mật khẩu hash cho staff/admin...');
   const staffPasswordHash = await bcrypt.hash(STAFF_DEFAULT_PASSWORD, 10);
+
+  await importGroupsIfEmpty();
 
   console.log('👤 Upsert customers (CHỈ memberNo, không xóa dữ liệu cũ)...');
   for (const c of customersSeed) {

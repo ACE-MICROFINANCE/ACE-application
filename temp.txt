@@ -224,7 +224,7 @@ export class CustomersService {
     unmappedCounts.forEach((c) => unmappedMap.set(c.groupNameKey ?? '', c._count._all));
 
     return groups.map((g) => ({
-      id: Number(g.id),
+      id: g.id,
       branchCode: g.branchCode,
       groupCode: g.groupCode,
       groupName: g.groupName,
@@ -263,7 +263,7 @@ export class CustomersService {
       },
     });
     this.branchGroupMapService.invalidateCache();
-    return { ...created, id: Number(created.id) };
+    return created;
   }
 
   async updateGroup(
@@ -304,7 +304,7 @@ export class CustomersService {
       },
     });
     this.branchGroupMapService.invalidateCache();
-    return { ...updated, id: Number(updated.id) };
+    return updated;
   }
 
   private async assertGroupNameKeyConflict(
@@ -377,13 +377,7 @@ export class CustomersService {
         createdByStaffId: BigInt(staff.id ?? '0'),
       },
     });
-    return {
-      ...created,
-      id: Number(created.id),
-      targetGroupId: created.targetGroupId ? Number(created.targetGroupId) : null,
-      createdByStaffId: Number(created.createdByStaffId),
-      reviewedByStaffId: created.reviewedByStaffId ? Number(created.reviewedByStaffId) : null,
-    };
+    return created;
   }
 
   // BA propose UPDATE
@@ -401,35 +395,7 @@ export class CustomersService {
     }
     const key = normalizeGroupNameKey(dto.groupName);
     if (!key) throw new BadRequestException('groupName không hợp lệ');
-
-    // Nếu đã có request PENDING cho group này, BA được quyền bổ sung/ghi đè nội dung
-    const existingPending = await this.prisma.groupRequest.findFirst({
-      where: { targetGroupId: target.id, status: GroupRequestStatus.PENDING },
-    });
-
-    await this.assertGroupNameKeyConflict(key, {
-      excludeGroupId: Number(target.id),
-      excludeRequestId: existingPending ? Number(existingPending.id) : undefined,
-    });
-
-    if (existingPending) {
-      const updated = await this.prisma.groupRequest.update({
-        where: { id: existingPending.id },
-        data: {
-          proposedGroupCode: dto.groupCode ?? target.groupCode,
-          proposedGroupName: dto.groupName,
-          proposedGroupNameKey: key,
-          createdByStaffId: BigInt(staff.id ?? '0'), // ghi nhận BA hiện tại
-        },
-      });
-      return {
-        ...updated,
-        id: Number(updated.id),
-        targetGroupId: updated.targetGroupId ? Number(updated.targetGroupId) : null,
-        createdByStaffId: Number(updated.createdByStaffId),
-        reviewedByStaffId: updated.reviewedByStaffId ? Number(updated.reviewedByStaffId) : null,
-      };
-    }
+    await this.assertGroupNameKeyConflict(key, { excludeGroupId: Number(target.id) });
 
     const created = await this.prisma.groupRequest.create({
       data: {
@@ -443,13 +409,7 @@ export class CustomersService {
         createdByStaffId: BigInt(staff.id ?? '0'),
       },
     });
-    return {
-      ...created,
-      id: Number(created.id),
-      targetGroupId: created.targetGroupId ? Number(created.targetGroupId) : null,
-      createdByStaffId: Number(created.createdByStaffId),
-      reviewedByStaffId: created.reviewedByStaffId ? Number(created.reviewedByStaffId) : null,
-    };
+    return created;
   }
 
   // BA view own requests
@@ -469,50 +429,31 @@ export class CustomersService {
     });
     const rank = (s: GroupRequestStatus) =>
       s === GroupRequestStatus.REJECTED ? 0 : s === GroupRequestStatus.PENDING ? 1 : 2;
-    const sorted = rows.sort((a, b) => {
+    return rows.sort((a, b) => {
       const r = rank(a.status) - rank(b.status);
       if (r !== 0) return r;
       return Number(a.id - b.id);
     });
-    return sorted.map((r) => ({
-      ...r,
-      id: Number(r.id),
-      targetGroupId: r.targetGroupId ? Number(r.targetGroupId) : null,
-      createdByStaffId: Number(r.createdByStaffId),
-      reviewedByStaffId: r.reviewedByStaffId ? Number(r.reviewedByStaffId) : null,
-    }));
   }
 
   // BM list requests
   async listGroupRequestsForBranch(
     staff: { id?: string | null; role?: string | null; branchCode?: string | null },
     status?: string,
-    branchCodeFromQuery?: string | null,
   ) {
     if (staff.role !== 'BM') {
       throw new ForbiddenException('Chỉ BM được phép xem danh sách này.');
     }
-    const branchCodeResolved = staff.branchCode ?? branchCodeFromQuery ?? null;
-    if (!branchCodeResolved) throw new BadRequestException('BM cần gán branchCode.');
-    if (staff.branchCode && branchCodeFromQuery && staff.branchCode !== branchCodeFromQuery) {
-      throw new ForbiddenException('Không được xem đề xuất ngoài chi nhánh của bạn.');
-    }
+    if (!staff.branchCode) throw new BadRequestException('BM cần gán branchCode.');
     const statusFilter =
       status && Object.values(GroupRequestStatus).includes(status as GroupRequestStatus)
         ? (status as GroupRequestStatus)
         : GroupRequestStatus.PENDING;
 
-    const rows = await this.prisma.groupRequest.findMany({
-      where: { branchCode: branchCodeResolved, status: statusFilter },
+    return this.prisma.groupRequest.findMany({
+      where: { branchCode: staff.branchCode, status: statusFilter },
       orderBy: { createdAt: 'asc' },
     });
-    return rows.map((r) => ({
-      ...r,
-      id: Number(r.id),
-      targetGroupId: r.targetGroupId ? Number(r.targetGroupId) : null,
-      createdByStaffId: Number(r.createdByStaffId),
-      reviewedByStaffId: r.reviewedByStaffId ? Number(r.reviewedByStaffId) : null,
-    }));
   }
 
   // BM approve request
@@ -569,16 +510,7 @@ export class CustomersService {
     });
 
     this.branchGroupMapService.invalidateCache();
-    return {
-      request: {
-        ...updatedReq,
-        id: Number(updatedReq.id),
-        targetGroupId: updatedReq.targetGroupId ? Number(updatedReq.targetGroupId) : null,
-        createdByStaffId: Number(updatedReq.createdByStaffId),
-        reviewedByStaffId: updatedReq.reviewedByStaffId ? Number(updatedReq.reviewedByStaffId) : null,
-      },
-      group: group ? { ...group, id: Number(group.id) } : null,
-    };
+    return { request: updatedReq, group };
   }
 
   // BM reject request
@@ -606,13 +538,7 @@ export class CustomersService {
         expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
       },
     });
-    return {
-      ...updated,
-      id: Number(updated.id),
-      targetGroupId: updated.targetGroupId ? Number(updated.targetGroupId) : null,
-      createdByStaffId: Number(updated.createdByStaffId),
-      reviewedByStaffId: updated.reviewedByStaffId ? Number(updated.reviewedByStaffId) : null,
-    };
+    return updated;
   }
 
   async listUnmappedGroups(
@@ -638,7 +564,7 @@ export class CustomersService {
       take: limit,
     });
 
-    return rows.map((r) => ({ ...r, id: Number(r.id) }));
+    return rows;
   }
 
   async backfillGroup(staff: { role?: string | null; branchCode?: string | null }, id: number) {
@@ -911,3 +837,4 @@ export class CustomersService {
     return { success: true };
   }
 }
+

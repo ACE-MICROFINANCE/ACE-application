@@ -46,11 +46,11 @@ type ScheduleTemplateInput = {
 export const scheduleTemplates = {
   created(input: ScheduleTemplateInput): NotificationTemplateResult {
     const timeText = buildScheduleBody(input.startDate, input.endDate);
-    const locationText = input.locationName ? ` - Dia diem: ${input.locationName}` : '';
-    const groupText = input.groupName ? ` - Nhom: ${input.groupName}` : '';
+    const locationText = input.locationName ? ` - Địa điểm: ${input.locationName}` : '';
+    const groupText = input.groupName ? ` - Nhóm: ${input.groupName}` : '';
     return {
       type: 'SCHEDULE_CREATED',
-      title: `Lich moi: ${input.title}`,
+      title: `Lịch mới: ${input.title}`,
       body: `${timeText}${locationText}${groupText}`.trim(),
       notificationKey: `SCHEDULE_CREATED:${input.scheduleId}`,
       data: {
@@ -66,16 +66,16 @@ export const scheduleTemplates = {
 
   updated(input: ScheduleTemplateInput): NotificationTemplateResult {
     const timeText = buildScheduleBody(input.startDate, input.endDate);
-    const locationText = input.locationName ? ` - Dia diem: ${input.locationName}` : '';
-    const groupText = input.groupName ? ` - Nhom: ${input.groupName}` : '';
-    const changeText = input.changedFieldsShort ? `Noi dung thay doi: ${input.changedFieldsShort}. ` : '';
+    const locationText = input.locationName ? ` - Địa điểm: ${input.locationName}` : '';
+    const groupText = input.groupName ? ` - Nhóm: ${input.groupName}` : '';
+    const changeText = input.changedFieldsShort ? `Nội dung thay đổi: ${input.changedFieldsShort}. ` : '';
     const updatedKey =
       input.updatedAt instanceof Date
         ? input.updatedAt.toISOString()
         : input.updatedAt ?? new Date().toISOString();
     return {
       type: 'SCHEDULE_UPDATED',
-      title: `Cap nhat lich: ${input.title}`,
+      title: `Cập nhật lịch: ${input.title}`,
       body: `${changeText}${timeText}${locationText}${groupText}`.trim(),
       notificationKey: `SCHEDULE_UPDATED:${input.scheduleId}:${updatedKey}`,
       data: {
@@ -93,8 +93,8 @@ export const scheduleTemplates = {
     const timeText = buildScheduleBody(input.startDate, input.endDate);
     return {
       type: 'SCHEDULE_CANCELED',
-      title: `Huy lich: ${input.title}`,
-      body: `Lich da bi huy. ${timeText}`.trim(),
+      title: `Hủy lịch: ${input.title}`,
+      body: `Lịch đã bị hủy. ${timeText}`.trim(),
       notificationKey: `SCHEDULE_CANCELED:${input.scheduleId}`,
       data: {
         kind: 'SCHEDULE',
@@ -112,8 +112,8 @@ export const scheduleTemplates = {
     const days = input.reminderDays ?? 0;
     return {
       type: 'SCHEDULE_REMINDER',
-      title: `Nhac lich: ${input.title}`,
-      body: `Con ${days} ngay nua toi lich. ${timeText}`.trim(),
+      title: `Nhắc lịch: ${input.title}`,
+      body: `Còn ${days} ngày nữa tới lịch. ${timeText}`.trim(),
       notificationKey: `SCHEDULE_REMINDER:${input.scheduleId}:${days}`,
       data: {
         kind: 'SCHEDULE',
@@ -141,8 +141,8 @@ export const loanTemplates = {
     const dueDateText = formatDate(input.dueDate);
     return {
       type: 'LOAN_REMINDER',
-      title: 'Nhac khoan vay',
-      body: `Con ${days} ngay nua den han ky thanh toan. Vui long kiem tra trong muc Khoan vay.${dueDateText ? ` Han: ${dueDateText}` : ''}`,
+      title: 'Nhắc khoản vay',
+      body: `Còn ${days} ngày nữa đến hạn kỳ thanh toán. Vui lòng kiểm tra trong mục Khoản vay.${dueDateText ? ` Hạn: ${dueDateText}` : ''}`,
       notificationKey: `LOAN_REMINDER:${input.loanId ?? input.memberNo}:${input.dueDate ? new Date(input.dueDate).toISOString() : 'unknown'}:${days}`,
       data: {
         kind: 'LOAN',

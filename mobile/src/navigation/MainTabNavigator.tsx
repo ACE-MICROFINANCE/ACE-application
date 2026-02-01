@@ -10,6 +10,7 @@ import AccountScreen from '@screens/AccountScreen';
 import StaffCustomersScreen from '@screens/StaffCustomersScreen';
 import StaffManageScreen from '@screens/StaffManageScreen';
 import AdminManagerScreen from '@screens/AdminManagerScreen';
+import GroupScreen from '@screens/GroupScreen';
 import { TabBar } from './TabBar';
 import { useAuthStore } from '@store/authStore';
 import { useProfileStore } from '@store/profileStore';
@@ -24,6 +25,7 @@ export type MainTabParamList = {
   StaffCustomers: undefined;
   StaffManage: undefined;
   AdminManager: undefined;
+  Group: undefined;
 };
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -74,6 +76,7 @@ export const MainTabNavigator = () => {
           <Tab.Screen name="Dashboard" component={DashboardScreen} />
           <Tab.Screen name="Schedule" component={StaffScheduleScreen} />
           <Tab.Screen name="StaffCustomers" component={StaffCustomersScreen} />
+          <Tab.Screen name="Group" component={GroupScreen} />
           <Tab.Screen name="Account" component={AccountScreen} />
         </>
       )}

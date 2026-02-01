@@ -6,6 +6,8 @@ import { NotificationsService } from './notifications.service';
 import { scheduleTemplates, loanTemplates } from './notification-templates';
 import { NotificationToSend } from './types';
 import { ConfigService } from '@nestjs/config';
+import { EmailNotificationService } from './email-notification.service';
+import { differenceInDays } from 'date-fns';
 
 @Injectable()
 export class ReminderJobsService {
@@ -15,6 +17,7 @@ export class ReminderJobsService {
     private readonly prisma: PrismaService,
     private readonly notificationsService: NotificationsService,
     private readonly configService: ConfigService,
+    private readonly emailNotificationService: EmailNotificationService,
   ) {}
 
   private nowBangkok() {
@@ -25,6 +28,12 @@ export class ReminderJobsService {
 
   private startOfDayBangkok(date: Date) {
     return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  }
+
+  private addMonths(date: Date, months: number) {
+    const d = new Date(date);
+    d.setMonth(d.getMonth() + months);
+    return d;
   }
 
   private async resolveScheduleRecipients(event: any) {
@@ -122,6 +131,60 @@ export class ReminderJobsService {
         notificationKey: template.notificationKey,
       }));
       await this.notificationsService.persistAndDispatch(payloads);
+    }
+  }
+
+  // Daily check for staff password expiry (BA/BM/ADMIN only, skip SUPER_ADMIN)
+  @Cron('0 3 * * *', { timeZone: 'Asia/Bangkok' })
+  async handleStaffPasswordExpiryReminder() {
+    const enabled = this.configService.get<boolean>('notifications.enableStaffPasswordExpiryReminder');
+    if (enabled === false) return;
+
+    const now = new Date();
+    const inSevenDays = addDays(now, 7);
+
+    const staffList = await this.prisma.staffUser.findMany({
+      where: {
+        isActive: true,
+        role: { in: ['BA', 'BM', 'ADMIN'] },
+        passwordUpdatedAt: { not: null },
+      },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        passwordUpdatedAt: true,
+        lastPasswordExpiryReminderAt: true,
+      },
+    });
+
+    const expiryMonths = Number(this.configService.get<number>('auth.staffPasswordExpiryMonths') ?? 6);
+
+    for (const staff of staffList) {
+      const expiresAt = this.addMonths(new Date(staff.passwordUpdatedAt!), expiryMonths);
+      const daysLeft = differenceInDays(expiresAt, now);
+      if (daysLeft <= 0 || daysLeft > 7) continue;
+
+      const alreadyReminded =
+        staff.lastPasswordExpiryReminderAt &&
+        staff.lastPasswordExpiryReminderAt > this.startOfDayBangkok(now); // same day
+      if (alreadyReminded) continue;
+
+      try {
+        const expiresDateStr = expiresAt.toISOString().slice(0, 10);
+        await this.emailNotificationService.sendStaffPasswordExpiryReminder(
+          { email: staff.email, fullName: staff.fullName },
+          expiresDateStr,
+          daysLeft,
+          'Đăng nhập ứng dụng và chọn Đổi mật khẩu.',
+        );
+        await this.prisma.staffUser.update({
+          where: { id: staff.id },
+          data: { lastPasswordExpiryReminderAt: now },
+        });
+      } catch (err) {
+        this.logger.warn(`Failed to send expiry reminder to staff ${staff.email}: ${err}`);
+      }
     }
   }
 }

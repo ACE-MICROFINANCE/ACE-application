@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import {
   Animated,
@@ -8,10 +8,13 @@ import {
   Pressable,
   StyleSheet,
   View,
+  Text,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useProfileStore } from '@store/profileStore';
+import apiClient from '@lib/apiClient';
+import { useFocusEffect } from '@react-navigation/native';
 
 // CHANGED: dùng icon giống web (copy từ web/public/img)
 const iconMap: Record<string, any> = {
@@ -20,9 +23,10 @@ const iconMap: Record<string, any> = {
   Schedule: require('../../assets/img/Schedule_icon.png'),
   Info: require('../../assets/img/infomation_icon.jpg'),
   Account: require('../../assets/img/account_icon.jpg'),
-  StaffCustomers: require('../../assets/img/staff_management_icon.jpg'),
-  StaffManage: require('../../assets/img/staff_management_icon.jpg'), // fallback nếu không có contact_sso
-  AdminManager: require('../../assets/img/staff_management_icon.jpg'),
+  StaffCustomers: require('../../assets/img/customer_management.jpg'),
+  StaffManage: require('../../assets/img/staff-management.png'), // fallback nếu không có contact_sso
+  AdminManager: require('../../assets/img/staff-management.png'),
+  Group: require('../../assets/img/groupcode_management.png'),
 };
 
 type TabItemProps = {
@@ -30,9 +34,10 @@ type TabItemProps = {
   isFocused: boolean;
   iconSource?: any;
   onPress: () => void;
+  badgeCount?: number;
 };
 
-const TabItem: React.FC<TabItemProps> = ({ routeKey, isFocused, iconSource, onPress }) => {
+const TabItem: React.FC<TabItemProps> = ({ routeKey, isFocused, iconSource, onPress, badgeCount }) => {
   const bounce = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -76,22 +81,31 @@ const TabItem: React.FC<TabItemProps> = ({ routeKey, isFocused, iconSource, onPr
         pressed ? styles.pressablePressed : styles.pressableBase
       }
     >
-      <Animated.View
-        className="h-14 w-14 items-center justify-center rounded-full border-4 shadow-sm overflow-hidden"
-        style={[
-          isFocused ? styles.activeRing : styles.inactiveRing,
-          { transform: [{ translateY: bounce }] },
-        ]}
-      >
-        {iconSource ? (
-          <Image
-            source={iconSource}
-            resizeMode="contain"
-            className="h-12 w-12 rounded-full"
-            style={{ borderRadius: 9999 }}
-          />
+      <View style={styles.iconWrapper}>
+        <Animated.View
+          className="h-14 w-14 items-center justify-center rounded-full border-4 shadow-sm overflow-hidden"
+          style={[
+            isFocused ? styles.activeRing : styles.inactiveRing,
+            { transform: [{ translateY: bounce }] },
+          ]}
+        >
+          {iconSource ? (
+            <Image
+              source={iconSource}
+              resizeMode="contain"
+              className="h-12 w-12 rounded-full"
+              style={{ borderRadius: 9999 }}
+            />
+          ) : null}
+        </Animated.View>
+        {badgeCount && badgeCount > 0 ? (
+          <View style={styles.badgeOutside}>
+            <Text style={styles.badgeText} numberOfLines={1}>
+              {badgeCount > 99 ? '99+' : badgeCount}
+            </Text>
+          </View>
         ) : null}
-      </Animated.View>
+      </View>
     </Pressable>
   );
 };
@@ -100,6 +114,32 @@ export const TabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, naviga
   const insets = useSafeAreaInsets();
   const { profile } = useProfileStore();
   const isStaff = profile?.actorKind === 'STAFF';
+  // Badge count per tab (có thể cập nhật từ API loan reminder, v.v.)
+  const [badgeCounts, setBadgeCounts] = useState<Record<string, number>>({
+    Loans: 0, // ví dụ: nợ sắp tới 7 ngày
+    Group: 0,
+    Schedule: 0,
+  });
+
+  const fetchBadgeCounts = async () => {
+    try {
+      const { data } = await apiClient.get('/notifications/badge-counts');
+      setBadgeCounts((prev) => ({
+        ...prev,
+        Loans: data?.loans ?? prev.Loans ?? 0,
+        Group: data?.group ?? prev.Group ?? 0,
+        Schedule: data?.schedule ?? prev.Schedule ?? 0,
+      }));
+    } catch (e) {
+      // ignore silently
+    }
+  };
+
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchBadgeCounts();
+    }, []),
+  );
 
   const routes = useMemo(
     () => state.routes.filter((route) => route.name !== 'Dashboard'),
@@ -141,11 +181,14 @@ export const TabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, naviga
 
                 if (!isFocused && !event.defaultPrevented) {
                   navigation.navigate(route.name as never, route.params as never);
-                  return;
+                } else if (isFocused) {
+                  navigation.navigate('Dashboard' as never);
                 }
 
-                if (isFocused) {
-                  navigation.navigate('Dashboard' as never);
+                if (badgeCounts[route.name]) {
+                  // báo backend đã đọc để lần fetch sau không đếm nữa (hiện tại backend no-op)
+                  apiClient.post('/notifications/mark-read', { category: route.name.toLowerCase() }).catch(() => {});
+                  setBadgeCounts((prev) => ({ ...prev, [route.name]: 0 }));
                 }
               };
 
@@ -156,6 +199,7 @@ export const TabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, naviga
                   isFocused={isFocused}
                   iconSource={iconMap[route.name]}
                   onPress={onPress}
+                  badgeCount={badgeCounts[route.name]}
                 />
               );
             })}
@@ -218,6 +262,47 @@ const styles = StyleSheet.create({
   inactiveRing: {
     borderColor: 'transparent',
     backgroundColor: 'rgba(255,255,255,0.92)',
+  },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 20,
+    height: 20,
+    paddingHorizontal: 6,
+    borderRadius: 10,
+    backgroundColor: '#ef4444',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  iconWrapper: {
+    position: 'relative',
+    width: 64,
+    height: 64,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeOutside: {
+    position: 'absolute',
+    top: -2,
+    right: -6,
+    minWidth: 20,
+    height: 20,
+    paddingHorizontal: 6,
+    borderRadius: 10,
+    backgroundColor: '#ef4444',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
   },
 });
 

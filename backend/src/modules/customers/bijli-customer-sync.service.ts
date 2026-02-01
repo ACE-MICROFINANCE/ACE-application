@@ -2,7 +2,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { BijliClientService } from './bijli-client.service';
 import { formatVietnameseName } from '../../common/utils/string.utils';
+import { normalizeGroupNameKey } from '../../common/utils/normalize-group-name.util';
 import { BranchGroupMapService } from './branch-group-map.service'; // CHANGED: map GroupName -> GroupCode/branch
+import { UnmappedReason } from '@prisma/client';
 
 @Injectable()
 export class BijliCustomerSyncService {
@@ -22,7 +24,7 @@ export class BijliCustomerSyncService {
     const data = payload ?? (await this.bijliClientService.fetchMemberInfo(memberNo)); // CHANGED: reuse BIJLI payload
     if (!data) return false;
 
-    const mapped = this.mapBijliCustomer(data, memberNo);
+    const mapped = await this.mapBijliCustomer(data, memberNo);
     const { memberNo: normalizedMemberNo, ...updateData } = mapped;
 
     const customer = await this.prisma.customer.upsert({
@@ -37,7 +39,7 @@ export class BijliCustomerSyncService {
     return true;
   }
 
-  private mapBijliCustomer(data: Record<string, unknown>, fallbackMemberNo: string) {
+  private async mapBijliCustomer(data: Record<string, unknown>, fallbackMemberNo: string) {
     const bijliMemberNo = this.normalizeString(data.MemberNo);
     const memberNo = fallbackMemberNo; // [BIJLI-CUSTOMER] keep input memberNo as canonical key
     if (bijliMemberNo && bijliMemberNo !== fallbackMemberNo) {
@@ -66,12 +68,27 @@ export class BijliCustomerSyncService {
 
     const rawGroupName = this.normalizeString(data.GroupName);
     const groupName = rawGroupName ? this.fixMojibakeUtf8(rawGroupName) : null;
+    const groupNameKey = groupName ? this.normalizeGroupNameKey(groupName) : null;
     const resolvedGroup = groupName
-      ? this.branchGroupMapService.resolveGroupName(groupName, { memberNo })
-      : null; // CHANGED: map GroupName from static JSON
-    const groupCode = resolvedGroup?.found ? resolvedGroup.groupCode ?? null : null; // CHANGED: do not fallback to raw GroupCode
-    const branchCode = resolvedGroup?.found ? resolvedGroup.branchId ?? null : null; // CHANGED: map branchId
-    const branchName = resolvedGroup?.found ? resolvedGroup.branchName ?? null : null; // CHANGED: map branchName
+      ? await this.branchGroupMapService.resolveGroupName(groupName, { memberNo })
+      : null;
+    const groupCode = resolvedGroup?.found ? resolvedGroup.groupCode ?? null : null;
+    const branchCode = resolvedGroup?.found ? resolvedGroup.branchId ?? null : null;
+    const branchName = resolvedGroup?.found ? resolvedGroup.branchName ?? null : null;
+
+    if (groupNameKey && (!resolvedGroup || !resolvedGroup.found)) {
+      const reason =
+        resolvedGroup?.reason === 'AMBIGUOUS'
+          ? UnmappedReason.AMBIGUOUS
+          : UnmappedReason.NOT_FOUND;
+      await this.upsertUnmappedGroup({
+        groupNameKey,
+        rawGroupName: groupName ?? '',
+        reason,
+        candidateCount: resolvedGroup?.candidateCount ?? null,
+        sampleMemberNo: memberNo,
+      });
+    }
 
     const rawVillageName =
       this.normalizeString(data.VillageName) ?? this.normalizeString(data.Village);
@@ -97,8 +114,9 @@ export class BijliCustomerSyncService {
       villageName: villageName ?? null,
       groupCode: groupCode ?? null,
       groupName: groupName ?? null,
-      branchCode: branchCode ?? null, // CHANGED: save branchId from mapping
-      branchName: branchName ?? null, // CHANGED: save branchName from mapping
+      groupNameKey: groupNameKey ?? null,
+      branchCode: branchCode ?? null,
+      branchName: branchName ?? null,
       membershipStartDate: membershipStartDate ?? null,
       lastSyncedAt: new Date(), // [BIJLI-CUSTOMER] cache sync timestamp
     };
@@ -317,6 +335,40 @@ export class BijliCustomerSyncService {
     return this.repairUtf8Mojibake(value); // CHANGED: share mojibake repair logic
   }
 
+  private async upsertUnmappedGroup(opts: {
+    groupNameKey: string;
+    rawGroupName: string;
+    reason: UnmappedReason;
+    candidateCount?: number | null;
+    sampleMemberNo?: string | null;
+  }) {
+    const now = new Date();
+    await this.prisma.unmappedGroupName.upsert({
+      where: {
+        groupNameKey_reason: {
+          groupNameKey: opts.groupNameKey,
+          reason: opts.reason,
+        },
+      },
+      update: {
+        rawGroupName: opts.rawGroupName,
+        count: { increment: 1 },
+        lastSeenAt: now,
+        candidateCount: opts.candidateCount ?? undefined,
+        sampleMemberNo: opts.sampleMemberNo ?? undefined,
+      },
+      create: {
+        groupNameKey: opts.groupNameKey,
+        rawGroupName: opts.rawGroupName,
+        reason: opts.reason,
+        candidateCount: opts.candidateCount ?? null,
+        lastSeenAt: now,
+        count: 1,
+        sampleMemberNo: opts.sampleMemberNo ?? null,
+      },
+    });
+  }
+
   // CHANGED: legacy parseGroupCodeFromGroupName removed from active mapping (static JSON now).
   // private parseGroupCodeFromGroupName(groupName?: string | null): string | null {
   //   if (!groupName) return null;
@@ -368,6 +420,10 @@ export class BijliCustomerSyncService {
 
     if (day < 1 || day > 31 || month < 1 || month > 12) return null;
     return new Date(Date.UTC(year, month - 1, day));
+  }
+
+  private normalizeGroupNameKey(value?: string | null) {
+    return normalizeGroupNameKey(value);
   }
 }
 

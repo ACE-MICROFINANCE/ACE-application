@@ -226,7 +226,10 @@ export class EventsService {
     }
 
     const mapped = this.mapStaffEvent(createdEvent);
-    await this.dispatchScheduleNotification(scheduleTemplates.created, mapped);
+    const managers = await this.getBranchManagers(branchCode);
+    await this.dispatchScheduleNotification(scheduleTemplates.created, mapped, {
+      recipients: managers.map((m) => ({ actorKind: 'STAFF' as const, actorId: m.id.toString() })),
+    });
     return mapped;
   }
 
@@ -308,15 +311,32 @@ export class EventsService {
     });
   }
 
-  private async resolveRecipients(event: any): Promise<Array<{ actorKind: 'CUSTOMER' | 'STAFF'; actorId: string }>> {
+  private async getBranchManagers(branchCode: string) {
+    return this.prisma.staffUser.findMany({
+      where: {
+        isActive: true,
+        branchCode,
+        role: { in: ['BM', 'BRANCH_MANAGER', 'Branch Manager'] },
+      },
+      select: { id: true },
+    });
+  }
+
+  private async resolveRecipients(
+    event: any,
+    opts?: { includeCustomers?: boolean; includeCreator?: boolean },
+  ): Promise<Array<{ actorKind: 'CUSTOMER' | 'STAFF'; actorId: string }>> {
     const recipients: Array<{ actorKind: 'CUSTOMER' | 'STAFF'; actorId: string }> = [];
+    const includeCustomers = opts?.includeCustomers !== false;
+    const includeCreator = opts?.includeCreator !== false;
+
     const branchCode = event.branchCode;
     const audienceType = event.audienceType;
     const targetGroupCodes = (event.targetGroups ?? [])
       .map((g: { groupCode?: string | null }) => g.groupCode)
       .filter(Boolean) as string[];
 
-    if (branchCode) {
+    if (includeCustomers && branchCode) {
       const customerWhere: any = { branchCode };
       if (audienceType === 'GROUPS' && targetGroupCodes.length) {
         customerWhere.groupCode = { in: targetGroupCodes };
@@ -333,7 +353,7 @@ export class EventsService {
       );
     }
 
-    if (event.createdByStaffId) {
+    if (includeCreator && event.createdByStaffId) {
       recipients.push({
         actorKind: 'STAFF',
         actorId: event.createdByStaffId.toString(),
@@ -365,9 +385,9 @@ export class EventsService {
   private async dispatchScheduleNotification(
     templateBuilder: (input: any) => { type: any; title: string; body: string; notificationKey: string; data: any },
     event: any,
-    extra?: Partial<{ reminderDays: number; changedFieldsShort: string }>,
+    extra?: Partial<{ reminderDays: number; changedFieldsShort: string; recipients?: Array<{ actorKind: 'CUSTOMER' | 'STAFF'; actorId: string }> }>,
   ) {
-    const recipients = await this.resolveRecipients(event);
+    const recipients = extra?.recipients ?? (await this.resolveRecipients(event));
     if (!recipients.length) return;
     const template = templateBuilder({
       scheduleId: event.id,
@@ -390,7 +410,7 @@ export class EventsService {
       title: template.title,
       body: template.body,
       data: template.data,
-      notificationKey: template.notificationKey,
+      notificationKey: `${template.notificationKey}:to:${rec.actorKind}:${rec.actorId}`,
     }));
 
     await this.notificationsService.persistAndDispatch(payloads);
@@ -508,7 +528,16 @@ export class EventsService {
       locationName: mapped.locationName,
       description: mapped.description,
     });
-    await this.dispatchScheduleNotification(scheduleTemplates.updated, mapped, { changedFieldsShort });
+    // Nếu BA cập nhật sau approved -> gửi BM, không gửi customer
+    if (staff.role === 'BA') {
+      const managers = await this.getBranchManagers(branchCode);
+      await this.dispatchScheduleNotification(scheduleTemplates.updated, mapped, {
+        changedFieldsShort,
+        recipients: managers.map((m) => ({ actorKind: 'STAFF' as const, actorId: m.id.toString() })),
+      });
+    } else {
+      await this.dispatchScheduleNotification(scheduleTemplates.updated, mapped, { changedFieldsShort });
+    }
     return mapped;
   }
 
@@ -529,7 +558,18 @@ export class EventsService {
       },
       include: { targetGroups: true },
     });
-    return this.mapStaffEvent(updated);
+    const mapped = this.mapStaffEvent(updated);
+    // gửi BA creator + customers (sau khi duyệt)
+    const recipientsCreator =
+      updated.createdByStaffId != null
+        ? [{ actorKind: 'STAFF' as const, actorId: updated.createdByStaffId.toString() }]
+        : [];
+    const customerRecipients = await this.resolveRecipients(mapped, { includeCustomers: true, includeCreator: false });
+    await this.dispatchScheduleNotification(scheduleTemplates.updated, mapped, {
+      changedFieldsShort: 'Đã được duyệt',
+      recipients: [...recipientsCreator, ...customerRecipients],
+    });
+    return mapped;
   }
 
   async rejectEvent(staff: StaffContext, id: string) {
@@ -549,7 +589,15 @@ export class EventsService {
       },
       include: { targetGroups: true },
     });
-    return this.mapStaffEvent(updated);
+    const mapped = this.mapStaffEvent(updated);
+    // gửi BA creator, không gửi customer
+    if (updated.createdByStaffId) {
+      await this.dispatchScheduleNotification(scheduleTemplates.updated, mapped, {
+        changedFieldsShort: 'Đã bị từ chối',
+        recipients: [{ actorKind: 'STAFF', actorId: updated.createdByStaffId.toString() }],
+      });
+    }
+    return mapped;
   }
 
   async hideEvent(staff: StaffContext, id: string, hidden: boolean) {

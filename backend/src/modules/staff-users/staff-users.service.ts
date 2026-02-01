@@ -12,22 +12,22 @@ export class StaffUsersService {
     private readonly branchGroupMapService: BranchGroupMapService, // CHANGED: resolve branch info
   ) {}
 
-  private mapBranchName(branchCode?: string | null) {
-    const branch = this.branchGroupMapService.resolveBranchByCode(branchCode);
+  private async mapBranchName(branchCode?: string | null) {
+    const branch = await this.branchGroupMapService.resolveBranchByCode(branchCode);
     return branch?.branchName ?? null; // CHANGED: map branchName from static map
   }
 
-  private mapStaffUser(row: { id: bigint; branchCode?: string | null } & Record<string, unknown>) {
+  private async mapStaffUser(row: { id: bigint; branchCode?: string | null } & Record<string, unknown>) {
     return {
       ...row,
       id: Number(row.id), // CHANGED: convert BigInt to number for JSON response
-      branchName: this.mapBranchName(row.branchCode), // CHANGED: include branchName in response
+      branchName: await this.mapBranchName(row.branchCode), // CHANGED: include branchName in response
     };
   }
 
   async list(query?: { q?: string | null }) {
     const q = query?.q?.trim();
-    return this.prisma.staffUser.findMany({
+    const rows = await this.prisma.staffUser.findMany({
       where: q
         ? {
             OR: [
@@ -47,7 +47,9 @@ export class StaffUsersService {
         createdAt: true,
         updatedAt: true,
       },
-    }).then((rows) => rows.map((row) => this.mapStaffUser(row))); // CHANGED: map BigInt + branchName
+    });
+    const mapped = await Promise.all(rows.map((row) => this.mapStaffUser(row)));
+    return mapped; // CHANGED: map BigInt + branchName
   }
 
   async create(dto: CreateStaffUserDto) {
@@ -60,7 +62,7 @@ export class StaffUsersService {
     }
 
     const passwordHash = await hashPassword(dto.password);
-    return this.prisma.staffUser.create({
+    const created = await this.prisma.staffUser.create({
       data: {
         email: dto.email.toLowerCase(),
         passwordHash,
@@ -79,7 +81,8 @@ export class StaffUsersService {
         createdAt: true,
         updatedAt: true,
       },
-    }).then((row) => this.mapStaffUser(row)); // CHANGED: map BigInt + branchName
+    });
+    return this.mapStaffUser(created); // CHANGED: map BigInt + branchName
   }
 
   async update(id: string, dto: UpdateStaffUserDto) {
@@ -96,7 +99,7 @@ export class StaffUsersService {
       throw new BadRequestException('Nhân sự chi nhánh phải có mã chi nhánh.'); // CHANGED: Vietnamese message
     }
 
-    return this.prisma.staffUser.update({
+    const updated = await this.prisma.staffUser.update({
       where: { id: staffId },
       data: {
         fullName: dto.fullName ?? undefined,
@@ -115,7 +118,8 @@ export class StaffUsersService {
         createdAt: true,
         updatedAt: true,
       },
-    }).then((row) => this.mapStaffUser(row)); // CHANGED: map BigInt + branchName
+    });
+    return this.mapStaffUser(updated); // CHANGED: map BigInt + branchName
   }
 
   async resetPassword(id: string, newPassword: string) {

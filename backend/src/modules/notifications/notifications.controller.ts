@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, HttpStatus, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post, Req, UseGuards } from '@nestjs/common';
 import { JwtAccessGuard } from '../../common/guards/jwt-access.guard';
 import { NotificationsService } from './notifications.service';
 import { RegisterDeviceTokenDto } from './dto/register-device-token.dto';
@@ -22,6 +22,22 @@ export class NotificationsController {
       token: dto.token,
       platform: dto.platform,
     });
+    return { success: true };
+  }
+
+  // Badge counts for tabbar
+  @UseGuards(JwtAccessGuard)
+  @Get('badge-counts')
+  async getBadgeCounts(@Req() req: any) {
+    return this.notificationsService.getBadgeCounts(req.user);
+  }
+
+  // Mark category as read/cleared
+  @UseGuards(JwtAccessGuard)
+  @Post('mark-read')
+  @HttpCode(HttpStatus.OK)
+  async markRead(@Req() req: any, @Body() body: { category?: string }) {
+    await this.notificationsService.markCategoryRead(req.user, body?.category);
     return { success: true };
   }
 }

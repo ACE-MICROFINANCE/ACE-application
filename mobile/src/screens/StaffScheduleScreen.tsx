@@ -13,9 +13,11 @@ import {
   KeyboardAvoidingView,
   StyleSheet,
   Dimensions,
+  RefreshControl,
 } from "react-native";
 
-import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
+import { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
+import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { MobileFrame } from "@components/layout/MobileFrame";
@@ -102,7 +104,7 @@ const getAvatarUrl = (event: ScheduleItem) => {
   if (event.eventType === "MEETING") return require("../../assets/img/community-meeting.png");
   if (event.eventType === "FIELD_SCHOOL") return require("../../assets/img/training.png");
   if (event.eventType === "FARMING_TASK") return require("../../assets/img/farming-plant-rice.jpg");
-  if (event.eventType === "NOTICE" || event.eventType === "Thông báo") return require("../../assets/img/training.png");
+  if (event.eventType === "NOTICE" || event.eventType === "Thông báo") return require("../../assets/img/notification_icon.png");
   return require("../../assets/img/farming-plant-rice.jpg");
 };
 
@@ -163,8 +165,9 @@ const StaffScheduleScreen = () => {
   });
   const [refreshing, setRefreshing] = useState(false);
 
-  const [datePickerMode, setDatePickerMode] = useState<"date" | "time" | null>(null);
-  const [tempDate, setTempDate] = useState<Date | null>(null);
+  const [pickerVisible, setPickerVisible] = useState(false);
+  const [pickerMode, setPickerMode] = useState<"date" | "time">("date");
+  const [tempDate, setTempDate] = useState<Date>(new Date());
 
   const [formState, setFormState] = useState({
     title: "",
@@ -184,6 +187,9 @@ const StaffScheduleScreen = () => {
     setSaveError(null);
     setGroupSearch("");
     setGroupPickerSelection([]);
+    setPickerMode("date");
+    setPickerVisible(false);
+    setTempDate(new Date());
     setFormState({
       title: "",
       eventType: "MEETING",
@@ -205,8 +211,9 @@ const StaffScheduleScreen = () => {
     setEventTypePickerOpen(false);
     setGroupPickerOpen(false);
     setModalMode(null);
-    setDatePickerMode(null);
-    setTempDate(null);
+    setPickerVisible(false);
+    setPickerMode("date");
+    setTempDate(new Date());
   };
 
   const fetchSchedule = async () => {
@@ -301,13 +308,63 @@ const StaffScheduleScreen = () => {
   }, [groupSearch, staffGroups]);
 
   // Backend đã sort; chỉ lọc theo role
-  const displayedEvents = (events || []).filter((e) => {
-    if (isBA) return !shouldHideFromBA(e);
-    return true;
-  });
+const displayedEvents = (events || []).filter((e) => {
+  if (isBA) return !shouldHideFromBA(e);
+  return true;
+});
 
-  const modalStatusRaw = selectedEvent ? normalizeStatusForRole(selectedEvent, isBA, isBM) : "PENDING_APPROVAL";
-  const modalStatus = isBM && selectedEvent?.hidden ? "HIDDEN" : modalStatusRaw;
+// NEW: section grouping
+type SectionKey = "PENDING" | "APPROVED" | "UPDATED" | "HIDDEN" | "EXPIRED" | "REJECTED";
+const SECTION_ORDER: SectionKey[] = ["PENDING", "APPROVED", "UPDATED", "HIDDEN", "EXPIRED", "REJECTED"];
+const SECTION_META: Record<SectionKey, { title: string }> = {
+  PENDING: { title: "Chờ duyệt" },
+  APPROVED: { title: "Đã duyệt" },
+  UPDATED: { title: "Đã chỉnh sửa" },
+  HIDDEN: { title: "Ẩn" },
+  EXPIRED: { title: "Hết hạn" },
+  REJECTED: { title: "Đã từ chối" },
+};
+
+const statusToSectionKey = (ev: ScheduleItem): SectionKey => {
+  let status = normalizeStatusForRole(ev, isBA, isBM);
+  if (isBM && ev.hidden) status = "HIDDEN";
+  if (status === "PENDING_APPROVAL" || status === "PENDING") return "PENDING";
+  if (status === "APPROVED") return "APPROVED";
+  if (status === "UPDATED") return "UPDATED";
+  if (status === "HIDDEN") return "HIDDEN";
+  if (status === "EXPIRED") return "EXPIRED";
+  if (status === "REJECTED") return "REJECTED";
+  return "PENDING";
+};
+
+const sectionedEvents = useMemo(
+  () => {
+    const buckets: Record<SectionKey, ScheduleItem[]> = {
+      PENDING: [],
+      APPROVED: [],
+      UPDATED: [],
+      HIDDEN: [],
+      EXPIRED: [],
+      REJECTED: [],
+    };
+    displayedEvents.forEach((ev) => {
+      buckets[statusToSectionKey(ev)].push(ev);
+    });
+    SECTION_ORDER.forEach((key) => {
+      buckets[key].sort((a, b) => {
+        const da = new Date(a.startDate).getTime();
+        const db = new Date(b.startDate).getTime();
+        if (da !== db) return da - db;
+        return Number(a.id ?? 0) - Number(b.id ?? 0);
+      });
+    });
+    return SECTION_ORDER.map((key) => ({ key, items: buckets[key] }));
+  },
+  [displayedEvents, isBA, isBM],
+);
+
+const modalStatusRaw = selectedEvent ? normalizeStatusForRole(selectedEvent, isBA, isBM) : "PENDING_APPROVAL";
+const modalStatus = isBM && selectedEvent?.hidden ? "HIDDEN" : modalStatusRaw;
 
   const modalTitle =
     modalMode === "edit"
@@ -425,6 +482,19 @@ const StaffScheduleScreen = () => {
   const handleOpenDatePicker = () => {
     const base = formState.startDate ? new Date(formState.startDate) : new Date();
     const isNotice = formState.eventType === "NOTICE" || formState.eventType === "Thông báo";
+    if (Platform.OS === "web") {
+      const raw = (global as any)?.window?.prompt(
+        isNotice
+          ? "Nhập ngày (YYYY-MM-DD):"
+          : "Nhập thời gian bắt đầu (YYYY-MM-DD HH:mm):",
+      );
+      if (!raw) return;
+      const parsed = isNotice ? new Date(raw) : new Date(raw.replace(" ", "T"));
+      if (!Number.isFinite(parsed.getTime())) return;
+      if (isNotice) parsed.setHours(0, 0, 0, 0);
+      setFormState((prev) => ({ ...prev, startDate: parsed.toISOString() }));
+      return;
+    }
     if (Platform.OS === "android") {
       DateTimePickerAndroid.open({
         value: base,
@@ -452,41 +522,30 @@ const StaffScheduleScreen = () => {
       return;
     }
     setTempDate(base);
-    setDatePickerMode("date");
+    setPickerMode("date");
+    setPickerVisible(true);
   };
 
-  const handleDateChange = (event: any, selected?: Date) => {
-    if (datePickerMode !== "date") return;
-    if (!event || event.type === "dismissed") {
-      setDatePickerMode(null);
-      return;
-    }
-    const dateVal = selected || tempDate || new Date();
+  const handlePickerConfirm = (selected: Date) => {
     const isNotice = formState.eventType === "NOTICE" || formState.eventType === "Thông báo";
-    if (isNotice) {
-      const finalDate = new Date(dateVal);
-      finalDate.setHours(0, 0, 0, 0);
-      setFormState((prev) => ({ ...prev, startDate: finalDate.toISOString() }));
-      setDatePickerMode(null);
-      setTempDate(null);
+    if (pickerMode === "date") {
+      const pickedDate = new Date(selected);
+      if (isNotice) {
+        pickedDate.setHours(0, 0, 0, 0);
+        setFormState((prev) => ({ ...prev, startDate: pickedDate.toISOString() }));
+        setPickerVisible(false);
+        return;
+      }
+      setTempDate(pickedDate);
+      setPickerMode("time");
+      setPickerVisible(true);
       return;
     }
-    setTempDate(dateVal);
-    setDatePickerMode("time");
-  };
-
-  const handleTimeChange = (event: any, selected?: Date) => {
-    if (datePickerMode !== "time") return;
-    if (!event || event.type === "dismissed") {
-      setDatePickerMode(null);
-      return;
-    }
-    const base = tempDate || new Date();
-    const timeVal = selected || new Date();
-    const finalDate = new Date(base);
-    finalDate.setHours(timeVal.getHours(), timeVal.getMinutes(), 0, 0);
+    // time mode
+    const finalDate = new Date(tempDate);
+    finalDate.setHours(selected.getHours(), selected.getMinutes(), 0, 0);
     setFormState((prev) => ({ ...prev, startDate: finalDate.toISOString() }));
-    setDatePickerMode(null);
+    setPickerVisible(false);
   };
 
   const renderAudience = () => (
@@ -570,117 +629,134 @@ const StaffScheduleScreen = () => {
             <Text className="text-xl font-semibold text-slate-900">Công tác và Tập huấn</Text>
           </Card>
 
-          <View className="rounded-3xl border border-black/5 bg-white overflow-hidden">
-            {isLoading ? (
-              <View className="px-4 py-6 items-center">
-                <ActivityIndicator />
-                <Text className="mt-2 text-sm text-[#666]">Đang tải lịch...</Text>
-              </View>
-            ) : error ? (
-              <View className="px-4 py-6 items-center" style={{ gap: 8 }}>
-                <Text className="text-sm text-red-500">{error}</Text>
-                <AppButton title="Thử lại" onPress={fetchSchedule} />
-              </View>
-            ) : !displayedEvents.length ? (
-              <View className="px-4 py-6">
-                <Text className="text-center text-sm text-[#666]">Chưa có sự kiện sắp tới.</Text>
-              </View>
-            ) : (
-              displayedEvents.map((event, index) => {
-                const targetText =
-                  event.targetText ||
-                  (event.targetType === "BRANCH_ALL"
-                    ? `Toàn chi nhánh`
-                    : event.targetGroups && event.targetGroups.length
-                    ? `Nhóm: ${event.targetGroups
-                        .slice(0, 2)
-                        .map((g) => g.groupName || g.groupCode)
-                        .join(", ")}${event.targetGroups.length > 2 ? ` +${event.targetGroups.length - 2}` : ""}`
-                    : "Toàn chi nhánh");
-                let status = normalizeStatusForRole(event, isBA, isBM);
-                if (isBM && event.hidden) status = "HIDDEN";
-                const badge = isBA
-                  ? status === "APPROVED"
-                    ? { text: "Đã duyệt", bg: "#DCFCE7", color: "#166534" }
-                    : status === "REJECTED"
-                    ? { text: "Đã từ chối", bg: "#FEE2E2", color: "#B91C1C" }
-                    : { text: "Chờ duyệt", bg: "#FEF3C7", color: "#92400E" }
-                  : status === "APPROVED"
-                  ? { text: "Đã duyệt", bg: "#DCFCE7", color: "#166534" }
-                  : status === "UPDATED"
-                  ? { text: "Chờ duyệt", bg: "#FEF3C7", color: "#92400E" }
-                  : status === "REJECTED"
-                  ? { text: "Đã từ chối", bg: "#FEE2E2", color: "#B91C1C" }
-                  : status === "EXPIRED"
-                  ? { text: "Đã qua", bg: "#E5E7EB", color: "#374151" }
-                  : status === "HIDDEN"
-                  ? { text: "Ẩn", bg: "#F3F4F6", color: "#6B7280" }
-                  : { text: "Chờ duyệt", bg: "#FEF3C7", color: "#92400E" };
+          {isLoading ? (
+            <View className="rounded-3xl border border-black/5 bg-white overflow-hidden px-4 py-6 items-center">
+              <ActivityIndicator />
+              <Text className="mt-2 text-sm text-[#666]">Đang tải lịch...</Text>
+            </View>
+          ) : error ? (
+            <View className="rounded-3xl border border-black/5 bg-white overflow-hidden px-4 py-6 items-center" style={{ gap: 8 }}>
+              <Text className="text-sm text-red-500">{error}</Text>
+              <AppButton title="Thử lại" onPress={fetchSchedule} />
+            </View>
+          ) : !displayedEvents.length ? (
+            <View className="rounded-3xl border border-black/5 bg-white overflow-hidden px-4 py-6">
+              <Text className="text-center text-sm text-[#666]">Chưa có sự kiện sắp tới.</Text>
+            </View>
+          ) : (
+            sectionedEvents.map(({ key, items }) => (
+              <View key={key} className="rounded-3xl border border-black/5 bg-white overflow-hidden">
+                <View className="flex-row items-center justify-between px-4 py-3 border-b border-black/5">
+                  <Text className="text-sm font-semibold text-[#111]">{SECTION_META[key].title}</Text>
+                  <Text className="text-xs font-semibold text-[#666]">{items.length}</Text>
+                </View>
+                {items.length === 0 ? (
+                  <Text className="px-4 py-4 text-xs text-[#666]">Không có sự kiện.</Text>
+                ) : (
+                  items.map((event, index) => {
+                    const targetText =
+                      event.targetText ||
+                      (event.targetType === "BRANCH_ALL"
+                        ? `Toàn chi nhánh`
+                        : event.targetGroups && event.targetGroups.length
+                        ? `Nhóm: ${event.targetGroups
+                            .slice(0, 2)
+                            .map((g) => g.groupName || g.groupCode)
+                            .join(", ")}${event.targetGroups.length > 2 ? ` +${event.targetGroups.length - 2}` : ""}`
+                        : "Toàn chi nhánh");
+                    let status = normalizeStatusForRole(event, isBA, isBM);
+                    if (isBM && event.hidden) status = "HIDDEN";
+                    const badge = isBA
+                      ? status === "APPROVED"
+                        ? { text: "Đã duyệt", bg: "#DCFCE7", color: "#166534" }
+                        : status === "REJECTED"
+                        ? { text: "Đã từ chối", bg: "#FEE2E2", color: "#B91C1C" }
+                        : { text: "Chờ duyệt", bg: "#FEF3C7", color: "#92400E" }
+                      : status === "APPROVED"
+                      ? { text: "Đã duyệt", bg: "#DCFCE7", color: "#166534" }
+                      : status === "UPDATED"
+                      ? { text: "Chờ duyệt", bg: "#FEF3C7", color: "#92400E" }
+                      : status === "REJECTED"
+                      ? { text: "Đã từ chối", bg: "#FEE2E2", color: "#B91C1C" }
+                      : status === "EXPIRED"
+                      ? { text: "Đã qua", bg: "#E5E7EB", color: "#374151" }
+                      : status === "HIDDEN"
+                      ? { text: "Ẩn", bg: "#F3F4F6", color: "#6B7280" }
+                      : { text: "Chờ duyệt", bg: "#FEF3C7", color: "#92400E" };
 
-                const handlePress = () => {
-                  openEditModal(event); // BM & BA đều tạm dùng modal edit/detail
-                };
+                    const handlePress = () => {
+                      openEditModal(event);
+                    };
 
-                return (
-                  <Pressable
-                    key={String(event.id)}
-                    onPress={handlePress}
-                    className="flex-row items-center gap-4 px-4 py-4"
-                    android_ripple={{ color: "rgba(0,0,0,0.03)" }}
-                    style={({ pressed }) => ({
-                      backgroundColor: pressed ? "rgba(0,0,0,0.03)" : "transparent",
-                      borderBottomWidth: index === displayedEvents.length - 1 ? 0 : 1,
-                      borderBottomColor: "rgba(0,0,0,0.05)",
-                    })}
-                  >
-                    <View className="relative h-12 w-12 overflow-hidden rounded-full bg-black/5">
-                      <Image source={getAvatarUrl(event)} style={{ width: 48, height: 48 }} resizeMode="cover" />
-                    </View>
-                    <View className="flex-1" style={{ gap: 4 }}>
-                      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                        <Text className="text-sm font-semibold text-[#111]" numberOfLines={1}>
-                          {event.title || event.eventType || "Sự kiện"}
-                        </Text>
-                        <View
-                          style={{
-                            paddingHorizontal: 10,
-                            paddingVertical: 4,
-                            backgroundColor: badge.bg,
-                            borderRadius: 999,
-                          }}
-                        >
-                          <Text style={{ fontSize: 11, fontWeight: "700", color: badge.color }}>{badge.text}</Text>
-                        </View>
-                      </View>
-
-                      <Text className="text-xs text-[#555]" numberOfLines={2}>
-                        {isNoticeType(event.eventType)
-                          ? formatDateWithTime(event.startDate, false)
-                          : `${formatDateWithTime(event.startDate, true)}${
-                              event.durationMinutes != null && event.durationMinutes > 0
-                                ? ` • ${event.durationMinutes} phút`
-                                : ""
-                            }`}
-                      </Text>
-
+                    return (
                       <Pressable
-                        onPress={() =>
-                          event.targetType === "GROUPS" && event.targetGroups?.length
-                            ? setGroupModal({ open: true, groups: event.targetGroups })
-                            : undefined
-                        }
-                        hitSlop={4}
+                        key={String(event.id)}
+                        onPress={handlePress}
+                        className="flex-row items-center gap-4 px-4 py-4"
+                        android_ripple={{ color: "rgba(0,0,0,0.03)" }}
+                        style={({ pressed }) => ({
+                          backgroundColor: pressed ? "rgba(0,0,0,0.03)" : "transparent",
+                          borderBottomWidth: index === items.length - 1 ? 0 : 1,
+                          borderBottomColor: "rgba(0,0,0,0.05)",
+                        })}
                       >
-                        <Text className="text-xs text-[#0A84FF]" numberOfLines={2}>
-                          {targetText}
-                        </Text>
+                        <View className="relative h-12 w-12 overflow-hidden rounded-full bg-black/5">
+                          <Image source={getAvatarUrl(event)} style={{ width: 48, height: 48 }} resizeMode="cover" />
+                        </View>
+                        <View className="flex-1" style={{ gap: 4 }}>
+                          <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
+                            <Text
+                              className="text-sm font-semibold text-[#111]"
+                              numberOfLines={2}
+                              ellipsizeMode="tail"
+                              style={{ flex: 1, flexShrink: 1, marginRight: 10, lineHeight: 18 }}
+                            >
+                              {event.title || event.eventType || "Sự kiện"}
+                            </Text>
+                            <View
+                              style={{
+                                paddingHorizontal: 10,
+                                paddingVertical: 4,
+                                backgroundColor: badge.bg,
+                                borderRadius: 999,
+                                flexShrink: 0,
+                                alignSelf: "flex-start",
+                              }}
+                            >
+                              <Text style={{ fontSize: 11, fontWeight: "700", color: badge.color }}>{badge.text}</Text>
+                            </View>
+                          </View>
+
+                          <Text className="text-xs text-[#555]" numberOfLines={2}>
+                            {isNoticeType(event.eventType)
+                              ? formatDateWithTime(event.startDate, false)
+                              : `${formatDateWithTime(event.startDate, true)}${
+                                  event.durationMinutes != null && event.durationMinutes > 0
+                                    ? ` • ${event.durationMinutes} phút`
+                                    : ""
+                                }`}
+                          </Text>
+
+                          <Pressable
+                            onPress={() =>
+                              event.targetType === "GROUPS" && event.targetGroups?.length
+                                ? setGroupModal({ open: true, groups: event.targetGroups })
+                                : undefined
+                            }
+                            hitSlop={4}
+                          >
+                            <Text className="text-xs text-[#0A84FF]" numberOfLines={2}>
+                              {targetText}
+                            </Text>
+                          </Pressable>
+                        </View>
                       </Pressable>
-                    </View>
-                  </Pressable>
-                );
-              })
-            )}
-          </View>
+                    );
+                  })
+                )}
+              </View>
+            ))
+          )}
         </View>
       </ScrollView>
 
@@ -1349,15 +1425,17 @@ const StaffScheduleScreen = () => {
         </View>
       </Modal>
 
-      {/* iOS date/time picker */}
-      {datePickerMode ? (
-        <DateTimePicker
-          value={tempDate || (formState.startDate ? new Date(formState.startDate) : new Date())}
-          mode={datePickerMode}
-          display={Platform.OS === "ios" ? "spinner" : "default"}
-          onChange={datePickerMode === "date" ? handleDateChange : handleTimeChange}
+      {/* DateTime picker (iOS) */}
+      {Platform.OS !== "web" && (
+        <DateTimePickerModal
+          isVisible={pickerVisible}
+          mode={pickerMode}
+          date={tempDate || (formState.startDate ? new Date(formState.startDate) : new Date())}
+          onConfirm={handlePickerConfirm}
+          onCancel={() => setPickerVisible(false)}
+          display={Platform.OS === "ios" ? "spinner" : undefined}
         />
-      ) : null}
+      )}
 
       {/* Modal xem toàn bộ nhóm */}
       <Modal

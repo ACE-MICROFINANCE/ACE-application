@@ -105,6 +105,10 @@ const StaffManageScreen = () => {
     { value: "BM", label: "Quản lý chi nhánh" },
     { value: "ADMIN", label: "Admin" },
   ];
+  const availableRoleOptions = useMemo(
+    () => (profile?.role === "SUPER_ADMIN" ? roleOptions : roleOptions.filter((r) => r.value !== "ADMIN")),
+    [profile?.role],
+  );
 
   const fetchBranches = async () => {
     try {
@@ -502,7 +506,7 @@ const StaffManageScreen = () => {
                 <View className="space-y-2">
                   <Text className="text-xs font-medium text-[#6C757D]">Vai trò</Text>
                   <View className="flex-row flex-wrap gap-2">
-                    {(modalMode === "edit" ? roleOptions.filter((r) => r.value !== "ADMIN") : roleOptions).map((opt) => {
+                    {availableRoleOptions.map((opt) => {
                       const active = formState.role === opt.value;
                       return (
                         <Pressable

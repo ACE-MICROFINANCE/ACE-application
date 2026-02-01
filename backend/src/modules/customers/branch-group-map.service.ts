@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
+import { PrismaService } from '../../database/prisma.service';
+import { normalizeGroupName, normalizeGroupNameKey } from '../../common/utils/normalize-group-name.util';
 
 type BranchGroupMapRecord = {
   Branch: string;
@@ -14,73 +16,80 @@ type ResolveResult = {
   groupCode?: string | null;
   branchId?: string | null;
   branchName?: string | null;
-  reason?: 'NOT_FOUND' | 'CONFLICT' | 'INVALID' | null; // CHANGED: diagnostics for debug sync
+  reason?: 'NOT_FOUND' | 'AMBIGUOUS' | 'INVALID' | null; // diagnostics for debug sync
+  candidateCount?: number;
 };
 
 @Injectable()
 export class BranchGroupMapService {
   private readonly logger = new Logger(BranchGroupMapService.name);
-  private static mapIndex: Map<string, BranchGroupMapRecord[]> | null = null;
-  private static sourcePath: string | null = null;
+  private cacheIndex: Map<string, BranchGroupMapRecord[]> | null = null;
+  private cacheTimestamp: number | null = null;
+  private static readonly CACHE_TTL_MS = 5 * 60 * 1000;
+  private sourcePath: string | null = null;
 
-  resolveGroupName(
+  constructor(private readonly prisma: PrismaService) {}
+
+  async resolveGroupName(
     rawGroupName: string,
     context?: { memberNo?: string },
-  ): ResolveResult {
-    const normalized = this.normalizeGroupName(rawGroupName);
+  ): Promise<ResolveResult> {
+    const normalized = normalizeGroupName(rawGroupName);
     if (!normalized) {
-      return { found: false, normalizedGroupName: null, reason: 'INVALID' }; // CHANGED: invalid input
+      return { found: false, normalizedGroupName: null, reason: 'INVALID' };
     }
 
-    const index = this.ensureLoaded();
-    const matches = index.get(normalized) ?? [];
+    const index = await this.ensureLoaded();
+    const key = normalizeGroupNameKey(normalized);
+    if (!key) return { found: false, normalizedGroupName: null, reason: 'INVALID' };
+    const matches = index.get(key) ?? [];
     if (!matches.length) {
       this.logger.warn(
         `[BRANCH-MAP] GroupName not found memberNo=${context?.memberNo ?? 'unknown'} groupName="${rawGroupName}" normalized="${normalized}"`,
-      ); // CHANGED: log missing group mapping
-      return { found: false, normalizedGroupName: normalized, reason: 'NOT_FOUND' };
+      );
+      return { found: false, normalizedGroupName: key, reason: 'NOT_FOUND' };
     }
 
     const uniqueKeySet = new Set(matches.map((item) => `${item.GroupCode}::${item.Branch}`));
     if (uniqueKeySet.size > 1) {
-      this.logger.error(
-        `[BRANCH-MAP] GroupName conflict memberNo=${context?.memberNo ?? 'unknown'} groupName="${rawGroupName}" normalized="${normalized}"`,
-      ); // CHANGED: log conflict mapping
-      return { found: false, normalizedGroupName: normalized, reason: 'CONFLICT' };
+      this.logger.warn(
+        `[BRANCH-MAP] GroupName ambiguous memberNo=${context?.memberNo ?? 'unknown'} groupName="${rawGroupName}" normalized="${normalized}"`,
+      );
+      return { found: false, normalizedGroupName: key, reason: 'AMBIGUOUS', candidateCount: matches.length };
     }
 
     const picked = matches[0];
     const { branchId, branchName } = this.parseBranch(picked.Branch);
-    if (!picked.GroupCode || !branchId || !branchName) {
+    if (!picked.GroupCode || !branchId) {
       this.logger.error(
         `[BRANCH-MAP] Invalid mapping memberNo=${context?.memberNo ?? 'unknown'} groupName="${rawGroupName}" normalized="${normalized}"`,
-      ); // CHANGED: log invalid mapping
-      return { found: false, normalizedGroupName: normalized, reason: 'INVALID' };
+      );
+      return { found: false, normalizedGroupName: key, reason: 'INVALID' };
     }
 
     return {
       found: true,
-      normalizedGroupName: normalized,
+      normalizedGroupName: key,
       groupCode: String(picked.GroupCode).trim(),
       branchId,
       branchName,
-      reason: null, // CHANGED: resolved ok
+      reason: null,
     };
   }
 
-  listGroupsByBranchCode(branchCode: string | null | undefined) {
-    if (!branchCode) return []; // CHANGED: no branch to resolve
+  async listGroupsByBranchCode(branchCode: string | null | undefined) {
+    if (!branchCode) return [];
     const normalizedBranchCode = branchCode.trim();
-    if (!normalizedBranchCode) return []; // CHANGED: guard empty branch code
+    if (!normalizedBranchCode) return [];
     const branchIdInput = normalizedBranchCode.includes('-')
       ? normalizedBranchCode.split('-')[0].trim()
-      : normalizedBranchCode; // CHANGED: accept "003" or "003-DIEN BIEN 3"
+      : normalizedBranchCode;
 
-    const index = this.ensureLoaded();
+    const index = await this.ensureLoaded();
     const uniqueGroups = new Map<
       string,
       { groupCode: string; groupName: string; branchId: string; branchName: string | null }
-    >(); // CHANGED: de-dup by groupCode
+    >();
 
     for (const records of index.values()) {
       for (const record of records) {
@@ -102,11 +111,11 @@ export class BranchGroupMapService {
 
     return Array.from(uniqueGroups.values()).sort((a, b) =>
       a.groupName.localeCompare(b.groupName),
-    ); // CHANGED: stable order by groupName
+    );
   }
 
-  listBranches() {
-    const index = this.ensureLoaded();
+  async listBranches() {
+    const index = await this.ensureLoaded();
     const branches = new Map<string, { branchCode: string; branchName: string | null; displayName: string }>();
 
     for (const records of index.values()) {
@@ -119,38 +128,72 @@ export class BranchGroupMapService {
             branchCode: branchId,
             branchName,
             displayName,
-          }); // CHANGED: build unique branch list for staff management
+          });
         }
       }
     }
 
     return Array.from(branches.values()).sort((a, b) =>
       a.displayName.localeCompare(b.displayName),
-    ); // CHANGED: stable order by display name
+    );
   }
 
-  resolveBranchByCode(branchCode?: string | null) {
+  async resolveBranchByCode(branchCode?: string | null) {
     if (!branchCode) return null;
     const normalized = branchCode.trim();
     if (!normalized) return null;
     const branchId = normalized.includes('-') ? normalized.split('-')[0].trim() : normalized;
-    const branches = this.listBranches();
+    const branches = await this.listBranches();
     const match = branches.find((branch) => branch.branchCode === branchId);
-    return match ?? null; // CHANGED: resolve branch info for staff responses
+    return match ?? null;
   }
 
-  normalizeGroupName(value?: string | null): string | null {
-    if (!value) return null;
-    return value.trim().replace(/\s+/g, ' ');
-  }
-
-  private ensureLoaded(): Map<string, BranchGroupMapRecord[]> {
-    if (BranchGroupMapService.mapIndex) {
-      return BranchGroupMapService.mapIndex;
+  async ensureLoaded(): Promise<Map<string, BranchGroupMapRecord[]>> {
+    const now = Date.now();
+    if (this.cacheIndex && this.cacheTimestamp && now - this.cacheTimestamp < BranchGroupMapService.CACHE_TTL_MS) {
+      return this.cacheIndex;
     }
 
+    const fromDb = await this.loadFromDb();
+    if (fromDb) return fromDb;
+
+    return this.loadFromJson();
+  }
+
+  invalidateCache() {
+    this.cacheIndex = null;
+    this.cacheTimestamp = null;
+  }
+
+  private async loadFromDb(): Promise<Map<string, BranchGroupMapRecord[]> | null> {
+    try {
+      const count = await this.prisma.group.count();
+      if (count === 0) return null;
+      const rows = await this.prisma.group.findMany();
+      const index = new Map<string, BranchGroupMapRecord[]>();
+      for (const row of rows) {
+        const key = row.groupNameKey;
+        const branchRaw = row.branchCode;
+        const groupCode = row.groupCode;
+        if (!key || !branchRaw || !groupCode) continue;
+        const existing = index.get(key) ?? [];
+        existing.push({ Branch: branchRaw, GroupCode: groupCode, GroupName: row.groupName });
+        index.set(key, existing);
+      }
+      this.cacheIndex = index;
+      this.cacheTimestamp = Date.now();
+      this.sourcePath = 'database';
+      this.logger.log(`[BRANCH-MAP] Loaded ${index.size} group names from DB`);
+      return index;
+    } catch (err) {
+      this.logger.error(`[BRANCH-MAP] Failed to load groups from DB: ${err}`);
+      return null;
+    }
+  }
+
+  private loadFromJson(): Map<string, BranchGroupMapRecord[]> {
     const filePath = this.resolveMapPath();
-    BranchGroupMapService.sourcePath = filePath;
+    this.sourcePath = filePath;
 
     try {
       const raw = fs.readFileSync(filePath, 'utf8');
@@ -158,27 +201,25 @@ export class BranchGroupMapService {
       const index = new Map<string, BranchGroupMapRecord[]>();
 
       for (const record of parsed) {
-        const groupName = this.normalizeGroupName(String(record.GroupName ?? ''));
+        const key = normalizeGroupNameKey(String(record.GroupName ?? ''));
         const groupCode = String(record.GroupCode ?? '').trim();
         const branchRaw = String(record.Branch ?? '').trim();
-        if (!groupName || !groupCode || !branchRaw) continue;
+        if (!key || !groupCode || !branchRaw) continue;
 
-        const existing = index.get(groupName) ?? [];
+        const existing = index.get(key) ?? [];
         existing.push({ Branch: branchRaw, GroupCode: groupCode, GroupName: String(record.GroupName ?? '').trim() });
-        index.set(groupName, existing);
+        index.set(key, existing);
       }
 
-      BranchGroupMapService.mapIndex = index;
-      this.logger.log(
-        `[BRANCH-MAP] Loaded ${index.size} group names from ${filePath}`,
-      ); // CHANGED: cache map at startup
+      this.cacheIndex = index;
+      this.cacheTimestamp = Date.now();
+      this.logger.log(`[BRANCH-MAP] Loaded ${index.size} group names from ${filePath}`);
       return index;
     } catch (error: any) {
-      this.logger.error(
-        `[BRANCH-MAP] Failed to load map from ${filePath}: ${error?.message ?? error}`,
-      ); // CHANGED: log load errors
-      BranchGroupMapService.mapIndex = new Map();
-      return BranchGroupMapService.mapIndex;
+      this.logger.error(`[BRANCH-MAP] Failed to load map from ${filePath}: ${error?.message ?? error}`);
+      this.cacheIndex = new Map();
+      this.cacheTimestamp = Date.now();
+      return this.cacheIndex;
     }
   }
 

@@ -1,13 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import nodemailer, { Transporter } from 'nodemailer';
-import { Feedback, Customer } from '@prisma/client';
+import { Feedback, Customer, StaffUser } from '@prisma/client';
 import * as fs from 'fs';
 import * as path from 'path';
 
 /**
- * Legacy email notification service (feedback/password reset).
- * Kept alongside push notifications for backward compatibility.
+ * Legacy email notification service (feedback/password reset + staff flows).
  */
 @Injectable()
 export class EmailNotificationService {
@@ -57,14 +56,14 @@ export class EmailNotificationService {
     return '';
   }
 
-  private async sendMail(subject: string, html: string) {
+  private async sendMail(subject: string, html: string, toOverride?: string) {
     if (!this.transporter) {
       this.logger.warn(`Email not sent because transporter is not configured. Subject: ${subject}`);
       return;
     }
 
     const from = this.configService.get<string>('mail.from');
-    const to = this.configService.get<string>('mail.to');
+    const to = toOverride ?? this.configService.get<string>('mail.to');
     if (!from || !to) {
       this.logger.warn('MAIL_FROM or MAIL_TO is missing, skip sending email.');
       return;
@@ -76,6 +75,48 @@ export class EmailNotificationService {
       subject,
       html,
     });
+  }
+
+  async sendStaffTempPassword(staff: Pick<StaffUser, 'email' | 'fullName'>, tempPassword: string, ttlMinutes: number) {
+    const subject = 'Mật khẩu tạm thời cho tài khoản nhân viên';
+    const appName = this.configService.get<string>('app.name') ?? 'ACE Farmer App';
+    const html =
+      this.renderTemplate('staff-temp-password.html', {
+        appName,
+        staffName: staff.fullName ?? 'Anh/Chị',
+        email: staff.email,
+        tempPassword,
+        expiryMinutes: ttlMinutes.toString(),
+      }) ||
+      `
+        <p>Chào ${staff.fullName ?? 'bạn'},</p>
+        <p>Mật khẩu tạm thời của bạn là: <strong>${tempPassword}</strong></p>
+        <p>Mật khẩu này sẽ hết hạn sau ${ttlMinutes} phút. Vui lòng đăng nhập và đổi mật khẩu ngay.</p>
+      `;
+    await this.sendMail(subject, html, staff.email);
+  }
+
+  async sendStaffPasswordExpiryReminder(
+    staff: Pick<StaffUser, 'email' | 'fullName'>,
+    expiresDate: string,
+    daysLeft: number,
+    changePasswordHint: string,
+  ) {
+    const subject = 'Nhắc mật khẩu sắp hết hạn';
+    const appName = this.configService.get<string>('app.name') ?? 'ACE Farmer App';
+    const html =
+      this.renderTemplate('staff-password-expiry-reminder.html', {
+        appName,
+        staffName: staff.fullName ?? 'Anh/Chị',
+        email: staff.email,
+        expiresDate,
+        daysLeft: daysLeft.toString(),
+        changePasswordHint,
+      }) ||
+      `
+        <p>Mật khẩu sẽ hết hạn vào ${expiresDate} (còn ${daysLeft} ngày). Vui lòng đổi mật khẩu: ${changePasswordHint}</p>
+      `;
+    await this.sendMail(subject, html, staff.email);
   }
 
   async sendPasswordResetToStaff(customer: Customer, tempPassword: string) {

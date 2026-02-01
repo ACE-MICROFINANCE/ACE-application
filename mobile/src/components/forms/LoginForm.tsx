@@ -33,7 +33,12 @@ export const LoginForm = ({ onSuccess }: { onSuccess: (mustChange: boolean) => v
         setError(null);
         try {
           const res = await login(values.identifier, values.password); // CHANGED: payload { identifier, password }
-          const mustChange = res?.customer?.mustChangePassword ?? res?.mustChangePassword ?? false; // CHANGED: bám web
+          const mustChange =
+            res?.customer?.mustChangePassword ??
+            res?.mustChangePassword ??
+            // @ts-expect-error staff profile flag
+            res?.profile?.mustChangePassword ??
+            false;
           onSuccess(mustChange);
         } catch (e: any) {
           setError(e?.response?.data?.message || 'Đăng nhập thất bại');

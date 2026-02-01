@@ -3,6 +3,14 @@ import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
+// Global BigInt -> JSON stringify guard (avoids "Do not know how to serialize a BigInt")
+if (typeof (BigInt.prototype as any).toJSON !== 'function') {
+  // eslint-disable-next-line no-extend-native
+  (BigInt.prototype as any).toJSON = function () {
+    return this.toString();
+  };
+}
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   // Allow dev/frontends (Expo web/exp.direct/expo.dev/localhost). Adjust FRONTEND_URL in prod.

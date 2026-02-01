@@ -185,7 +185,34 @@ export type StaffGroupItem = {
   groupName: string;
   branchId?: string;
   branchName?: string | null;
+  customerCount?: number;
+  status?: 'ACTIVE' | 'PENDING' | 'APPROVED' | 'REJECTED';
+  id?: number;
 }; // CHANGED: nhóm staff theo chi nhánh
+
+export type GroupRequestPayload = {
+  groupName: string;
+  groupCode?: string | null;
+};
+
+export type GroupUpdateRequestPayload = {
+  targetGroupId: number;
+  groupName: string;
+  groupCode?: string | null;
+};
+export type GroupRequestItem = {
+  id: number;
+  groupCode?: string | null;
+  groupName: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  createdByRole?: string;
+  createdAt?: string;
+  rejectedAt?: string | null;
+  // backend actually returns proposedGroupName/proposedGroupCode; keep optional to map client-side
+  proposedGroupName?: string | null;
+  proposedGroupCode?: string | null;
+  targetGroupId?: number | null;
+};
 
 export type SavingsTransactionItem = {
   date: string;
@@ -338,6 +365,43 @@ export const appApi = {
   },
   getStaffGroups: async (): Promise<StaffGroupItem[]> => {
     const { data } = await apiClient.get('/staff/groups'); // CHANGED: nhóm staff
+    return data;
+  },
+  createGroupRequest: async (payload: GroupRequestPayload) => {
+    const { data } = await apiClient.post('/staff/group-requests', payload);
+    return data;
+  },
+  updateGroupRequest: async (payload: GroupUpdateRequestPayload) => {
+    const { data } = await apiClient.post('/staff/group-requests/update', payload);
+    return data;
+  },
+  getStaffGroupRequests: async (params?: { status?: string; branchCode?: string | null }): Promise<GroupRequestItem[]> => {
+    const { data } = await apiClient.get('/staff/group-requests', {
+      params: {
+        ...(params?.status ? { status: params.status } : {}),
+        ...(params?.branchCode ? { branchCode: params.branchCode } : {}),
+      },
+    });
+    return (data || []).map((r: any) => ({
+      ...r,
+      groupName: r.groupName ?? r.proposedGroupName ?? r.targetGroupName ?? '',
+      groupCode: r.groupCode ?? r.proposedGroupCode ?? r.targetGroupCode ?? null,
+    }));
+  },
+  getMyGroupRequests: async (): Promise<GroupRequestItem[]> => {
+    const { data } = await apiClient.get('/staff/group-requests/mine');
+    return (data || []).map((r: any) => ({
+      ...r,
+      groupName: r.groupName ?? r.proposedGroupName ?? r.targetGroupName ?? '',
+      groupCode: r.groupCode ?? r.proposedGroupCode ?? r.targetGroupCode ?? null,
+    }));
+  },
+  approveGroupRequest: async (id: number) => {
+    const { data } = await apiClient.post(`/staff/group-requests/${id}/approve`);
+    return data;
+  },
+  rejectGroupRequest: async (id: number) => {
+    const { data } = await apiClient.post(`/staff/group-requests/${id}/reject`);
     return data;
   },
   getWeather: async (lat: number, lon: number): Promise<WeatherResponse> => {

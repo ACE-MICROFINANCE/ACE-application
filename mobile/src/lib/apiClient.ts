@@ -4,8 +4,8 @@ import { tokenStore } from './tokenStore';
 
 const baseURL =
   (Constants.expoConfig?.extra as any)?.API_BASE_URL ||
-  process.env.EXPO_PUBLIC_API_URL ;
-  // ||'https://api.anhchiem.org';
+  process.env.EXPO_PUBLIC_API_URL ||
+  'https://api.anhchiem.org';
 
 // CHANGED: đặt timeout mặc định để tránh treo "Loading session..." nếu backend không phản hồi
 const apiClient = axios.create({ baseURL, timeout: 30000 });

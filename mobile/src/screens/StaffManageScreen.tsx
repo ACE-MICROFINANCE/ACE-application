@@ -94,7 +94,7 @@ const StaffManageScreen = () => {
     () =>
       branches.map((b) => ({
         value: b.branchCode,
-        label: b.displayName,
+        label: b.displayName || `${b.branchCode}${b.branchName ? ` - ${b.branchName}` : ""}`,
       })),
     [branches],
   );

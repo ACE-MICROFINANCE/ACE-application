@@ -30,7 +30,7 @@
         "projectId": "3e4a2d40-0d87-41ee-95d9-ecfb1bf469fa"
       }
       ,
-      "API_BASE_URL": "https://ace.phucpink.io.vn/"
+      "API_BASE_URL": "https://api.anhchiem.org/"
     },
     "plugins": [
       "expo-font"

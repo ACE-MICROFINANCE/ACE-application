@@ -103,6 +103,7 @@ export type StaffUserItem = {
 export type StaffBranchItem = {
   branchCode: string;
   displayName: string;
+  branchName?: string | null;
 };
 
 export type ContactItem = {

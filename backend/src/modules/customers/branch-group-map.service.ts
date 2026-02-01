@@ -166,6 +166,10 @@ export class BranchGroupMapService {
   }
 
   private async loadFromDb(): Promise<Map<string, BranchGroupMapRecord[]> | null> {
+    if (process.env.BRANCH_MAP_SOURCE === 'JSON') {
+      this.logger.log('[BRANCH-MAP] Skip DB source (BRANCH_MAP_SOURCE=JSON)');
+      return null;
+    }
     try {
       const count = await this.prisma.group.count();
       if (count === 0) return null;

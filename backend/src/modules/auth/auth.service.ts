@@ -356,6 +356,13 @@ export class AuthService {
   async staffForgotPassword(email: string) {
     const staff = await this.prisma.staffUser.findUnique({
       where: { email: email.toLowerCase() },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        role: true,
+        isActive: true,
+      },
     });
     if (!staff || !staff.isActive) return;
     const role = staff.role as string;
@@ -366,6 +373,7 @@ export class AuthService {
     const issuedAt = new Date();
     const encrypted = this.tempPasswordCryptoService.encrypt(tempPassword);
 
+    // Update immediately
     await this.prisma.staffUser.update({
       where: { id: staff.id },
       data: {
@@ -377,12 +385,16 @@ export class AuthService {
       },
     });
 
+    // Send mail async (non-blocking)
     const ttl = this.getStaffTempPasswordTtlMinutes();
-    await this.emailNotificationService.sendStaffTempPassword(
-      { email: staff.email, fullName: staff.fullName },
-      tempPassword,
-      ttl,
-    );
+    setImmediate(() => {
+      this.emailNotificationService
+        .sendStaffTempPassword({ email: staff.email, fullName: staff.fullName }, tempPassword, ttl)
+        .catch((err) => {
+          // log nhưng không chặn response
+          console.error('[staffForgotPassword] send mail failed', err?.message || err);
+        });
+    });
   }
 
   async refresh(userId: string, refreshToken: string) {
@@ -463,6 +475,11 @@ export class AuthService {
       });
     }
 
-    await this.emailNotificationService.sendPasswordResetToStaff(customer, tempPassword);
+    // Gửi mail async để API trả về nhanh
+    setImmediate(() => {
+      this.emailNotificationService.sendPasswordResetToStaff(customer, tempPassword).catch((err) => {
+        console.error('[requestPasswordReset] send mail failed', err?.message || err);
+      });
+    });
   }
 }

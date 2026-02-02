@@ -34,6 +34,11 @@ export class EmailNotificationService {
       port,
       secure: Boolean(secure),
       auth: { user, pass },
+      connectionTimeout: 10_000,
+      socketTimeout: 10_000,
+      pool: true,
+      maxConnections: 3,
+      maxMessages: 20,
     });
   }
 
@@ -69,12 +74,21 @@ export class EmailNotificationService {
       return;
     }
 
-    await this.transporter.sendMail({
-      from,
-      to,
-      subject,
-      html,
-    });
+    try {
+      const info = await this.transporter.sendMail({
+        from,
+        to,
+        subject,
+        html,
+      });
+      this.logger.log(`Email sent to ${to} subject="${subject}" id=${info.messageId ?? 'n/a'}`);
+    } catch (err) {
+      const msg = (err as any)?.message ?? String(err);
+      this.logger.error(
+        `Email send failed to ${to} subject="${subject}" host=${this.configService.get<string>('mail.host')}: ${msg}`,
+      );
+      throw err;
+    }
   }
 
   async sendStaffTempPassword(staff: Pick<StaffUser, 'email' | 'fullName'>, tempPassword: string, ttlMinutes: number) {

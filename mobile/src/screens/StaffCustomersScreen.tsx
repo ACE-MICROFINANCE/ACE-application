@@ -319,6 +319,7 @@ const StaffCustomersScreen = () => {
                 onBlur={() => setIsSearchFocused(false)}
                 placeholder="Tìm theo mã khách hàng hoặc họ tên..."
                 className="text-sm text-[#111] py-1"
+                placeholderTextColor="#C5CCD7"
               />
             </View>
             {(isSearchFocused || searchValue.length > 0) && (
@@ -437,23 +438,25 @@ const StaffCustomersScreen = () => {
                 <>
                   <View className="space-y-2">
                     <Text className="text-xs font-medium text-[#6C757D]">Mã định danh</Text>
-                    <TextInput
-                      value={formMemberNo}
-                      onChangeText={setFormMemberNo}
-                      placeholder="Nhập mã đối tác"
-                      className="rounded-2xl border border-black/5 px-4 py-3 text-base"
-                    />
+                <TextInput
+                  value={formMemberNo}
+                  onChangeText={setFormMemberNo}
+                  placeholder="Nhập mã đối tác"
+                  className="rounded-2xl border border-black/5 px-4 py-3 text-base"
+                  placeholderTextColor="#C5CCD7"
+                />
                   </View>
 
                   <View className="space-y-2">
                     <Text className="text-xs font-medium text-[#6C757D]">Mật khẩu ban đầu</Text>
-                    <TextInput
-                      secureTextEntry
-                      value={formInitialPassword}
-                      onChangeText={setFormInitialPassword}
-                      placeholder="Nhập mật khẩu"
-                      className="rounded-2xl border border-black/5 px-4 py-3 text-base"
-                    />
+                <TextInput
+                  secureTextEntry
+                  value={formInitialPassword}
+                  onChangeText={setFormInitialPassword}
+                  placeholder="Nhập mật khẩu"
+                  className="rounded-2xl border border-black/5 px-4 py-3 text-base"
+                  placeholderTextColor="#C5CCD7"
+                />
                   </View>
 
                   {saveError ? <Text className="text-sm text-red-500">{saveError}</Text> : null}
@@ -551,6 +554,7 @@ const StaffCustomersScreen = () => {
                               onChangeText={setResetPassword}
                               placeholder="Mật khẩu tạm thời"
                               className="rounded-2xl border border-black/5 px-4 py-3 text-base"
+                              placeholderTextColor="#C5CCD7"
                             />
                             <AppButton title="Xác nhận" onPress={handleResetPassword} loading={saveLoading} />
                           </View>

@@ -88,25 +88,8 @@ export class NotificationsService {
       });
     }
 
-    // Fallback counts if no notifications stored yet
-    if (badge.loans === 0 && user.actorKind === 'CUSTOMER' && user.userId) {
-      try {
-        const now = new Date();
-        const dueSoon = await this.prisma.loan.count({
-          where: {
-            customerId: BigInt(user.userId),
-            status: 'ACTIVE',
-            nextPaymentDueDate: {
-              gte: startOfDay(now),
-              lte: addDays(startOfDay(now), 7),
-            },
-          },
-        } as any);
-        badge.loans = dueSoon ?? 0;
-      } catch (err) {
-        this.logger.debug?.('Badge loans count skipped (field missing?)', err as any);
-      }
-    }
+    // (Disabled) Fallback counts by due date because schema không có nextPaymentDueDate
+    // Nếu muốn bật lại, thêm field phù hợp vào schema và sửa filter.
 
     if (badge.group === 0 && user.actorKind === 'STAFF' && user.role === 'BM' && user.branchCode) {
       const pending = await this.prisma.groupRequest.count({

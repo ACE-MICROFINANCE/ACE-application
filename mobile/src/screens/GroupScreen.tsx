@@ -510,7 +510,7 @@ const GroupScreen = () => {
               style={{ width: "100%", maxWidth: 520, maxHeight: MODAL_H, backgroundColor: "#fff", borderRadius: 28, overflow: "hidden" }}
             >
               <View style={{ paddingHorizontal: 24, paddingTop: 18, paddingBottom: 4, borderBottomWidth: 1, borderBottomColor: "rgba(0,0,0,0.06)" }}>
-                <Text style={{ fontSize: 17, fontWeight: "700", color: "#111", textAlign: "center" }}>Duyệt yêu cầu</Text>
+                <Text style={{ fontSize: 17, fontWeight: "600", color: "#111", textAlign: "center" }}>Duyệt yêu cầu</Text>
               </View>
               <ScrollView
                 keyboardShouldPersistTaps="handled"
@@ -518,16 +518,16 @@ const GroupScreen = () => {
                 style={{ maxHeight: MODAL_H - 120 }}
               >
                 <View style={{ gap: 8 }}>
-                  <Text style={{ fontSize: 12, fontWeight: "600", color: "#6C757D" }}>Tên nhóm</Text>
-                  <Text style={{ fontSize: 15, fontWeight: "600", color: "#111" }}>{selectedRequest?.groupName}</Text>
+                  <Text style={{ fontSize: 12, fontWeight: "500", color: "#6C757D" }}>Tên nhóm</Text>
+                  <Text style={{ fontSize: 15, fontWeight: "500", color: "#111" }}>{selectedRequest?.groupName}</Text>
                 </View>
                 <View style={{ gap: 8 }}>
-                  <Text style={{ fontSize: 12, fontWeight: "600", color: "#6C757D" }}>Mã nhóm</Text>
-                  <Text style={{ fontSize: 15, fontWeight: "600", color: "#111" }}>{selectedRequest?.groupCode || "—"}</Text>
+                  <Text style={{ fontSize: 12, fontWeight: "500", color: "#6C757D" }}>Mã nhóm</Text>
+                  <Text style={{ fontSize: 15, fontWeight: "500", color: "#111" }}>{selectedRequest?.groupCode || "—"}</Text>
                 </View>
                 <View style={{ gap: 8 }}>
-                  <Text style={{ fontSize: 12, fontWeight: "600", color: "#6C757D" }}>Trạng thái</Text>
-                  <Text style={{ fontSize: 14, fontWeight: "500", color: "#111" }}>{buildStatusBadge(selectedRequest?.status).text}</Text>
+                  <Text style={{ fontSize: 12, fontWeight: "500", color: "#6C757D" }}>Trạng thái</Text>
+                  <Text style={{ fontSize: 14, fontWeight: "400", color: "#111" }}>{buildStatusBadge(selectedRequest?.status).text}</Text>
                 </View>
                 {saveError ? <Text style={{ color: "#e53935", fontSize: 14 }}>{saveError}</Text> : null}
               </ScrollView>

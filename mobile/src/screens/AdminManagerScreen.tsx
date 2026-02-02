@@ -234,6 +234,7 @@ const AdminManagerScreen = () => {
                   onChangeText={(v) => setFormState((prev) => ({ ...prev, fullName: v }))}
                   placeholder="Enter full name"
                   className="rounded-2xl border border-black/5 px-4 py-3 text-base"
+                  placeholderTextColor="#C5CCD7"
                 />
               </View>
               <View className="space-y-2">
@@ -245,6 +246,7 @@ const AdminManagerScreen = () => {
                   keyboardType="email-address"
                   autoCapitalize="none"
                   className="rounded-2xl border border-black/5 px-4 py-3 text-base"
+                  placeholderTextColor="#C5CCD7"
                 />
               </View>
               <View className="space-y-2">
@@ -255,6 +257,7 @@ const AdminManagerScreen = () => {
                   onChangeText={(v) => setFormState((prev) => ({ ...prev, password: v }))}
                   placeholder="Enter password"
                   className="rounded-2xl border border-black/5 px-4 py-3 text-base"
+                  placeholderTextColor="#C5CCD7"
                 />
               </View>
               {saveError ? <Text className="text-sm text-red-500">{saveError}</Text> : null}

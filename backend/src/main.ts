@@ -16,10 +16,20 @@ async function bootstrap() {
   // Allow dev/frontends (Expo web/exp.direct/expo.dev/localhost). Adjust FRONTEND_URL in prod.
   // Broad CORS for dev/testing (expo web/tunnel). Tighten for production if needed.
   app.enableCors({
-    origin: true, // allow all origins (includes *.exp.direct / *.expo.dev)
+    // Reflect request origin (localhost:8081, expo, production domains)
+    origin: true,
     credentials: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    allowedHeaders: 'Content-Type, Authorization, X-Requested-With',
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Requested-With',
+      'Origin',
+      'Accept',
+      'Cache-Control',
+    ],
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
   });
   app.useGlobalPipes(
     new ValidationPipe({

@@ -19,6 +19,12 @@ export class StaffUsersController {
     return this.staffUsersService.list({ q }); // CHANGED: optional search
   }
 
+  @Get('sso')
+  @Roles('ADMIN', 'BM', 'BA')
+  async listSso(@Query('branchCode') branchCode: string) {
+    return this.staffUsersService.listSsoByBranch(branchCode);
+  }
+
   @Get('branches')
   async listBranches() {
     return this.staffUsersService.listBranches(); // CHANGED: list branches from map

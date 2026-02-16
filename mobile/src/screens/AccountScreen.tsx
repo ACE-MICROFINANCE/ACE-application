@@ -121,6 +121,7 @@ const AccountScreen = () => {
   useEffect(() => {
     let mounted = true;
     const code = merged?.branchCode;
+    const groupName = merged?.groupName;
     if (!isCustomer) {
       setSocialPhone(null);
       setContactError(null);
@@ -138,7 +139,7 @@ const AccountScreen = () => {
     (async () => {
       try {
         setContactError(null);
-        const res = await appApi.getContactsByBranchCode(code);
+        const res = await appApi.getContactsByBranchCode(code, groupName || undefined);
         if (!mounted) return;
         const phone = res?.socialPhone ?? null;
         setSocialPhone(phone);

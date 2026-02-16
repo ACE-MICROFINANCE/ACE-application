@@ -61,14 +61,15 @@ export class EmailNotificationService {
     return '';
   }
 
-  private async sendMail(subject: string, html: string, toOverride?: string) {
+  private async sendMail(subject: string, html: string, toOverride?: string | string[]) {
     if (!this.transporter) {
       this.logger.warn(`Email not sent because transporter is not configured. Subject: ${subject}`);
       return;
     }
 
     const from = this.configService.get<string>('mail.from');
-    const to = toOverride ?? this.configService.get<string>('mail.to');
+    const toValue = toOverride ?? this.configService.get<string>('mail.to');
+    const to = Array.isArray(toValue) ? toValue.filter(Boolean).join(',') : toValue;
     if (!from || !to) {
       this.logger.warn('MAIL_FROM or MAIL_TO is missing, skip sending email.');
       return;
@@ -133,7 +134,11 @@ export class EmailNotificationService {
     await this.sendMail(subject, html, staff.email);
   }
 
-  async sendPasswordResetToStaff(customer: Customer, tempPassword: string) {
+  async sendPasswordResetToStaff(
+    customer: Customer,
+    tempPassword: string,
+    recipientEmails: string[],
+  ) {
     const subject = `Yeu cau cap lai mat khau cho khach hang ${customer.memberNo}`;
     const html =
       this.renderTemplate('reset-password.html', {
@@ -156,7 +161,7 @@ export class EmailNotificationService {
         </ul>
         <p>Vui long lien he khach hang va huong dan doi mat khau sau khi dang nhap.</p>
       `;
-    await this.sendMail(subject, html);
+    await this.sendMail(subject, html, recipientEmails);
   }
 
   async sendFeedbackToStaff(customer: Customer, feedback: Feedback) {

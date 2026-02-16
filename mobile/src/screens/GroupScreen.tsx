@@ -24,7 +24,7 @@ import { appApi } from "@services/appApi";
 
 type GroupItem = {
   id: number;
-  branchCode: string;
+  branchCode?: string | null;
   branchName?: string | null;
   groupCode?: string | null;
   groupName: string;
@@ -79,6 +79,9 @@ const GroupScreen = () => {
   const [modalMode, setModalMode] = useState<"create" | "review" | "editRequest" | null>(null);
   const [formGroupName, setFormGroupName] = useState("");
   const [formGroupCode, setFormGroupCode] = useState("");
+  const [formSsoId, setFormSsoId] = useState<number | null>(null);
+  const [ssoOptions, setSsoOptions] = useState<Array<{ value: number; label: string }>>([]);
+  const [ssoPickerOpen, setSsoPickerOpen] = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [selectedRequest, setSelectedRequest] = useState<GroupRequestItem | null>(null);
@@ -113,9 +116,34 @@ const GroupScreen = () => {
     }
   };
 
+  const fetchSso = async () => {
+    if (!profile?.branchCode) {
+      setSsoOptions([]);
+      return;
+    }
+    try {
+      const data = await appApi.getSsoByBranch(profile.branchCode);
+      setSsoOptions(
+        (data || []).map((u) => ({
+          value: u.id,
+          label: u.fullName || u.email || `SSO ${u.id}`,
+        })),
+      );
+    } catch {
+      setSsoOptions([]);
+    }
+  };
+
+  useEffect(() => {
+    if (!formSsoId && ssoOptions.length > 0) {
+      setFormSsoId(ssoOptions[0].value);
+    }
+  }, [ssoOptions, formSsoId]);
+
   useEffect(() => {
     if (isFocused && isStaff) {
       fetchData();
+      fetchSso();
     }
   }, [isFocused, isStaff]);
 
@@ -128,6 +156,7 @@ const GroupScreen = () => {
   const openCreateModal = () => {
     setFormGroupName("");
     setFormGroupCode("");
+    setFormSsoId(ssoOptions[0]?.value ?? null);
     setSaveError(null);
     setModalMode("create");
   };
@@ -140,12 +169,14 @@ const GroupScreen = () => {
     );
     setFormGroupName(pendingForGroup?.groupName || group.groupName);
     setFormGroupCode(pendingForGroup?.groupCode || group.groupCode || "");
+    setFormSsoId((pendingForGroup as any)?.proposedSsoId ?? null);
     setSaveError(null);
     setModalMode("editRequest");
   };
 
   const openReviewModal = (req: GroupRequestItem) => {
     setSelectedRequest(req);
+    setFormSsoId((req as any).proposedSsoId ?? null);
     setModalMode("review");
     setSaveError(null);
   };
@@ -154,6 +185,7 @@ const GroupScreen = () => {
     setModalMode(null);
     setSelectedRequest(null);
     setEditTargetGroup(null);
+    setFormSsoId(null);
     setSaveError(null);
     setSaveLoading(false);
   };
@@ -163,10 +195,18 @@ const GroupScreen = () => {
       setSaveError("Vui lòng nhập tên nhóm.");
       return;
     }
+    if (!formSsoId) {
+      setSaveError("Vui lòng chọn CCO phụ trách.");
+      return;
+    }
     setSaveLoading(true);
     setSaveError(null);
     try {
-      await appApi.createGroupRequest({ groupName: formGroupName.trim(), groupCode: formGroupCode.trim() || undefined });
+      await appApi.createGroupRequest({
+        groupName: formGroupName.trim(),
+        groupCode: formGroupCode.trim() || undefined,
+        ssoId: formSsoId,
+      });
       closeModal();
       await fetchData();
     } catch (e: any) {
@@ -216,6 +256,10 @@ const GroupScreen = () => {
       setSaveError("Vui lòng nhập tên nhóm.");
       return;
     }
+    if (!formSsoId) {
+      setSaveError("Vui lòng chọn CCO phụ trách.");
+      return;
+    }
     setSaveLoading(true);
     setSaveError(null);
     try {
@@ -223,6 +267,7 @@ const GroupScreen = () => {
         targetGroupId: editTargetGroup.id,
         groupName: formGroupName.trim(),
         groupCode: formGroupCode.trim() || undefined,
+        ssoId: formSsoId,
       });
       closeModal();
       await fetchData();
@@ -437,8 +482,24 @@ const GroupScreen = () => {
                     style={{ borderWidth: 1, borderColor: "rgba(0,0,0,0.1)", borderRadius: 16, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15, color: "#111" }}
                   />
                 </View>
+                <View style={{ gap: 6 }}>
+                  <Text style={{ fontSize: 12, fontWeight: "600", color: "#6C757D" }}>CCO phụ trách (SSO)</Text>
+                  <Pressable
+                    onPress={() => setSsoPickerOpen(true)}
+                    className="rounded-2xl border border-black/10 bg-white px-4 py-3 flex-row items-center justify-between"
+                  >
+                    <Text className="text-base text-[#111]" numberOfLines={1}>
+                      {ssoOptions.find((o) => o.value === formSsoId)?.label || "Chọn CCO"}
+                    </Text>
+                    <Text className="text-lg text-[#0A84FF]">⌄</Text>
+                  </Pressable>
+                  {ssoOptions.length === 0 ? (
+                    <Text className="text-xs text-red-500">Chưa có CCO trong chi nhánh này.</Text>
+                  ) : null}
                 {saveError ? <Text style={{ color: "#e53935", fontSize: 14 }}>{saveError}</Text> : null}
+                 </View>
               </ScrollView>
+             
               <View style={{ paddingHorizontal: 24, paddingTop: 10, paddingBottom: 16, borderTopWidth: 1, borderTopColor: "rgba(0,0,0,0.05)", gap: 10 }}>
                 <AppButton title="Hủy" onPress={closeModal} bgColor="#E5E7EB" textClassName="text-slate-700" fullWidth={false} />
                 <AppButton title="Gửi yêu cầu" onPress={handleSubmitCreate} loading={saveLoading} />
@@ -484,6 +545,21 @@ const GroupScreen = () => {
                     placeholderTextColor="#9ca3af"
                     style={{ borderWidth: 1, borderColor: "rgba(0,0,0,0.1)", borderRadius: 16, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15, color: "#111" }}
                   />
+                </View>
+                <View style={{ gap: 6 }}>
+                  <Text style={{ fontSize: 12, fontWeight: "600", color: "#6C757D" }}>CCO phụ trách (SSO)</Text>
+                  <Pressable
+                    onPress={() => setSsoPickerOpen(true)}
+                    className="rounded-2xl border border-black/10 bg-white px-4 py-3 flex-row items-center justify-between"
+                  >
+                    <Text className="text-base text-[#111]" numberOfLines={1}>
+                      {ssoOptions.find((o) => o.value === formSsoId)?.label || "Chọn CCO"}
+                    </Text>
+                    <Text className="text-lg text-[#0A84FF]">⌄</Text>
+                  </Pressable>
+                  {ssoOptions.length === 0 ? (
+                    <Text className="text-xs text-red-500">Chưa có CCO trong chi nhánh này.</Text>
+                  ) : null}
                 </View>
                 {saveError ? <Text style={{ color: "#e53935", fontSize: 14 }}>{saveError}</Text> : null}
               </ScrollView>
@@ -535,6 +611,64 @@ const GroupScreen = () => {
                 <AppButton title="Duyệt" onPress={handleApprove} loading={saveLoading} />
                 <AppButton title="Từ chối" onPress={handleReject} bgColor="#e53935" loading={saveLoading} />
                 <AppButton title="Đóng" onPress={closeModal} bgColor="#E5E7EB" textClassName="text-slate-700" fullWidth={false} />
+              </View>
+            </Pressable>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
+
+      {/* SSO picker modal */}
+      <Modal transparent visible={ssoPickerOpen} animationType="fade" onRequestClose={() => setSsoPickerOpen(false)}>
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.30)", justifyContent: "center", paddingHorizontal: 20 }}>
+          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setSsoPickerOpen(false)} />
+          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ alignItems: "center" }}>
+            <Pressable
+              onPress={(e) => e.stopPropagation()}
+              style={{ width: "100%", maxWidth: 420, maxHeight: MODAL_H, backgroundColor: "#fff", borderRadius: 20, overflow: "hidden" }}
+            >
+              <View style={{ paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "rgba(0,0,0,0.06)" }}>
+                <Text style={{ fontSize: 16, fontWeight: "700", color: "#111", textAlign: "center" }}>Chọn CCO</Text>
+              </View>
+              <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: MODAL_H - 160 }}>
+                {ssoOptions.length === 0 ? (
+                  <Text style={{ padding: 16, color: "#666", textAlign: "center" }}>Chưa có CCO trong chi nhánh.</Text>
+                ) : (
+                  ssoOptions.map((opt) => {
+                    const active = opt.value === formSsoId;
+                    return (
+                      <Pressable
+                        key={opt.value}
+                        onPress={() => setFormSsoId(opt.value)}
+                        style={{
+                          paddingHorizontal: 16,
+                          paddingVertical: 12,
+                          borderBottomWidth: 1,
+                          borderBottomColor: "rgba(0,0,0,0.06)",
+                          flexDirection: "row",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <Text style={{ fontSize: 14, fontWeight: active ? "700" : "500", color: active ? "#0A84FF" : "#111" }}>
+                          {opt.label}
+                        </Text>
+                        <View
+                          style={{
+                            height: 18,
+                            width: 18,
+                            borderRadius: 9,
+                            borderWidth: 1,
+                            borderColor: active ? "#0A84FF" : "rgba(0,0,0,0.25)",
+                            backgroundColor: active ? "#0A84FF" : "transparent",
+                          }}
+                        />
+                      </Pressable>
+                    );
+                  })
+                )}
+              </ScrollView>
+              <View style={{ padding: 16, borderTopWidth: 1, borderTopColor: "rgba(0,0,0,0.06)" }}>
+                <AppButton title="Xong" onPress={() => setSsoPickerOpen(false)} />
               </View>
             </Pressable>
           </KeyboardAvoidingView>

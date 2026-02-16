@@ -62,21 +62,24 @@ model RefreshToken {
 }
 
 model StaffUser {
-  id           BigInt   @id @default(autoincrement())
-  email        String   @unique
-  passwordHash String
-  role         String
-  branchCode   String?
-  fullName     String?
-  isActive     Boolean  @default(true)
-  mustChangePassword      Boolean   @default(false)
-  passwordUpdatedAt       DateTime?
-  tempPasswordEncrypted   String?
-  tempPasswordIssuedAt    DateTime?
+  id                           BigInt         @id @default(autoincrement())
+  email                        String         @unique
+  passwordHash                 String
+  role                         String
+  branchCode                   String?
+  fullName                     String?
+  phoneNumber                  String?
+  isActive                     Boolean        @default(true)
+  mustChangePassword           Boolean        @default(false)
+  passwordUpdatedAt            DateTime?
+  tempPasswordEncrypted        String?
+  tempPasswordIssuedAt         DateTime?
   lastPasswordExpiryReminderAt DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  events       Event[]  @relation("EventCreatedBy")
+  createdAt                    DateTime       @default(now())
+  updatedAt                    DateTime       @updatedAt
+  events                       Event[]        @relation("EventCreatedBy")
+  groups                       Group[]        @relation("GroupSso")
+  proposedGroupRequests        GroupRequest[] @relation("GroupRequestProposedSso")
 }
 
 model Loan {
@@ -184,17 +187,20 @@ model EventTargetGroup {
 }
 
 model Group {
-  id           BigInt   @id @default(autoincrement())
+  id           BigInt     @id @default(autoincrement())
   branchCode   String
   groupCode    String
   groupName    String
   groupNameKey String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  ssoId        BigInt?
+  sso          StaffUser? @relation("GroupSso", fields: [ssoId], references: [id])
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 
   @@unique([branchCode, groupCode])
   @@index([groupNameKey])
   @@index([branchCode, groupNameKey])
+  @@index([ssoId])
 }
 
 enum GroupRequestStatus {
@@ -209,26 +215,30 @@ enum GroupRequestType {
 }
 
 model GroupRequest {
-  id                   BigInt              @id @default(autoincrement())
+  id                   BigInt             @id @default(autoincrement())
   type                 GroupRequestType
-  status               GroupRequestStatus  @default(PENDING)
+  status               GroupRequestStatus @default(PENDING)
   branchCode           String
   targetGroupId        BigInt?
   proposedGroupCode    String?
   proposedGroupName    String
   proposedGroupNameKey String
+  proposedSsoId        BigInt?
   createdByStaffId     BigInt
   reviewedByStaffId    BigInt?
   reviewedAt           DateTime?
   rejectReason         String?
   expiresAt            DateTime?
-  createdAt            DateTime            @default(now())
-  updatedAt            DateTime            @updatedAt
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  proposedSso StaffUser? @relation("GroupRequestProposedSso", fields: [proposedSsoId], references: [id])
 
   @@index([branchCode, status])
   @@index([createdByStaffId, status])
   @@index([expiresAt])
   @@index([targetGroupId])
+  @@index([proposedSsoId])
 }
 
 enum UnmappedReason {

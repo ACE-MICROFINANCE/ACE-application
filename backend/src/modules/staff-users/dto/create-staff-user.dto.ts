@@ -5,14 +5,14 @@ export class CreateStaffUserDto {
   email!: string;
 
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   @MinLength(6)
   @Matches(/^[0-9]+$/, { message: 'Mat khau chi gom chu so va toi thieu 6 ky tu' })
-  password!: string;
+  password?: string;
 
   @IsString()
-  @IsIn(['ADMIN', 'BA', 'BM', 'SUPER_ADMIN'])
-  role!: 'ADMIN' | 'BA' | 'BM' | 'SUPER_ADMIN';
+  @IsIn(['ADMIN', 'BA', 'BM', 'SUPER_ADMIN', 'SSO'])
+  role!: 'ADMIN' | 'BA' | 'BM' | 'SUPER_ADMIN' | 'SSO';
 
   @IsString()
   @IsOptional()

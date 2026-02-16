@@ -6,7 +6,7 @@ export class PublicController {
   constructor(private readonly contactsService: ContactsService) {}
 
   @Get('contacts')
-  getContacts(@Query('branchCode') branchCode?: string) {
-    return this.contactsService.getByBranchCode(branchCode);
+  async getContacts(@Query('branchCode') branchCode?: string, @Query('groupName') groupName?: string) {
+    return this.contactsService.getByBranchCode(branchCode, groupName);
   }
 }

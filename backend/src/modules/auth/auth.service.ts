@@ -152,6 +152,9 @@ export class AuthService {
           : null;
       const staffRole = mappedRole;
       if (!staffRole) {
+        if (rawRole === 'SSO') {
+          throw new UnauthorizedException('Tài khoản CCO/SSO không được đăng nhập.');
+        }
         throw new UnauthorizedException('Thông tin đăng nhập không đúng.');
       }
 
@@ -477,9 +480,47 @@ export class AuthService {
 
     // Gửi mail async để API trả về nhanh
     setImmediate(() => {
-      this.emailNotificationService.sendPasswordResetToStaff(customer, tempPassword).catch((err) => {
-        console.error('[requestPasswordReset] send mail failed', err?.message || err);
-      });
+      if (!customer.branchCode) {
+        console.warn(
+          `[requestPasswordReset] missing branchCode for memberNo=${customer.memberNo}, skip email dispatch`,
+        );
+        return;
+      }
+
+      this.prisma.staffUser
+        .findMany({
+          where: {
+            isActive: true,
+            branchCode: customer.branchCode,
+            role: { in: ['BM', 'BA'] },
+          },
+          select: { email: true },
+        })
+        .then((staffRows) => {
+          const recipients = Array.from(
+            new Set(
+              staffRows
+                .map((s) => s.email?.trim().toLowerCase())
+                .filter((email): email is string => Boolean(email)),
+            ),
+          );
+
+          if (!recipients.length) {
+            console.warn(
+              `[requestPasswordReset] no BM/BA recipient found for branch=${customer.branchCode ?? 'null'} memberNo=${customer.memberNo}`,
+            );
+            return;
+          }
+
+          return this.emailNotificationService.sendPasswordResetToStaff(
+            customer,
+            tempPassword,
+            recipients,
+          );
+        })
+        .catch((err) => {
+          console.error('[requestPasswordReset] send mail failed', err?.message || err);
+        });
     });
   }
 }

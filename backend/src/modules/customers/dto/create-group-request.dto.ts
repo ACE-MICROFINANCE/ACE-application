@@ -8,6 +8,10 @@ export class CreateGroupRequestDto {
   @IsOptional()
   @IsString()
   groupCode?: string;
+
+  @IsNumber()
+  @IsNotEmpty()
+  ssoId!: number;
 }
 
 export class UpdateGroupRequestDto {
@@ -22,4 +26,8 @@ export class UpdateGroupRequestDto {
   @IsOptional()
   @IsString()
   groupCode?: string;
+
+  @IsNumber()
+  @IsNotEmpty()
+  ssoId!: number;
 }

@@ -52,8 +52,30 @@ export class StaffUsersService {
     return mapped; // CHANGED: map BigInt + branchName
   }
 
+  async listSsoByBranch(branchCode: string) {
+    const rows = await this.prisma.staffUser.findMany({
+      where: {
+        role: 'SSO',
+        isActive: true,
+        branchCode,
+      },
+      orderBy: { fullName: 'asc' },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        branchCode: true,
+        fullName: true,
+        phoneNumber: true,
+        isActive: true,
+      },
+    });
+    const mapped = await Promise.all(rows.map((row) => this.mapStaffUser(row)));
+    return mapped;
+  }
+
   async create(dto: CreateStaffUserDto) {
-    const roleNeedsBranch = dto.role === 'BM' || dto.role === 'BA';
+    const roleNeedsBranch = dto.role === 'BM' || dto.role === 'BA' || dto.role === 'SSO';
     if (roleNeedsBranch && !dto.branchCode) {
       throw new BadRequestException('Nhân sự chi nhánh phải có mã chi nhánh.'); // CHANGED: Vietnamese message
     }
@@ -61,7 +83,16 @@ export class StaffUsersService {
       throw new BadRequestException('Admin không được gán mã chi nhánh.'); // CHANGED: Vietnamese message
     }
 
-    const passwordHash = await hashPassword(dto.password);
+    const passwordToUse =
+      dto.password && dto.password.length > 0
+        ? dto.password
+        : dto.role === 'SSO'
+        ? Math.floor(100000 + Math.random() * 900000).toString() // generate 6-digit placeholder
+        : null;
+    if (!passwordToUse) {
+      throw new BadRequestException('Mật khẩu bắt buộc đối với vai trò này.');
+    }
+    const passwordHash = await hashPassword(passwordToUse);
     const created = await this.prisma.staffUser.create({
       data: {
         email: dto.email.toLowerCase(),

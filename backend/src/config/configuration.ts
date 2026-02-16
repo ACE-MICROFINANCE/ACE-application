@@ -51,5 +51,6 @@ export default () => ({
   },
   contacts: {
     byBranchJson: process.env.CONTACTS_BY_BRANCH_JSON || '',
+    byGroupJson: process.env.CONTACTS_BY_GROUP_JSON || '',
   },
 });

@@ -22,6 +22,17 @@ export class CustomersService {
     private readonly bijliCustomerSyncService: BijliCustomerSyncService, // CHANGED: auto-sync BIJI on create account
   ) {}
 
+  private async assertValidSso(branchCode: string, ssoId: number) {
+    const sso = await this.prisma.staffUser.findUnique({
+      where: { id: BigInt(ssoId) },
+      select: { id: true, role: true, branchCode: true, isActive: true, fullName: true, email: true },
+    });
+    if (!sso || sso.role !== 'SSO' || sso.branchCode !== branchCode || sso.isActive !== true) {
+      throw new BadRequestException('SSO không hợp lệ cho chi nhánh.');
+    }
+    return sso;
+  }
+
   private mapProfile(customer: Prisma.CustomerGetPayload<{ include: { credential: true } }>) {
     return {
       id: Number(customer.id),
@@ -354,7 +365,7 @@ export class CustomersService {
   // BA propose CREATE
   async proposeCreateGroupRequest(
     staff: { id?: string | null; role?: string | null; branchCode?: string | null },
-    dto: { groupName: string; groupCode?: string },
+    dto: { groupName: string; groupCode?: string; ssoId: number },
   ) {
     if (staff.role !== 'BA') {
       throw new ForbiddenException('Chỉ BA được phép tạo đề xuất.');
@@ -362,6 +373,7 @@ export class CustomersService {
     if (!staff.branchCode) {
       throw new BadRequestException('BA cần gán branchCode.');
     }
+    await this.assertValidSso(staff.branchCode, dto.ssoId);
     const key = normalizeGroupNameKey(dto.groupName);
     if (!key) throw new BadRequestException('groupName không hợp lệ');
     await this.assertGroupNameKeyConflict(key);
@@ -374,6 +386,7 @@ export class CustomersService {
         proposedGroupCode: dto.groupCode ?? null,
         proposedGroupName: dto.groupName,
         proposedGroupNameKey: key,
+        proposedSsoId: BigInt(dto.ssoId),
         createdByStaffId: BigInt(staff.id ?? '0'),
       },
     });
@@ -389,7 +402,7 @@ export class CustomersService {
   // BA propose UPDATE
   async proposeUpdateGroupRequest(
     staff: { id?: string | null; role?: string | null; branchCode?: string | null },
-    dto: { targetGroupId: number; groupName: string; groupCode?: string },
+    dto: { targetGroupId: number; groupName: string; groupCode?: string; ssoId: number },
   ) {
     if (staff.role !== 'BA') {
       throw new ForbiddenException('Chỉ BA được phép tạo đề xuất.');
@@ -399,6 +412,7 @@ export class CustomersService {
     if (!staff.branchCode || staff.branchCode !== target.branchCode) {
       throw new ForbiddenException('Không được sửa nhóm ngoài chi nhánh của bạn.');
     }
+    await this.assertValidSso(target.branchCode, dto.ssoId);
     const key = normalizeGroupNameKey(dto.groupName);
     if (!key) throw new BadRequestException('groupName không hợp lệ');
 
@@ -419,6 +433,7 @@ export class CustomersService {
           proposedGroupCode: dto.groupCode ?? target.groupCode,
           proposedGroupName: dto.groupName,
           proposedGroupNameKey: key,
+          proposedSsoId: BigInt(dto.ssoId),
           createdByStaffId: BigInt(staff.id ?? '0'), // ghi nhận BA hiện tại
         },
       });
@@ -440,6 +455,7 @@ export class CustomersService {
         proposedGroupCode: dto.groupCode ?? target.groupCode,
         proposedGroupName: dto.groupName,
         proposedGroupNameKey: key,
+        proposedSsoId: BigInt(dto.ssoId),
         createdByStaffId: BigInt(staff.id ?? '0'),
       },
     });
@@ -480,6 +496,7 @@ export class CustomersService {
       targetGroupId: r.targetGroupId ? Number(r.targetGroupId) : null,
       createdByStaffId: Number(r.createdByStaffId),
       reviewedByStaffId: r.reviewedByStaffId ? Number(r.reviewedByStaffId) : null,
+      proposedSsoId: r.proposedSsoId ? Number(r.proposedSsoId) : null,
     }));
   }
 
@@ -512,6 +529,7 @@ export class CustomersService {
       targetGroupId: r.targetGroupId ? Number(r.targetGroupId) : null,
       createdByStaffId: Number(r.createdByStaffId),
       reviewedByStaffId: r.reviewedByStaffId ? Number(r.reviewedByStaffId) : null,
+      proposedSsoId: r.proposedSsoId ? Number(r.proposedSsoId) : null,
     }));
   }
 
@@ -534,6 +552,10 @@ export class CustomersService {
       excludeGroupId: req.targetGroupId ? Number(req.targetGroupId) : undefined,
       excludeRequestId: Number(req.id),
     });
+    if (!req.proposedSsoId) {
+      throw new BadRequestException('Đề xuất thiếu SSO.');
+    }
+    await this.assertValidSso(req.branchCode, Number(req.proposedSsoId));
 
     let group;
     if (req.type === GroupRequestType.CREATE) {
@@ -543,6 +565,7 @@ export class CustomersService {
           groupCode: req.proposedGroupCode ?? '',
           groupName: req.proposedGroupName,
           groupNameKey: req.proposedGroupNameKey,
+          ssoId: req.proposedSsoId,
         },
       });
     } else {
@@ -553,6 +576,7 @@ export class CustomersService {
           groupCode: req.proposedGroupCode ?? undefined,
           groupName: req.proposedGroupName,
           groupNameKey: req.proposedGroupNameKey,
+          ssoId: req.proposedSsoId,
         },
       });
     }

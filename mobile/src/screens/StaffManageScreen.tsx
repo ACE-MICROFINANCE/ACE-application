@@ -103,6 +103,7 @@ const StaffManageScreen = () => {
   const roleOptions = [
     { value: "BA", label: "Trợ lý chi nhánh" },
     { value: "BM", label: "Quản lý chi nhánh" },
+    { value: "SSO", label: "CCO" },
     { value: "ADMIN", label: "Admin" },
   ];
   const availableRoleOptions = useMemo(
@@ -195,13 +196,15 @@ const StaffManageScreen = () => {
     const password = formState.password.trim();
     if (!fullName) return setSaveError("Vui lòng nhập họ và tên.");
     if (!email) return setSaveError("Vui lòng nhập email.");
-    if (!password) return setSaveError("Vui lòng nhập mật khẩu ban đầu.");
-    const roleNeedsBranch = ["BM", "BA"].includes(formState.role);
+    const roleNeedsBranch = ["BM", "BA", "SSO"].includes(formState.role);
     if (roleNeedsBranch && !formState.branchCode) {
       return setSaveError("Vui lòng chọn chi nhánh cho nhân sự chi nhánh.");
     }
     if (formState.role === "ADMIN" && formState.branchCode) {
       return setSaveError("Admin không gán chi nhánh.");
+    }
+    if (formState.role !== "SSO" && !password) {
+      return setSaveError("Vui lòng nhập mật khẩu ban đầu.");
     }
     setSaveLoading(true);
     setSaveError(null);
@@ -209,7 +212,7 @@ const StaffManageScreen = () => {
       const payload: CreateStaffUserPayload = {
         fullName,
         email,
-        password,
+        password: formState.role === "SSO" && !password ? undefined : password,
         role: formState.role,
         branchCode: roleNeedsBranch ? formState.branchCode : undefined,
       };
@@ -229,7 +232,7 @@ const StaffManageScreen = () => {
     const email = formState.email.trim();
     if (!fullName) return setSaveError("Vui lòng nhập họ và tên.");
     if (!email) return setSaveError("Vui lòng nhập email.");
-    const roleNeedsBranch = ["BM", "BA"].includes(formState.role);
+    const roleNeedsBranch = ["BM", "BA", "SSO"].includes(formState.role);
     if (roleNeedsBranch && !formState.branchCode) {
       return setSaveError("Vui lòng chọn chi nhánh cho nhân sự chi nhánh.");
     }
@@ -542,7 +545,7 @@ const StaffManageScreen = () => {
                   </Pressable>
                 </View>
 
-                {modalMode === "create" ? (
+                {modalMode === "create" && formState.role !== "SSO" ? (
                   <View className="space-y-2">
                     <Text className="text-xs font-medium text-[#6C757D]">Mật khẩu ban đầu</Text>
                     <TextInput
@@ -572,7 +575,7 @@ const StaffManageScreen = () => {
                   </View>
                 ) : null}
 
-                {modalMode === "edit" ? (
+                {modalMode === "edit" && selectedStaff?.role !== "SSO" ? (
                   <View className="space-y-3 rounded-2xl border border-black/5 bg-white px-4 py-3">
                     <View className="flex-row items-center justify-between">
                       <Text className="text-sm font-semibold text-[#111]">Bảo mật</Text>

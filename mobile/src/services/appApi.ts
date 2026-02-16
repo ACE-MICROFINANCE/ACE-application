@@ -107,7 +107,7 @@ export type StaffBranchItem = {
 };
 
 export type ContactItem = {
-  type: 'HOTLINE' | 'AGRI' | 'SOCIAL' | string;
+  type: 'HOTLINE' | 'AGRI' | 'LIVESTOCK' | 'SOCIAL' | string;
   label: string;
   phone: string;
 };
@@ -120,15 +120,15 @@ export type ContactsResponse = {
 
 export type CreateStaffUserPayload = {
   email: string;
-  password: string;
-  role: 'ADMIN' | 'SUPER_ADMIN' | 'BA' | 'BM' | string;
+  password?: string;
+  role: 'ADMIN' | 'SUPER_ADMIN' | 'BA' | 'BM' | 'SSO' | string;
   branchCode?: string | null;
   fullName?: string | null;
 };
 
 export type UpdateStaffUserPayload = {
   email?: string | null;
-  role?: 'ADMIN' | 'SUPER_ADMIN' | 'BA' | 'BM' | string | null;
+  role?: 'ADMIN' | 'SUPER_ADMIN' | 'BA' | 'BM' | 'SSO' | string | null;
   branchCode?: string | null;
   fullName?: string | null;
 };
@@ -194,18 +194,21 @@ export type StaffGroupItem = {
 export type GroupRequestPayload = {
   groupName: string;
   groupCode?: string | null;
+  ssoId: number;
 };
 
 export type GroupUpdateRequestPayload = {
   targetGroupId: number;
   groupName: string;
   groupCode?: string | null;
+  ssoId: number;
 };
 export type GroupRequestItem = {
   id: number;
   groupCode?: string | null;
   groupName: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  proposedSsoId?: number | null;
   createdByRole?: string;
   createdAt?: string;
   rejectedAt?: string | null;
@@ -298,6 +301,10 @@ export const appApi = {
   },
   getStaffBranches: async (): Promise<StaffBranchItem[]> => {
     const { data } = await apiClient.get('/staff-users/branches');
+    return data;
+  },
+  getSsoByBranch: async (branchCode: string): Promise<StaffUserItem[]> => {
+    const { data } = await apiClient.get('/staff-users/sso', { params: { branchCode } });
     return data;
   },
   createStaffUser: async (payload: CreateStaffUserPayload) => {
@@ -423,9 +430,9 @@ export const appApi = {
     const { data } = await apiClient.post('/feedback', { content });
     return data;
   },
-  getContactsByBranchCode: async (branchCode: string): Promise<ContactsResponse> => {
+  getContactsByBranchCode: async (branchCode: string, groupName?: string): Promise<ContactsResponse> => {
     const { data } = await apiClient.get('/public/contacts', {
-      params: { branchCode },
+      params: { branchCode, ...(groupName ? { groupName } : {}) },
     });
     return data;
   },

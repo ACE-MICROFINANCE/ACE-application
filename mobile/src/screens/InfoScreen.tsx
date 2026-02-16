@@ -92,6 +92,23 @@ const InfoScreen = () => {
     }
   };
 
+  const hotline = contacts.filter((c) => c.type === 'HOTLINE');
+  const agri = contacts.filter((c) => c.type === 'AGRI');
+  const livestock = contacts.filter((c) => c.type === 'LIVESTOCK');
+  const others = contacts.filter((c) => !['HOTLINE', 'AGRI', 'LIVESTOCK'].includes(c.type));
+
+  const renderContactRow = (detail: ContactItem) => (
+    <TouchableOpacity
+      key={`${detail.type}-${detail.phone}`}
+      className="flex-row items-center justify-between rounded-lg px-2 py-2"
+      activeOpacity={0.8}
+      onPress={() => handleCall(detail.phone)}
+    >
+      <Text className="text-sm text-[#333]">{detail.label}</Text>
+      <Text className="font-medium text-[#111]">{detail.phone}</Text>
+    </TouchableOpacity>
+  );
+
   return (
     <MobileFrame withBottomPadding>
       <View className="pt-8 space-y-4">
@@ -111,17 +128,30 @@ const InfoScreen = () => {
 
             {expandedContact ? (
               <View className="mt-4 border-t border-black/5 pt-3 space-y-2">
-                {contacts.map((detail) => (
-                  <TouchableOpacity
-                    key={detail.phone}
-                    className="flex-row items-center justify-between rounded-lg px-2 py-2"
-                    activeOpacity={0.8}
-                    onPress={() => handleCall(detail.phone)}
-                  >
-                    <Text className="text-sm text-[#333]">{detail.label}</Text>
-                    <Text className="font-medium text-[#111]">{detail.phone}</Text>
-                  </TouchableOpacity>
-                ))}
+                {hotline.length ? (
+                  <View className="space-y-1">
+                    <Text className="text-xs font-semibold text-[#6B7280]">Đường dây nóng</Text>
+                    {hotline.map(renderContactRow)}
+                  </View>
+                ) : null}
+                {agri.length ? (
+                  <View className="space-y-1 pt-1">
+                    <Text className="text-xs font-semibold text-[#6B7280]">Cán bộ trồng trọt</Text>
+                    {agri.map(renderContactRow)}
+                  </View>
+                ) : null}
+                {livestock.length ? (
+                  <View className="space-y-1 pt-1">
+                    <Text className="text-xs font-semibold text-[#6B7280]">Cán bộ chăn nuôi</Text>
+                    {livestock.map(renderContactRow)}
+                  </View>
+                ) : null}
+                {others.length ? (
+                  <View className="space-y-1 pt-1">
+                    <Text className="text-xs font-semibold text-[#6B7280]">Khác</Text>
+                    {others.map(renderContactRow)}
+                  </View>
+                ) : null}
                 {contactError ? (
                   <Text className="text-sm text-red-500 text-center">{contactError}</Text>
                 ) : null}

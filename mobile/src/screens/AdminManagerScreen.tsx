@@ -107,7 +107,7 @@ const AdminManagerScreen = () => {
       <MobileFrame withBottomPadding>
         <View className="flex-1 items-center justify-center px-4">
           <Card className="w-full rounded-2xl">
-            <Text className="text-center text-sm text-[#666]">Bạn không có quyền truy cập trang này.</Text>
+            <Text className="text-center text-sm text-[#666]">You do not have access to this screen.</Text>
           </Card>
         </View>
       </MobileFrame>

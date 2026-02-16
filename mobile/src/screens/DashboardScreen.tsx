@@ -119,7 +119,7 @@ const DashboardRemindersCard = ({
   );
 };
 
-const WeatherCard = () => {
+const WeatherCard = ({ isEnglish = false }: { isEnglish?: boolean }) => {
   const [weather, setWeather] = useState<WeatherResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -133,7 +133,7 @@ const WeatherCard = () => {
         const data = await appApi.getWeather?.(lat, lon);
         if (!cancelled) setWeather(data ?? null);
       } catch {
-        if (!cancelled) setError('Không thể tải dữ liệu thời tiết');
+        if (!cancelled) setError(isEnglish ? 'Unable to load weather data' : 'Không thể tải dữ liệu thời tiết');
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -181,7 +181,9 @@ const WeatherCard = () => {
 
   return (
     <Card className="rounded-2xl bg-white shadow-lg p-5">
-      {loading && <Text className="text-sm text-slate-500">Đang tải thời tiết...</Text>}
+      {loading && (
+        <Text className="text-sm text-slate-500">{isEnglish ? 'Loading weather...' : 'Đang tải thời tiết...'}</Text>
+      )}
       {!loading && error && <Text className="text-sm text-red-500">{error}</Text>}
       {!loading && weather ? (
         <View>
@@ -193,7 +195,8 @@ const WeatherCard = () => {
               <Text className="text-3xl font-semibold">{Math.round(weather.current.temp)}°C</Text>
               <Text className="text-sm text-slate-600">{weather.current.description}</Text>
               <Text className="text-xs text-slate-500">
-                Cao {Math.round(weather.current.max ?? weather.current.temp)}° · Thấp{' '}
+                {isEnglish ? 'High' : 'Cao'} {Math.round(weather.current.max ?? weather.current.temp)}° ·{' '}
+                {isEnglish ? 'Low' : 'Thấp'}{' '}
                 {Math.round(weather.current.min ?? weather.current.temp)}°
               </Text>
             </View>
@@ -205,7 +208,11 @@ const WeatherCard = () => {
               {dailyList.map((day, index) => {
                 const date = new Date(day.date);
                 const label =
-                  index === 0 ? 'Hôm nay' : date.toLocaleDateString('vi-VN', { weekday: 'short', day: 'numeric' });
+                  index === 0
+                    ? isEnglish
+                      ? 'Today'
+                      : 'Hôm nay'
+                    : date.toLocaleDateString(isEnglish ? 'en-US' : 'vi-VN', { weekday: 'short', day: 'numeric' });
                 return (
                   <View key={day.date} style={{ flex: 1, alignItems: 'center' }}>
                     <Text className="text-xs text-slate-600">{label}</Text>
@@ -232,6 +239,7 @@ const DashboardScreen = () => {
   const isStaff = profile?.actorKind === 'STAFF';
   const isAdmin = isStaff && profile?.role === 'ADMIN';
   const isSuperAdmin = isStaff && profile?.role === 'SUPER_ADMIN';
+  const isAdminUi = isAdmin || isSuperAdmin;
   const includeLoanReminder = !(isStaff || isAdmin || isSuperAdmin);
   const [loan, setLoan] = useState<LoanCurrentResponse | null>(null);
   const [events, setEvents] = useState<ScheduleItem[]>([]);
@@ -257,7 +265,7 @@ const DashboardScreen = () => {
         setLoan(loanRes);
         setEvents(eventsRes ?? []);
       } catch {
-        if (mounted) setError('Không tải được dữ liệu dashboard.');
+        if (mounted) setError(isAdminUi ? 'Unable to load dashboard data.' : 'Không tải được dữ liệu dashboard.');
       } finally {
         if (mounted) setLoading(false);
       }
@@ -267,14 +275,16 @@ const DashboardScreen = () => {
       mounted = false;
     };
   }, [isSuperAdmin, isStaff]);
-  const welcomeName = customer?.fullName || 'Khách hàng ACE';
+  const welcomeName = customer?.fullName || (isAdminUi ? 'ACE User' : 'Khách hàng ACE');
 
   if (loading) {
     return (
       <MobileFrame>
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator />
-          <Text className="mt-2 text-sm text-[#666]">Đang tải dashboard...</Text>
+          <Text className="mt-2 text-sm text-[#666]">
+            {isAdminUi ? 'Loading dashboard...' : 'Đang tải dashboard...'}
+          </Text>
         </View>
       </MobileFrame>
     );
@@ -285,7 +295,7 @@ const DashboardScreen = () => {
       <MobileFrame>
         <View className="flex-1 items-center justify-center space-y-2">
           <Text className="text-sm text-red-500">{error}</Text>
-          <Text className="text-sm text-[#555]">Vui lòng thử lại sau.</Text>
+          <Text className="text-sm text-[#555]">{isAdminUi ? 'Please try again later.' : 'Vui lòng thử lại sau.'}</Text>
         </View>
       </MobileFrame>
     );
@@ -295,17 +305,17 @@ const DashboardScreen = () => {
     <MobileFrame withBottomPadding>
       <View className="pt-6 pb-4" style={{ gap: 20 }}>
         <Card className="items-center justify-center bg-white rounded-2xl shadow-lg p-6">
-          <Text className="text-lg font-semibold text-[#333]">Chào mừng</Text>
+          <Text className="text-lg font-semibold text-[#333]">{isAdminUi ? 'Welcome' : 'Chào mừng'}</Text>
           <Text className="text-3xl font-bold text-[#2b6cb0] text-center">{welcomeName}</Text>
         </Card>
 
-        <WeatherCard />
+        <WeatherCard isEnglish={isAdminUi} />
 
         {isSuperAdmin ? (
           <Card className="rounded-2xl bg-white shadow-lg p-6">
-            <Text className="text-lg font-semibold text-[#111] mb-2">Quản lý Admin</Text>
-            <Text className="text-sm text-[#555] mb-4">Tạo và xóa tài khoản Admin.</Text>
-            <AppButton title="Đi đến màn Quản lý Admin" onPress={() => navigation.navigate('AdminManager' as never)} />
+            <Text className="text-lg font-semibold text-[#111] mb-2">Admin Management</Text>
+            <Text className="text-sm text-[#555] mb-4">Create and delete admin accounts.</Text>
+            <AppButton title="Go to Admin Management" onPress={() => navigation.navigate('AdminManager' as never)} />
           </Card>
         ) : !isStaff ? (
           <DashboardRemindersCard

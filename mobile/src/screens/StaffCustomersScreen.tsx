@@ -33,11 +33,11 @@ type StatusBadge = { text: string; className: string };
 
 const buildStatusBadge = (isActive?: boolean | null): StatusBadge => {
   if (isActive === undefined || isActive === null) {
-    return { text: 'Chưa có tài khoản', className: 'border-slate-100 bg-slate-50 text-slate-600' };
+    return { text: 'No account', className: 'border-slate-100 bg-slate-50 text-slate-600' };
   }
   return isActive
-    ? { text: 'Đang hoạt động', className: 'border-emerald-100 bg-emerald-50 text-emerald-700' }
-    : { text: 'Bị khóa', className: 'border-rose-100 bg-rose-50 text-rose-700' };
+    ? { text: 'Active', className: 'border-emerald-100 bg-emerald-50 text-emerald-700' }
+    : { text: 'Locked', className: 'border-rose-100 bg-rose-50 text-rose-700' };
 };
 
 const formatBranchGroup = (branchName?: string | null, groupName?: string | null) => {
@@ -52,12 +52,12 @@ const StaffCustomersScreen = () => {
   const isBA = profile?.role === 'BA';
   const insets = useSafeAreaInsets();
 
-  // ✅ giống StaffManageScreen: lấy tabbar height để đặt FAB không bị chìm
+  // Same as StaffManageScreen: use tabBar height to keep FAB visible
   const tabBarHeight = useBottomTabBarHeight();
   const CONTAINER_MAX_W = 480;
   const [contentWidth, setContentWidth] = useState<number>(0);
 
-  const TAB_FALLBACK = 110; // fallback nếu tabBarHeight không trả về
+  const TAB_FALLBACK = 110; // fallback when tabBarHeight is unavailable
   const tabH = Math.max(tabBarHeight || 0, TAB_FALLBACK);
 
   const BUTTON_H = 56;
@@ -99,7 +99,7 @@ const StaffCustomersScreen = () => {
       const data = await appApi.getStaffCustomers(q?.trim() || undefined);
       setCustomers(Array.isArray(data) ? data : []);
     } catch (e: any) {
-      setError(e?.response?.data?.message ?? 'Không tải được danh sách khách hàng.');
+      setError(e?.response?.data?.message ?? 'Unable to load customer list.');
     } finally {
       setLoading(false);
     }
@@ -113,7 +113,7 @@ const StaffCustomersScreen = () => {
       setSelectedDetail(data);
       setShowTempPassword(false);
     } catch (e: any) {
-      setDetailError(e?.response?.data?.message ?? 'Không tải được thông tin khách hàng.');
+      setDetailError(e?.response?.data?.message ?? 'Unable to load customer details.');
     } finally {
       setDetailLoading(false);
     }
@@ -168,11 +168,11 @@ const StaffCustomersScreen = () => {
 
   const handleCreateAccount = async () => {
     if (!formMemberNo.trim()) {
-      setSaveError('Vui lòng nhập mã khách hàng.');
+      setSaveError('Please enter customer ID.');
       return;
     }
     if (!formInitialPassword.trim()) {
-      setSaveError('Vui lòng nhập mật khẩu ban đầu.');
+      setSaveError('Please enter initial password.');
       return;
     }
     setSaveLoading(true);
@@ -186,7 +186,7 @@ const StaffCustomersScreen = () => {
       setModalMode(null);
       await fetchCustomers(query);
     } catch (e: any) {
-      setSaveError(e?.response?.data?.message ?? 'Không thể tạo tài khoản khách hàng.');
+      setSaveError(e?.response?.data?.message ?? 'Unable to create customer account.');
     } finally {
       setSaveLoading(false);
     }
@@ -195,7 +195,7 @@ const StaffCustomersScreen = () => {
   const handleResetPassword = async () => {
     if (!selectedDetail) return;
     if (!resetPassword.trim()) {
-      setSaveError('Vui lòng nhập mật khẩu tạm thời.');
+      setSaveError('Please enter temporary password.');
       return;
     }
     setSaveLoading(true);
@@ -221,7 +221,7 @@ const StaffCustomersScreen = () => {
       setShowTempPassword(true);
       await fetchCustomers(query);
     } catch (e: any) {
-      setSaveError(e?.response?.data?.message ?? 'Không thể đặt lại mật khẩu.');
+      setSaveError(e?.response?.data?.message ?? 'Unable to reset password.');
     } finally {
       setSaveLoading(false);
     }
@@ -232,9 +232,9 @@ const StaffCustomersScreen = () => {
 
     const confirmed = lock
       ? await new Promise<boolean>((resolve) =>
-          Alert.alert('Khóa tài khoản?', 'Bạn có chắc muốn khóa tài khoản này?', [
-            { text: 'Hủy', style: 'cancel', onPress: () => resolve(false) },
-            { text: 'Đồng ý', style: 'destructive', onPress: () => resolve(true) },
+          Alert.alert('Lock account?', 'Are you sure you want to lock this account?', [
+            { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+            { text: 'Confirm', style: 'destructive', onPress: () => resolve(true) },
           ]),
         )
       : true;
@@ -250,7 +250,7 @@ const StaffCustomersScreen = () => {
       );
       await fetchCustomers(query);
     } catch (e: any) {
-      setSaveError(e?.response?.data?.message ?? 'Không thể cập nhật trạng thái tài khoản.');
+      setSaveError(e?.response?.data?.message ?? 'Unable to update account status.');
     } finally {
       setLockLoading(false);
     }
@@ -265,7 +265,7 @@ const StaffCustomersScreen = () => {
       setSelectedDetail((prev) => (prev ? { ...prev, accessibilityEnabled: enabled } : prev));
       await fetchCustomers(query);
     } catch (e: any) {
-      setSaveError(e?.response?.data?.message ?? 'Không thể cập nhật trợ năng.');
+      setSaveError(e?.response?.data?.message ?? 'Unable to update accessibility.');
     } finally {
       setAccessibilityLoading(false);
     }
@@ -280,7 +280,7 @@ const StaffCustomersScreen = () => {
       <MobileFrame withBottomPadding>
         <View className="flex-1 items-center justify-center px-4">
           <Card className="w-full rounded-2xl">
-            <Text className="text-center text-sm text-[#666]">Bạn không có quyền truy cập trang này.</Text>
+            <Text className="text-center text-sm text-[#666]">You do not have access to this screen.</Text>
           </Card>
         </View>
       </MobileFrame>
@@ -291,7 +291,7 @@ const StaffCustomersScreen = () => {
     <MobileFrame withBottomPadding>
       <ScrollView
         className="flex-1"
-        // ✅ chừa đúng chỗ cho button + tabbar (không bị chìm)
+        // Keep enough room for button + tab bar
         contentContainerStyle={{
           paddingTop: 32,
           paddingBottom: floatingBottom + BUTTON_H + 24,
@@ -301,12 +301,12 @@ const StaffCustomersScreen = () => {
         showsVerticalScrollIndicator={false}
       >
         <View
-          // ✅ đo width thật khung content để FAB canh đúng 480
+          // Measure real content width so FAB aligns with max 480
           onLayout={(e) => setContentWidth(e.nativeEvent.layout.width)}
           style={{ alignSelf: 'center', width: '100%', maxWidth: CONTAINER_MAX_W, gap: 16 }}
         >
           <Card className="items-center rounded-2xl bg-[#E6F4EA] px-6 py-4 shadow-md">
-            <Text className="text-lg font-semibold text-[#1f2933] text-center">Quản lý đối tác</Text>
+            <Text className="text-lg font-semibold text-[#1f2933] text-center">Partner Management</Text>
           </Card>
 
           <View className="flex-row items-center gap-2">
@@ -317,14 +317,14 @@ const StaffCustomersScreen = () => {
                 onChangeText={setSearchValue}
                 onFocus={() => setIsSearchFocused(true)}
                 onBlur={() => setIsSearchFocused(false)}
-                placeholder="Tìm theo mã khách hàng hoặc họ tên..."
+                placeholder="Search by customer ID or full name..."
                 className="text-sm text-[#111] py-1"
                 placeholderTextColor="#C5CCD7"
               />
             </View>
             {(isSearchFocused || searchValue.length > 0) && (
               <Pressable onPress={handleCancelSearch}>
-                <Text className="text-sm font-medium text-[#007AFF]">Hủy</Text>
+                <Text className="text-sm font-medium text-[#007AFF]">Cancel</Text>
               </Pressable>
             )}
           </View>
@@ -333,12 +333,12 @@ const StaffCustomersScreen = () => {
             {loading ? (
               <View className="px-4 py-6 items-center">
                 <ActivityIndicator />
-                <Text className="mt-2 text-sm text-[#666]">Đang tải...</Text>
+                <Text className="mt-2 text-sm text-[#666]">Loading...</Text>
               </View>
             ) : error ? (
               <Text className="px-4 py-6 text-center text-sm text-red-500">{error}</Text>
             ) : customers.length === 0 ? (
-              <Text className="px-4 py-6 text-center text-sm text-[#666]">Chưa có khách hàng.</Text>
+              <Text className="px-4 py-6 text-center text-sm text-[#666]">No customers found.</Text>
             ) : (
               customers.map((customer, index) => {
                 const badge = buildStatusBadge(customer.isActive ?? null);
@@ -359,18 +359,18 @@ const StaffCustomersScreen = () => {
                     <View className="space-y-1">
                       <View className="flex-row items-start justify-between">
                         <Text className="text-sm font-semibold text-[#111]">
-                          {customer.fullName || 'Khách hàng chưa cập nhật'}
+                          {customer.fullName || 'Customer not updated'}
                         </Text>
                         <Text className={`rounded-full border px-3 py-1 text-xs font-semibold ${badge.className}`}>
                           {badge.text}
                         </Text>
                       </View>
-                      <Text className="text-xs text-[#666]">Mã định danh: {customer.memberNo}</Text>
+                      <Text className="text-xs text-[#666]">ID: {customer.memberNo}</Text>
                       <Text className="text-xs text-[#666]">
-                        Chi nhánh - Nhóm: {formatBranchGroup(customer.branchName, customer.groupName)}
+                        Branch - Group: {formatBranchGroup(customer.branchName, customer.groupName)}
                       </Text>
                       {customer.phoneNumber ? (
-                        <Text className="text-xs text-[#666]">SĐT: {customer.phoneNumber}</Text>
+                        <Text className="text-xs text-[#666]">Phone: {customer.phoneNumber}</Text>
                       ) : null}
                     </View>
                   </Pressable>
@@ -381,7 +381,7 @@ const StaffCustomersScreen = () => {
         </View>
       </ScrollView>
 
-      {/* ✅ Button: canh đúng khung 480 + không chìm tabbar */}
+      {/* Button aligned with max content width and above tab bar */}
       <View
         pointerEvents="box-none"
         style={{
@@ -404,7 +404,7 @@ const StaffCustomersScreen = () => {
             height: BUTTON_H,
           }}
         >
-          <AppButton title="Thêm đối tác mới" onPress={openCreate} />
+          <AppButton title="Add New Partner" onPress={openCreate} />
         </View>
       </View>
 
@@ -414,7 +414,7 @@ const StaffCustomersScreen = () => {
           <View className="w-full max-w-md overflow-hidden rounded-[28px] border border-black/5 bg-white shadow-2xl">
             <View className="relative flex-row items-center justify-center border-b border-black/5 px-6 py-4">
               <Text className="text-[17px] font-semibold text-[#111]">
-                {modalMode === 'create' ? 'Tạo tài khoản đối tác' : 'Thông tin đối tác'}
+                {modalMode === 'create' ? 'Create Partner Account' : 'Partner Details'}
               </Text>
               <Pressable
                 onPress={() => setModalMode(null)}
@@ -437,30 +437,30 @@ const StaffCustomersScreen = () => {
               {modalMode === 'create' ? (
                 <>
                   <View className="space-y-2">
-                    <Text className="text-xs font-medium text-[#6C757D]">Mã định danh</Text>
+                    <Text className="text-xs font-medium text-[#6C757D]">Identifier</Text>
                 <TextInput
                   value={formMemberNo}
                   onChangeText={setFormMemberNo}
-                  placeholder="Nhập mã đối tác"
+                  placeholder="Enter partner ID"
                   className="rounded-2xl border border-black/5 px-4 py-3 text-base"
                   placeholderTextColor="#C5CCD7"
                 />
                   </View>
 
                   <View className="space-y-2">
-                    <Text className="text-xs font-medium text-[#6C757D]">Mật khẩu ban đầu</Text>
+                    <Text className="text-xs font-medium text-[#6C757D]">Initial Password</Text>
                 <TextInput
                   secureTextEntry
                   value={formInitialPassword}
                   onChangeText={setFormInitialPassword}
-                  placeholder="Nhập mật khẩu"
+                  placeholder="Enter password"
                   className="rounded-2xl border border-black/5 px-4 py-3 text-base"
                   placeholderTextColor="#C5CCD7"
                 />
                   </View>
 
                   {saveError ? <Text className="text-sm text-red-500">{saveError}</Text> : null}
-                  <AppButton title="Tạo tài khoản" onPress={handleCreateAccount} loading={saveLoading} />
+                  <AppButton title="Create Account" onPress={handleCreateAccount} loading={saveLoading} />
                 </>
               ) : null}
 
@@ -469,21 +469,21 @@ const StaffCustomersScreen = () => {
                   {detailLoading ? (
                     <View className="items-center">
                       <ActivityIndicator />
-                      <Text className="mt-2 text-sm text-[#666]">Đang tải thông tin...</Text>
+                      <Text className="mt-2 text-sm text-[#666]">Loading details...</Text>
                     </View>
                   ) : detailError ? (
                     <Text className="text-center text-sm text-red-500">{detailError}</Text>
                   ) : selectedDetail ? (
                     <>
                       <View className="space-y-1 rounded-2xl border border-black/5 bg-white px-4 py-3">
-                        <Text className="text-xs font-medium text-[#6C757D]">Mã đối tác</Text>
+                        <Text className="text-xs font-medium text-[#6C757D]">Partner ID</Text>
                         <Text className="text-sm font-semibold text-[#111]">{selectedDetail.memberNo}</Text>
                       </View>
 
                       <View className="space-y-1 rounded-2xl border border-black/5 bg-white px-4 py-3">
-                        <Text className="text-xs font-medium text-[#6C757D]">Họ và tên</Text>
+                        <Text className="text-xs font-medium text-[#6C757D]">Full Name</Text>
                         <Text className="text-sm font-semibold text-[#111]">
-                          {selectedDetail.fullName || 'Khách hàng chưa cập nhật'}
+                          {selectedDetail.fullName || 'Customer not updated'}
                         </Text>
                       </View>
 
@@ -491,11 +491,11 @@ const StaffCustomersScreen = () => {
                         <View className="space-y-2 rounded-2xl border border-black/5 bg-white px-4 py-3">
                           <View className="flex-row items-center justify-between">
                             <View className="space-y-1">
-                              <Text className="text-sm font-semibold text-[#111]">Khóa tài khoản</Text>
+                              <Text className="text-sm font-semibold text-[#111]">Lock Account</Text>
                               <Text className="text-xs text-[#6C757D]">
                                 {selectedDetail.credential
-                                  ? 'Bật để vô hiệu hóa đăng nhập'
-                                  : 'Khách hàng chưa có tài khoản'}
+                                  ? 'Turn on to disable login'
+                                  : 'Customer has no account yet'}
                               </Text>
                             </View>
                             <Switch
@@ -512,8 +512,8 @@ const StaffCustomersScreen = () => {
                       <View className="space-y-2 rounded-2xl border border-black/5 bg-white px-4 py-3">
                         <View className="flex-row items-center justify-between">
                           <View className="space-y-1">
-                            <Text className="text-sm font-semibold text-[#111]">Trợ năng</Text>
-                            <Text className="text-xs text-[#6C757D]">Bật để hỗ trợ bà con mù chữ</Text>
+                            <Text className="text-sm font-semibold text-[#111]">Accessibility</Text>
+                            <Text className="text-xs text-[#6C757D]">Enable for low-literacy support</Text>
                           </View>
                           <Switch
                             value={Boolean(selectedDetail.accessibilityEnabled)}
@@ -528,10 +528,10 @@ const StaffCustomersScreen = () => {
                       {showTempBlock ? (
                         <View className="space-y-2 rounded-2xl border border-black/5 bg-white px-4 py-3">
                           <View className="flex-row items-center justify-between">
-                            <Text className="text-sm font-semibold text-[#111]">Mật khẩu tạm thời hiện tại</Text>
+                            <Text className="text-sm font-semibold text-[#111]">Current Temporary Password</Text>
                             <Pressable onPress={() => setShowTempPassword((prev) => !prev)}>
                               <Text className="text-xs font-medium text-[#007AFF]">
-                                {showTempPassword ? 'Ẩn' : 'Hiện'}
+                                {showTempPassword ? 'Hide' : 'Show'}
                               </Text>
                             </Pressable>
                           </View>
@@ -541,9 +541,9 @@ const StaffCustomersScreen = () => {
 
                       <View className="space-y-2 rounded-2xl border border-black/5 bg-white px-4 py-3">
                         <View className="flex-row items-center justify-between">
-                          <Text className="text-sm font-semibold text-[#111]">Đặt lại mật khẩu</Text>
+                          <Text className="text-sm font-semibold text-[#111]">Reset Password</Text>
                           <Pressable onPress={() => setShowResetPassword((prev) => !prev)}>
-                            <Text className="text-sm font-medium text-[#007AFF]">{showResetPassword ? 'Ẩn' : 'Mở'}</Text>
+                            <Text className="text-sm font-medium text-[#007AFF]">{showResetPassword ? 'Hide' : 'Open'}</Text>
                           </Pressable>
                         </View>
                         {showResetPassword ? (
@@ -552,11 +552,11 @@ const StaffCustomersScreen = () => {
                               secureTextEntry
                               value={resetPassword}
                               onChangeText={setResetPassword}
-                              placeholder="Mật khẩu tạm thời"
+                              placeholder="Temporary password"
                               className="rounded-2xl border border-black/5 px-4 py-3 text-base"
                               placeholderTextColor="#C5CCD7"
                             />
-                            <AppButton title="Xác nhận" onPress={handleResetPassword} loading={saveLoading} />
+                            <AppButton title="Confirm" onPress={handleResetPassword} loading={saveLoading} />
                           </View>
                         ) : null}
                       </View>

@@ -33,8 +33,8 @@ type RoleChip = { text: string; className: string };
 
 const buildStatusBadge = (isActive?: boolean | null): StatusBadge => {
   return isActive
-    ? { text: "Đang hoạt động", className: "border-emerald-100 bg-emerald-50 text-emerald-700" }
-    : { text: "Bị khóa", className: "border-rose-100 bg-rose-50 text-rose-700" };
+    ? { text: "Active", className: "border-emerald-100 bg-emerald-50 text-emerald-700" }
+    : { text: "Locked", className: "border-rose-100 bg-rose-50 text-rose-700" };
 };
 
 const buildRoleChip = (role?: string | null): RoleChip | null => {
@@ -57,10 +57,10 @@ const StaffManageScreen = () => {
   const tabBarHeight = useBottomTabBarHeight();
   const CONTAINER_MAX_W = 480;
   const [contentWidth, setContentWidth] = useState<number>(0);
-  const TAB_FALLBACK = 110; // fallback nếu tabBarHeight không trả về
+  const TAB_FALLBACK = 110; // fallback when tabBarHeight is unavailable
   const tabH = Math.max(tabBarHeight || 0, TAB_FALLBACK);
   const BUTTON_H = 56;
-  const floatingBottom = tabH + 12; // khoảng cách đẹp phía trên tabbar
+  const floatingBottom = tabH + 12; // spacing above tab bar
 
   const [staffUsers, setStaffUsers] = useState<StaffUserItem[]>([]);
   const [branches, setBranches] = useState<StaffBranchItem[]>([]);
@@ -101,8 +101,8 @@ const StaffManageScreen = () => {
 
   const filteredBranches = useMemo(() => branchOptions, [branchOptions]);
   const roleOptions = [
-    { value: "BA", label: "Trợ lý chi nhánh" },
-    { value: "BM", label: "Quản lý chi nhánh" },
+    { value: "BA", label: "Branch Assistant" },
+    { value: "BM", label: "Branch Manager" },
     { value: "SSO", label: "CCO" },
     { value: "ADMIN", label: "Admin" },
   ];
@@ -127,7 +127,7 @@ const StaffManageScreen = () => {
       const data = await appApi.getStaffUsers(q?.trim() || undefined);
       setStaffUsers(Array.isArray(data) ? data : []);
     } catch (e: any) {
-      setError(e?.response?.data?.message ?? "Không tải được danh sách nhân viên.");
+      setError(e?.response?.data?.message ?? "Unable to load staff list.");
     } finally {
       setLoading(false);
     }
@@ -194,17 +194,17 @@ const StaffManageScreen = () => {
     const fullName = formState.fullName.trim();
     const email = formState.email.trim();
     const password = formState.password.trim();
-    if (!fullName) return setSaveError("Vui lòng nhập họ và tên.");
-    if (!email) return setSaveError("Vui lòng nhập email.");
+    if (!fullName) return setSaveError("Please enter full name.");
+    if (!email) return setSaveError("Please enter email.");
     const roleNeedsBranch = ["BM", "BA", "SSO"].includes(formState.role);
     if (roleNeedsBranch && !formState.branchCode) {
-      return setSaveError("Vui lòng chọn chi nhánh cho nhân sự chi nhánh.");
+      return setSaveError("Please select a branch for this role.");
     }
     if (formState.role === "ADMIN" && formState.branchCode) {
-      return setSaveError("Admin không gán chi nhánh.");
+      return setSaveError("Admin cannot be assigned to a branch.");
     }
     if (formState.role !== "SSO" && !password) {
-      return setSaveError("Vui lòng nhập mật khẩu ban đầu.");
+      return setSaveError("Please enter an initial password.");
     }
     setSaveLoading(true);
     setSaveError(null);
@@ -220,7 +220,7 @@ const StaffManageScreen = () => {
       setModalMode(null);
       await fetchStaffUsers(query);
     } catch (err: any) {
-      setSaveError(err?.response?.data?.message ?? "Không thể tạo nhân viên.");
+      setSaveError(err?.response?.data?.message ?? "Unable to create staff user.");
     } finally {
       setSaveLoading(false);
     }
@@ -230,14 +230,14 @@ const StaffManageScreen = () => {
     if (!selectedStaff) return;
     const fullName = formState.fullName.trim();
     const email = formState.email.trim();
-    if (!fullName) return setSaveError("Vui lòng nhập họ và tên.");
-    if (!email) return setSaveError("Vui lòng nhập email.");
+    if (!fullName) return setSaveError("Please enter full name.");
+    if (!email) return setSaveError("Please enter email.");
     const roleNeedsBranch = ["BM", "BA", "SSO"].includes(formState.role);
     if (roleNeedsBranch && !formState.branchCode) {
-      return setSaveError("Vui lòng chọn chi nhánh cho nhân sự chi nhánh.");
+      return setSaveError("Please select a branch for this role.");
     }
     if (formState.role === "ADMIN" && formState.branchCode) {
-      return setSaveError("Admin không gán chi nhánh.");
+      return setSaveError("Admin cannot be assigned to a branch.");
     }
     setSaveLoading(true);
     setSaveError(null);
@@ -252,7 +252,7 @@ const StaffManageScreen = () => {
       setModalMode(null);
       await fetchStaffUsers(query);
     } catch (err: any) {
-      setSaveError(err?.response?.data?.message ?? "Không thể cập nhật nhân viên.");
+      setSaveError(err?.response?.data?.message ?? "Unable to update staff user.");
     } finally {
       setSaveLoading(false);
     }
@@ -261,9 +261,9 @@ const StaffManageScreen = () => {
   const handleToggleActive = async (nextActive: boolean) => {
     if (!selectedStaff) return;
     const confirmed = await new Promise<boolean>((resolve) => {
-      Alert.alert(nextActive ? "Mở khóa tài khoản?" : "Khóa tài khoản?", "", [
-        { text: "Hủy", style: "cancel", onPress: () => resolve(false) },
-        { text: "Xác nhận", onPress: () => resolve(true) },
+      Alert.alert(nextActive ? "Unlock account?" : "Lock account?", "", [
+        { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
+        { text: "Confirm", onPress: () => resolve(true) },
       ]);
     });
     if (!confirmed) return;
@@ -274,7 +274,7 @@ const StaffManageScreen = () => {
       setSelectedStaff((prev) => (prev ? { ...prev, isActive: nextActive } : prev));
       await fetchStaffUsers(query);
     } catch (err: any) {
-      setSaveError(err?.response?.data?.message ?? "Không thể cập nhật trạng thái.");
+      setSaveError(err?.response?.data?.message ?? "Unable to update account status.");
     } finally {
       setSaveLoading(false);
     }
@@ -283,7 +283,7 @@ const StaffManageScreen = () => {
   const handleResetPassword = async () => {
     if (!selectedStaff) return;
     const newPassword = resetPassword.trim();
-    if (!newPassword) return setSaveError("Vui lòng nhập mật khẩu mới.");
+    if (!newPassword) return setSaveError("Please enter a new password.");
     setSaveLoading(true);
     setSaveError(null);
     try {
@@ -291,7 +291,7 @@ const StaffManageScreen = () => {
       setResetPassword("");
       setShowResetPassword(false);
     } catch (err: any) {
-      setSaveError(err?.response?.data?.message ?? "Không thể đặt lại mật khẩu.");
+      setSaveError(err?.response?.data?.message ?? "Unable to reset password.");
     } finally {
       setSaveLoading(false);
     }
@@ -300,9 +300,9 @@ const StaffManageScreen = () => {
   const handleDelete = async () => {
     if (!selectedStaff) return;
     const confirmed = await new Promise<boolean>((resolve) => {
-      Alert.alert("Xóa nhân viên?", "Hành động không thể hoàn tác.", [
-        { text: "Hủy", style: "cancel", onPress: () => resolve(false) },
-        { text: "Xóa", style: "destructive", onPress: () => resolve(true) },
+      Alert.alert("Delete staff user?", "This action cannot be undone.", [
+        { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
+        { text: "Delete", style: "destructive", onPress: () => resolve(true) },
       ]);
     });
     if (!confirmed) return;
@@ -313,7 +313,7 @@ const StaffManageScreen = () => {
       setModalMode(null);
       await fetchStaffUsers(query);
     } catch (err: any) {
-      setSaveError(err?.response?.data?.message ?? "Không thể xóa nhân viên.");
+      setSaveError(err?.response?.data?.message ?? "Unable to delete staff user.");
     } finally {
       setSaveLoading(false);
     }
@@ -324,7 +324,7 @@ const StaffManageScreen = () => {
       <MobileFrame withBottomPadding>
         <View className="flex-1 items-center justify-center px-4">
           <Card className="w-full rounded-2xl">
-            <Text className="text-center text-sm text-[#666]">Bạn không có quyền truy cập trang này.</Text>
+            <Text className="text-center text-sm text-[#666]">You do not have access to this screen.</Text>
           </Card>
         </View>
       </MobileFrame>
@@ -338,7 +338,7 @@ const StaffManageScreen = () => {
         className="flex-1"
         contentContainerStyle={{
           paddingTop: 32,
-          paddingBottom: floatingBottom + BUTTON_H + 24, // chừa chỗ cho button + tabbar
+          paddingBottom: floatingBottom + BUTTON_H + 24, // leave room for button + tab bar
           paddingHorizontal: 16,
           gap: 16,
         }}
@@ -349,7 +349,7 @@ const StaffManageScreen = () => {
           style={{ alignSelf: "center", width: "100%", maxWidth: CONTAINER_MAX_W, gap: 16 }}
         >
           <Card className="items-center rounded-2xl bg-[#DDEBFF] px-6 py-4 shadow-md">
-            <Text className="text-lg font-semibold text-slate-900">Quản lý nhân viên</Text>
+            <Text className="text-lg font-semibold text-slate-900">Staff Management</Text>
           </Card>
 
           <View className="flex-row items-center gap-2">
@@ -360,13 +360,13 @@ const StaffManageScreen = () => {
                 onChangeText={setSearchValue}
                 onFocus={() => setIsSearchFocused(true)}
                 onBlur={() => setIsSearchFocused(false)}
-                placeholder="Tìm theo tên hoặc email..."
+                placeholder="Search by name or email..."
                 className="text-sm text-[#111] py-1"
               />
             </View>
             {(isSearchFocused || searchValue.length > 0) && (
               <Pressable onPress={handleCancelSearch}>
-                <Text className="text-sm font-medium text-[#007AFF]">Hủy</Text>
+                <Text className="text-sm font-medium text-[#007AFF]">Cancel</Text>
               </Pressable>
             )}
           </View>
@@ -375,12 +375,12 @@ const StaffManageScreen = () => {
             {loading ? (
               <View className="px-4 py-6 items-center">
                 <ActivityIndicator />
-                <Text className="mt-2 text-sm text-[#666]">Đang tải...</Text>
+                <Text className="mt-2 text-sm text-[#666]">Loading...</Text>
               </View>
             ) : error ? (
               <Text className="px-4 py-6 text-center text-sm text-red-500">{error}</Text>
             ) : staffUsers.length === 0 ? (
-              <Text className="px-4 py-6 text-center text-sm text-[#666]">Chưa có nhân viên.</Text>
+              <Text className="px-4 py-6 text-center text-sm text-[#666]">No staff users found.</Text>
             ) : (
               staffUsers
                 .filter(
@@ -407,7 +407,7 @@ const StaffManageScreen = () => {
                       <View className="space-y-1">
                         <View className="flex-row items-start justify-between gap-2">
                           <Text className="text-sm font-semibold text-[#111]">
-                            {staff.fullName ?? staff.email ?? "Nhân viên"}
+                            {staff.fullName ?? staff.email ?? "Staff user"}
                           </Text>
                           <View className="flex-row items-center gap-2">
                             <Text className={`rounded-full border px-3 py-1 text-xs font-semibold ${badge.className}`}>
@@ -424,7 +424,7 @@ const StaffManageScreen = () => {
                           </View>
                         </View>
                         <Text className="text-xs text-[#666]">
-                          Chi nhánh: {staff.branchCode ? `${staff.branchCode}-${staff.branchName ?? ''}` : '-'}
+                          Branch: {staff.branchCode ? `${staff.branchCode}-${staff.branchName ?? ''}` : '-'}
                         </Text>
                         <Text className="text-xs text-[#666]">Email: {staff.email ?? '-'}</Text>
                       </View>
@@ -450,7 +450,7 @@ const StaffManageScreen = () => {
         pointerEvents="box-none"
       >
         <View style={{ width: contentWidth || "100%", maxWidth: CONTAINER_MAX_W }}>
-          <AppButton title="Thêm nhân viên mới" onPress={openCreateModal} />
+          <AppButton title="Add New Staff User" onPress={openCreateModal} />
         </View>
       </View>
 
@@ -465,7 +465,7 @@ const StaffManageScreen = () => {
           >
             <View className="relative flex-row items-center justify-center border-b border-black/5 px-6 py-4">
               <Text className="text-[17px] font-semibold text-[#111]">
-                {modalMode === "create" ? "Thêm nhân viên" : "Chỉnh sửa nhân viên"}
+                {modalMode === "create" ? "Add Staff User" : "Edit Staff User"}
               </Text>
               <Pressable
                 onPress={() => setModalMode(null)}
@@ -487,11 +487,11 @@ const StaffManageScreen = () => {
                     contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 12, gap: 12 }}
                   >
                 <View className="space-y-2">
-                  <Text className="text-xs font-medium text-[#6C757D]">Họ và tên</Text>
+                  <Text className="text-xs font-medium text-[#6C757D]">Full Name</Text>
                   <TextInput
                     value={formState.fullName}
                     onChangeText={(v) => setFormState((prev) => ({ ...prev, fullName: v }))}
-                    placeholder="Nhập họ và tên"
+                    placeholder="Enter full name"
                     className="rounded-2xl border border-black/5 px-4 py-3 text-base"
                   />
                 </View>
@@ -501,13 +501,13 @@ const StaffManageScreen = () => {
                   <TextInput
                     value={formState.email}
                     onChangeText={(v) => setFormState((prev) => ({ ...prev, email: v }))}
-                    placeholder="Nhập email"
+                    placeholder="Enter email"
                     className="rounded-2xl border border-black/5 px-4 py-3 text-base"
                   />
                 </View>
 
                 <View className="space-y-2">
-                  <Text className="text-xs font-medium text-[#6C757D]">Vai trò</Text>
+                  <Text className="text-xs font-medium text-[#6C757D]">Role</Text>
                   <View className="flex-row flex-wrap gap-2">
                     {availableRoleOptions.map((opt) => {
                       const active = formState.role === opt.value;
@@ -533,13 +533,13 @@ const StaffManageScreen = () => {
                 </View>
 
                 <View className="space-y-2">
-                  <Text className="text-xs font-medium text-[#6C757D]">Chi nhánh</Text>
+                  <Text className="text-xs font-medium text-[#6C757D]">Branch</Text>
                   <Pressable
                     onPress={() => setBranchPickerOpen(true)}
                     className="rounded-2xl border border-black/5 px-4 py-3 bg-white flex-row items-center justify-between"
                   >
                     <Text className="text-base text-[#111]">
-                      {branchOptions.find((b) => b.value === formState.branchCode)?.label || "Chọn chi nhánh"}
+                      {branchOptions.find((b) => b.value === formState.branchCode)?.label || "Select a branch"}
                     </Text>
                     <Text className="text-lg text-[#0A84FF]">⌄</Text>
                   </Pressable>
@@ -547,12 +547,12 @@ const StaffManageScreen = () => {
 
                 {modalMode === "create" && formState.role !== "SSO" ? (
                   <View className="space-y-2">
-                    <Text className="text-xs font-medium text-[#6C757D]">Mật khẩu ban đầu</Text>
+                    <Text className="text-xs font-medium text-[#6C757D]">Initial Password</Text>
                     <TextInput
                       secureTextEntry
                       value={formState.password}
                       onChangeText={(v) => setFormState((prev) => ({ ...prev, password: v }))}
-                      placeholder="Nhập mật khẩu"
+                      placeholder="Enter password"
                       className="rounded-2xl border border-black/5 px-4 py-3 text-base"
                     />
                   </View>
@@ -562,7 +562,7 @@ const StaffManageScreen = () => {
                   <View className="space-y-3 rounded-2xl border border-black/5 bg-white px-4 py-3">
                     <View className="flex-row items-center justify-between">
                       <View className="space-y-1">
-                        <Text className="text-sm font-semibold text-[#111]">Khóa tài khoản</Text>
+                        <Text className="text-sm font-semibold text-[#111]">Lock Account</Text>
                       </View>
                       <Switch
                         value={!(selectedStaff.isActive ?? true)}
@@ -578,10 +578,10 @@ const StaffManageScreen = () => {
                 {modalMode === "edit" && selectedStaff?.role !== "SSO" ? (
                   <View className="space-y-3 rounded-2xl border border-black/5 bg-white px-4 py-3">
                     <View className="flex-row items-center justify-between">
-                      <Text className="text-sm font-semibold text-[#111]">Bảo mật</Text>
+                      <Text className="text-sm font-semibold text-[#111]">Security</Text>
                       <Pressable onPress={() => setShowResetPassword((prev) => !prev)}>
                         <Text className="text-sm font-medium text-[#007AFF]">
-                          {showResetPassword ? "Ẩn" : "Đặt lại mật khẩu"}
+                          {showResetPassword ? "Hide" : "Reset password"}
                         </Text>
                       </Pressable>
                     </View>
@@ -591,10 +591,10 @@ const StaffManageScreen = () => {
                           secureTextEntry
                           value={resetPassword}
                           onChangeText={setResetPassword}
-                          placeholder="Mật khẩu mới"
+                          placeholder="New password"
                           className="rounded-2xl border border-black/5 px-4 py-3 text-base"
                         />
-                        <AppButton title="Xác nhận" onPress={handleResetPassword} loading={saveLoading} />
+                        <AppButton title="Confirm" onPress={handleResetPassword} loading={saveLoading} />
                       </View>
                     ) : null}
                   </View>
@@ -614,9 +614,9 @@ const StaffManageScreen = () => {
                     }}
                   >
                     {modalMode === "create" ? (
-                      <AppButton title="Tạo nhân viên" onPress={handleCreate} loading={saveLoading} />
+                      <AppButton title="Create staff user" onPress={handleCreate} loading={saveLoading} />
                     ) : (
-                      <AppButton title="Lưu thay đổi" onPress={handleUpdate} loading={saveLoading} />
+                      <AppButton title="Save changes" onPress={handleUpdate} loading={saveLoading} />
                     )}
                     {modalMode === "edit" ? (
                       <Pressable
@@ -624,7 +624,7 @@ const StaffManageScreen = () => {
                         className="w-full rounded-full bg-[#DC3545] px-4 py-3"
                         style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}
                       >
-                        <Text className="text-center text-sm font-semibold text-white">Xóa nhân viên</Text>
+                        <Text className="text-center text-sm font-semibold text-white">Delete staff user</Text>
                       </Pressable>
                     ) : null}
                   </View>
@@ -644,7 +644,7 @@ const StaffManageScreen = () => {
             {/*  */}
             <ScrollView style={{ maxHeight: 320 }}>
               {filteredBranches.length === 0 ? (
-                <Text className="px-4 py-3 text-sm text-[#666]">Không có chi nhánh phù hợp.</Text>
+                <Text className="px-4 py-3 text-sm text-[#666]">No matching branch.</Text>
               ) : (
                 filteredBranches.map((b) => {
                   const active = formState.branchCode === b.value;
@@ -666,7 +666,7 @@ const StaffManageScreen = () => {
               )}
             </ScrollView>
             <Pressable onPress={() => setBranchPickerOpen(false)} className="items-center justify-center bg-slate-100 px-4 py-3">
-              <Text className="text-sm font-semibold text-[#111]">Đóng</Text>
+              <Text className="text-sm font-semibold text-[#111]">Close</Text>
             </Pressable>
           </Pressable>
         </Pressable>

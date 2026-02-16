@@ -34,8 +34,9 @@ const AccountScreen = () => {
   const isStaff = actorKind === 'STAFF';
   const isSuperAdmin = isStaff && staffRole === 'SUPER_ADMIN';
   const isAdmin = isStaff && staffRole === 'ADMIN';
+  const isAdminUi = isSuperAdmin || isAdmin;
 
-  const t = isSuperAdmin
+  const t = isAdminUi
     ? {
         accountTitle: 'Account Information',
         loading: 'Loading...',
@@ -73,7 +74,7 @@ const AccountScreen = () => {
         contactError: 'Chưa có số liên hệ.',
       };
 
-  const lbl = isSuperAdmin
+  const lbl = isAdminUi
     ? {
         fullName: 'Full name',
         customerId: 'Customer ID',
@@ -274,7 +275,7 @@ const AccountScreen = () => {
               ) : null}
             </View>
             <View className="px-6 pt-5 pb-[20px]">
-              <ChangePasswordForm onSuccess={() => setChangeOpen(false)} locale={isSuperAdmin ? 'en' : 'vi'} />
+              <ChangePasswordForm onSuccess={() => setChangeOpen(false)} locale={isAdminUi ? 'en' : 'vi'} />
             </View>
           </View>
         </View>
@@ -301,7 +302,10 @@ const AccountScreen = () => {
             {feedbackMsg ? (
               <Text
                 className={`mt-2 text-sm ${
-                  feedbackMsg.includes('fail') || feedbackMsg.includes('thất bại') ? 'text-red-500' : 'text-emerald-600'
+                  feedbackMsg.toLowerCase().includes('fail') ||
+                  feedbackMsg.toLowerCase().includes('thất bại')
+                    ? 'text-red-500'
+                    : 'text-emerald-600'
                 }`}
               >
                 {feedbackMsg}

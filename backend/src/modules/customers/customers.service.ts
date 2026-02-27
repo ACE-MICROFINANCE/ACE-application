@@ -871,11 +871,17 @@ export class CustomersService {
       },
       update: {
         passwordHash: hashed,
+        tokenVersion: { increment: 1 },
         mustChangePassword: true,
         tempPasswordEncrypted: encrypted,
         tempPasswordIssuedAt: issuedAt,
         passwordUpdatedAt: new Date(),
       },
+    });
+
+    await this.prisma.refreshToken.updateMany({
+      where: { customerId: customer.id, revokedAt: null },
+      data: { revokedAt: new Date() },
     });
 
     return { success: true, temporaryPassword: newPassword };
@@ -900,12 +906,17 @@ export class CustomersService {
 
     await this.prisma.customerCredential.update({
       where: { customerId: customer.id },
-      data: { isActive: !locked },
+      data: { isActive: !locked, tokenVersion: { increment: 1 } },
     });
 
     await this.prisma.customer.update({
       where: { id: customer.id },
       data: { isActive: !locked }, // CHANGED: keep login behavior consistent
+    });
+
+    await this.prisma.refreshToken.updateMany({
+      where: { customerId: customer.id, revokedAt: null },
+      data: { revokedAt: new Date() },
     });
 
     return { success: true };

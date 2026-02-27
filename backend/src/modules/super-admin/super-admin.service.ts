@@ -64,13 +64,18 @@ export class SuperAdminService {
 
   async updateAdmin(id: string, dto: UpdateAdminDto) {
     const adminId = BigInt(id);
-    const existing = await this.prisma.staffUser.findUnique({ where: { id: adminId, role: 'ADMIN' } });
-    if (!existing) throw new NotFoundException('Admin không tồn tại.');
+    const existing = await this.prisma.staffUser.findUnique({ where: { id: adminId } });
+    if (!existing || existing.role !== 'ADMIN') {
+      throw new NotFoundException('Admin does not exist.');
+    }
 
     const data: any = {};
     if (dto.email) data.email = dto.email.toLowerCase();
     if (dto.fullName) data.fullName = dto.fullName;
-    if (dto.password) data.passwordHash = await hashPassword(dto.password);
+    if (dto.password) {
+      data.passwordHash = await hashPassword(dto.password);
+      data.tokenVersion = { increment: 1 };
+    }
 
     const updated = await this.prisma.staffUser.update({
       where: { id: adminId },
@@ -87,10 +92,34 @@ export class SuperAdminService {
     return this.mapAdmin(updated);
   }
 
+  async setAdminLockStatus(id: string, locked: boolean) {
+    const adminId = BigInt(id);
+    const existing = await this.prisma.staffUser.findUnique({ where: { id: adminId } });
+    if (!existing || existing.role !== 'ADMIN') {
+      throw new NotFoundException('Admin does not exist.');
+    }
+
+    const updated = await this.prisma.staffUser.update({
+      where: { id: adminId },
+      data: { isActive: !locked, tokenVersion: { increment: 1 } },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        fullName: true,
+        isActive: true,
+        createdAt: true,
+      },
+    });
+    return this.mapAdmin(updated);
+  }
+
   async deleteAdmin(id: string) {
     const adminId = BigInt(id);
-    const existing = await this.prisma.staffUser.findUnique({ where: { id: adminId, role: 'ADMIN' } });
-    if (!existing) throw new NotFoundException('Admin không tồn tại.');
+    const existing = await this.prisma.staffUser.findUnique({ where: { id: adminId } });
+    if (!existing || existing.role !== 'ADMIN') {
+      throw new NotFoundException('Admin does not exist.');
+    }
 
     await this.prisma.staffUser.delete({ where: { id: adminId } });
     return { success: true };

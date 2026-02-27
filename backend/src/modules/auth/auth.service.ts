@@ -37,6 +37,33 @@ export class AuthService {
     return Number(this.configService.get<number>('auth.staffPasswordExpiryMonths') ?? 6);
   }
 
+  private getSessionMaxMinutes() {
+    return Number(this.configService.get<number>('jwt.sessionMaxMinutes') ?? 10);
+  }
+
+  private toRemainingSeconds(expiresAt: Date) {
+    const seconds = Math.floor((expiresAt.getTime() - Date.now()) / 1000);
+    return Math.max(1, seconds);
+  }
+
+  private resolveSessionExpiry(refreshExpiresIn: string | number, absoluteSessionExpiresAt?: Date | null) {
+    let sessionExpiresAt = computeExpiryDate(refreshExpiresIn);
+    const sessionMaxMinutes = this.getSessionMaxMinutes();
+
+    if (Number.isFinite(sessionMaxMinutes) && sessionMaxMinutes > 0) {
+      const hardLimit = new Date(Date.now() + sessionMaxMinutes * 60 * 1000);
+      if (hardLimit.getTime() < sessionExpiresAt.getTime()) {
+        sessionExpiresAt = hardLimit;
+      }
+    }
+
+    if (absoluteSessionExpiresAt && absoluteSessionExpiresAt.getTime() < sessionExpiresAt.getTime()) {
+      sessionExpiresAt = absoluteSessionExpiresAt;
+    }
+
+    return sessionExpiresAt;
+  }
+
   private addMonths(date: Date, months: number) {
     const d = new Date(date);
     d.setMonth(d.getMonth() + months);
@@ -77,37 +104,60 @@ export class AuthService {
     };
   }
 
-  private async signAccessToken(payload: JwtPayload) {
+  private async signAccessToken(payload: JwtPayload, sessionExpiresAt?: Date | null) {
     const accessExpiresIn = this.getExpiresIn('jwt.accessExpiresIn', '15m') as string | number;
+    let accessExpiresAt = computeExpiryDate(accessExpiresIn);
+    const sessionMaxMinutes = this.getSessionMaxMinutes();
+
+    if (Number.isFinite(sessionMaxMinutes) && sessionMaxMinutes > 0) {
+      const hardLimit = new Date(Date.now() + sessionMaxMinutes * 60 * 1000);
+      if (hardLimit.getTime() < accessExpiresAt.getTime()) {
+        accessExpiresAt = hardLimit;
+      }
+    }
+
+    if (sessionExpiresAt && sessionExpiresAt.getTime() < accessExpiresAt.getTime()) {
+      accessExpiresAt = sessionExpiresAt;
+    }
+
     return this.jwtService.signAsync(payload, {
       secret: this.configService.getOrThrow<string>('jwt.accessSecret'),
-      expiresIn: accessExpiresIn as any,
+      expiresIn: this.toRemainingSeconds(accessExpiresAt) as any,
     });
   }
 
-  private async issueTokens(customer: Prisma.CustomerGetPayload<{ include: { credential: true } }>) {
+  private async issueTokens(
+    customer: Prisma.CustomerGetPayload<{ include: { credential: true } }>,
+    absoluteSessionExpiresAt?: Date | null,
+  ) {
+    if (!customer.credential) {
+      throw new UnauthorizedException('Invalid account state.');
+    }
+
     const payload: JwtPayload = {
       sub: customer.id.toString(),
       actorKind: 'CUSTOMER',
       memberNo: customer.memberNo,
       branchCode: customer.branchCode ?? null,
       groupCode: customer.groupCode ?? null,
+      tokenVersion: customer.credential.tokenVersion,
       accessibilityEnabled: customer.accessibilityEnabled === true,
     };
 
     const refreshExpiresIn = this.getExpiresIn('jwt.refreshExpiresIn', '7d') as string | number;
+    const sessionExpiresAt = this.resolveSessionExpiry(refreshExpiresIn, absoluteSessionExpiresAt);
 
-    const accessToken = await this.signAccessToken(payload);
+    const accessToken = await this.signAccessToken(payload, sessionExpiresAt);
     const refreshToken = await this.jwtService.signAsync(payload, {
       secret: this.configService.getOrThrow<string>('jwt.refreshSecret'),
-      expiresIn: refreshExpiresIn as any,
+      expiresIn: this.toRemainingSeconds(sessionExpiresAt) as any,
     });
 
     await this.prisma.refreshToken.create({
       data: {
         customerId: customer.id,
         tokenHash: hashToken(refreshToken),
-        expiresAt: computeExpiryDate(refreshExpiresIn),
+        expiresAt: sessionExpiresAt,
       },
     });
 
@@ -132,7 +182,13 @@ export class AuthService {
       const staff = await this.prisma.staffUser.findUnique({
         where: { email: identifier.toLowerCase() },
       });
-      if (!staff || !staff.isActive) {
+      if (!staff) {
+        throw new UnauthorizedException('Thông tin đăng nhập không đúng.');
+      }
+      if (!staff.isActive) {
+        if (staff.role === 'ADMIN') {
+          throw new UnauthorizedException('Tài khoản của bạn đã bị vô hiệu hóa');
+        }
         throw new UnauthorizedException('Thông tin đăng nhập không đúng.');
       }
 
@@ -194,6 +250,7 @@ export class AuthService {
         actorKind: 'STAFF',
         role: staffRole,
         branchCode: staff.branchCode ?? null,
+        tokenVersion: staff.tokenVersion,
       };
 
       const accessToken = await this.signAccessToken(staffPayload);
@@ -215,7 +272,7 @@ export class AuthService {
     }
 
     const customer = await this.getCustomerWithCredential({ memberNo: identifier });
-    if (!customer || !customer.isActive || !customer.credential) {
+    if (!customer || !customer.isActive || !customer.credential || !customer.credential.isActive) {
       throw new UnauthorizedException('Thông tin đăng nhập không đúng.');
     }
 
@@ -296,6 +353,7 @@ export class AuthService {
         where: { id: staffId },
         data: {
           passwordHash: newHash,
+          tokenVersion: { increment: 1 },
           mustChangePassword: false,
           passwordUpdatedAt: new Date(),
           tempPasswordEncrypted: null,
@@ -332,6 +390,7 @@ export class AuthService {
       where: { customerId: id },
       data: {
         passwordHash: newHash,
+        tokenVersion: { increment: 1 },
         mustChangePassword: false,
         passwordUpdatedAt: new Date(),
         tempPasswordEncrypted: null,
@@ -381,6 +440,7 @@ export class AuthService {
       where: { id: staff.id },
       data: {
         passwordHash,
+        tokenVersion: { increment: 1 },
         mustChangePassword: true,
         passwordUpdatedAt: issuedAt,
         tempPasswordEncrypted: encrypted,
@@ -400,41 +460,79 @@ export class AuthService {
     });
   }
 
-  async refresh(userId: string, refreshToken: string) {
-    const id = BigInt(userId);
+  async refresh(
+    user: { userId: string; actorKind?: 'CUSTOMER' | 'STAFF'; tokenVersion?: number },
+    refreshToken: string,
+  ) {
+    if (user.actorKind !== 'CUSTOMER') {
+      throw new UnauthorizedException('Invalid refresh token.');
+    }
+
+    const id = BigInt(user.userId);
     const hashed = hashToken(refreshToken);
+    const now = new Date();
 
     const tokenRecord = await this.prisma.refreshToken.findFirst({
       where: {
         customerId: id,
         tokenHash: hashed,
-        revokedAt: null,
       },
     });
 
-    if (!tokenRecord || tokenRecord.expiresAt < new Date()) {
-      throw new UnauthorizedException('Refresh token không hợp lệ hoặc đã hết hạn.');
+    if (!tokenRecord) {
+      throw new UnauthorizedException('Refresh token is invalid or expired.');
+    }
+
+    if (tokenRecord.revokedAt) {
+      await this.prisma.refreshToken.updateMany({
+        where: { customerId: id, revokedAt: null },
+        data: { revokedAt: now },
+      });
+      throw new UnauthorizedException('Refresh token is invalid or expired.');
+    }
+
+    if (tokenRecord.expiresAt <= now) {
+      await this.prisma.refreshToken.update({
+        where: { id: tokenRecord.id },
+        data: { revokedAt: now },
+      });
+      throw new UnauthorizedException('Refresh token is invalid or expired.');
+    }
+
+    const customer = await this.getCustomerWithCredential({ id });
+    if (!customer || !customer.isActive || !customer.credential || !customer.credential.isActive) {
+      throw new UnauthorizedException('Account is inactive or does not exist.');
+    }
+
+    if (Number(user.tokenVersion ?? 0) !== customer.credential.tokenVersion) {
+      await this.prisma.refreshToken.updateMany({
+        where: { customerId: id, revokedAt: null },
+        data: { revokedAt: now },
+      });
+      throw new UnauthorizedException('Session is no longer valid.');
     }
 
     await this.prisma.refreshToken.update({
       where: { id: tokenRecord.id },
-      data: { revokedAt: new Date() },
+      data: { revokedAt: now },
     });
 
-    const customer = await this.getCustomerWithCredential({ id });
-    if (!customer || !customer.isActive || !customer.credential) {
-      throw new UnauthorizedException('Tài khoản không tồn tại hoặc đã bị khóa.');
-    }
-
-    const tokens = await this.issueTokens(customer);
+    const tokens = await this.issueTokens(customer, tokenRecord.expiresAt);
     return {
       ...tokens,
       customer: this.toCustomerResponse(customer),
     };
   }
 
-  async logout(userId: string, refreshToken: string) {
-    const id = BigInt(userId);
+  async logout(
+    user: { userId: string; actorKind?: 'CUSTOMER' | 'STAFF' },
+    refreshToken: string,
+  ) {
+    if (user.actorKind !== 'CUSTOMER') {
+      return { success: true };
+    }
+
+    const id = BigInt(user.userId);
     const hashed = hashToken(refreshToken);
     await this.prisma.refreshToken.updateMany({
       where: { customerId: id, tokenHash: hashed, revokedAt: null },
@@ -461,6 +559,7 @@ export class AuthService {
         where: { customerId: customer.id },
         data: {
           passwordHash,
+          tokenVersion: { increment: 1 },
           mustChangePassword: true,
           tempPasswordEncrypted: encryptedTempPassword,
           tempPasswordIssuedAt: issuedAt,
@@ -477,6 +576,11 @@ export class AuthService {
         },
       });
     }
+
+    await this.prisma.refreshToken.updateMany({
+      where: { customerId: customer.id, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
 
     // Gửi mail async để API trả về nhanh
     setImmediate(() => {

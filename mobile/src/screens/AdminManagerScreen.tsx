@@ -1,14 +1,15 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Modal,
   Pressable,
   ScrollView,
+  StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
-  StyleSheet,
 } from 'react-native';
 import { Swipeable, RectButton } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -25,10 +26,10 @@ const AdminManagerScreen = () => {
   const isSuperAdmin = profile?.actorKind === 'STAFF' && profile?.role === 'SUPER_ADMIN';
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
-  const CONTAINER_MAX_W = 480;
+  const containerMaxW = 480;
   const [contentWidth, setContentWidth] = useState<number>(0);
-  const TAB_FALLBACK = 110;
-  const tabH = Math.max(tabBarHeight || 0, TAB_FALLBACK);
+  const tabFallback = 110;
+  const tabH = Math.max(tabBarHeight || 0, tabFallback);
   const floatingBottom = tabH + 12;
 
   const [admins, setAdmins] = useState<StaffUserItem[]>([]);
@@ -39,6 +40,12 @@ const AdminManagerScreen = () => {
   const [formState, setFormState] = useState({ fullName: '', email: '', password: '' });
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveLoading, setSaveLoading] = useState(false);
+
+  const [manageOpen, setManageOpen] = useState(false);
+  const [selectedAdmin, setSelectedAdmin] = useState<StaffUserItem | null>(null);
+  const [manageLoading, setManageLoading] = useState(false);
+  const [manageError, setManageError] = useState<string | null>(null);
+
   const swipeRefs = useRef<Map<number, Swipeable>>(new Map());
   const [openId, setOpenId] = useState<number | null>(null);
 
@@ -102,6 +109,30 @@ const AdminManagerScreen = () => {
     }
   };
 
+  const openManageModal = (admin: StaffUserItem) => {
+    setManageError(null);
+    setSelectedAdmin(admin);
+    setManageOpen(true);
+  };
+
+  const handleToggleAdminLock = async (locked: boolean) => {
+    if (!selectedAdmin) return;
+    setManageLoading(true);
+    setManageError(null);
+    try {
+      const updated = await appApi.lockAdmin(selectedAdmin.id, locked);
+      const nextIsActive = typeof updated?.isActive === 'boolean' ? updated.isActive : !locked;
+      setSelectedAdmin((prev) => (prev ? { ...prev, isActive: nextIsActive } : prev));
+      setAdmins((prev) =>
+        prev.map((row) => (row.id === selectedAdmin.id ? { ...row, isActive: nextIsActive } : row)),
+      );
+    } catch (e: any) {
+      setManageError(e?.response?.data?.message ?? 'Unable to update lock status.');
+    } finally {
+      setManageLoading(false);
+    }
+  };
+
   if (!isSuperAdmin) {
     return (
       <MobileFrame withBottomPadding>
@@ -128,7 +159,7 @@ const AdminManagerScreen = () => {
       >
         <View
           onLayout={(e) => setContentWidth(e.nativeEvent.layout.width)}
-          style={{ alignSelf: 'center', width: '100%', maxWidth: CONTAINER_MAX_W, gap: 16 }}
+          style={{ alignSelf: 'center', width: '100%', maxWidth: containerMaxW, gap: 16 }}
         >
           <Card className="items-center rounded-2xl bg-[#DDEBFF] px-6 py-4 shadow-md">
             <Text className="text-lg font-semibold text-slate-900">Admin Manager</Text>
@@ -167,16 +198,31 @@ const AdminManagerScreen = () => {
                     if (openId === admin.id) setOpenId(null);
                   }}
                 >
-                  <View
-                    className="w-full px-4 py-4"
-                    style={{
+                  <Pressable
+                    onPress={() => openManageModal(admin)}
+                    style={({ pressed }) => ({
+                      backgroundColor: pressed ? 'rgba(0,0,0,0.03)' : 'transparent',
                       borderBottomWidth: idx === admins.length - 1 ? 0 : 1,
                       borderBottomColor: 'rgba(0,0,0,0.05)',
-                    }}
+                    })}
+                    className="w-full px-4 py-4"
                   >
-                    <Text className="text-sm font-semibold text-[#111]">{admin.fullName || 'Admin'}</Text>
-                    <Text className="text-xs text-[#666]">{admin.email}</Text>
-                  </View>
+                    <View className="flex-row items-center justify-between gap-2">
+                      <View className="flex-1">
+                        <Text className="text-sm font-semibold text-[#111]">{admin.fullName || 'Admin'}</Text>
+                        <Text className="text-xs text-[#666]">{admin.email}</Text>
+                      </View>
+                      <Text
+                        className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+                          admin.isActive
+                            ? 'border-emerald-100 bg-emerald-50 text-emerald-700'
+                            : 'border-rose-100 bg-rose-50 text-rose-700'
+                        }`}
+                      >
+                        {admin.isActive ? 'Active' : 'Disabled'}
+                      </Text>
+                    </View>
+                  </Pressable>
                 </Swipeable>
               ))
             )}
@@ -200,7 +246,7 @@ const AdminManagerScreen = () => {
           style={{
             alignSelf: 'center',
             width: contentWidth || '100%',
-            maxWidth: CONTAINER_MAX_W,
+            maxWidth: containerMaxW,
           }}
         >
           <AppButton title="Add Admin" onPress={() => setCreateOpen(true)} />
@@ -228,7 +274,7 @@ const AdminManagerScreen = () => {
               contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: insets.bottom + 16, gap: 12 }}
             >
               <View className="space-y-2">
-                    <Text className="text-xs font-medium text-[#6C757D]">Full name</Text>
+                <Text className="text-xs font-medium text-[#6C757D]">Full name</Text>
                 <TextInput
                   value={formState.fullName}
                   onChangeText={(v) => setFormState((prev) => ({ ...prev, fullName: v }))}
@@ -238,7 +284,7 @@ const AdminManagerScreen = () => {
                 />
               </View>
               <View className="space-y-2">
-                    <Text className="text-xs font-medium text-[#6C757D]">Email</Text>
+                <Text className="text-xs font-medium text-[#6C757D]">Email</Text>
                 <TextInput
                   value={formState.email}
                   onChangeText={(v) => setFormState((prev) => ({ ...prev, email: v }))}
@@ -250,7 +296,7 @@ const AdminManagerScreen = () => {
                 />
               </View>
               <View className="space-y-2">
-                    <Text className="text-xs font-medium text-[#6C757D]">Password</Text>
+                <Text className="text-xs font-medium text-[#6C757D]">Password</Text>
                 <TextInput
                   secureTextEntry
                   value={formState.password}
@@ -263,6 +309,60 @@ const AdminManagerScreen = () => {
               {saveError ? <Text className="text-sm text-red-500">{saveError}</Text> : null}
               <AppButton title="Create Admin" onPress={handleCreate} loading={saveLoading} />
             </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal visible={manageOpen} transparent animationType="fade" onRequestClose={() => setManageOpen(false)}>
+        <Pressable className="flex-1 items-center justify-center bg-black/30 px-4" onPress={() => setManageOpen(false)}>
+          <Pressable
+            className="w-full max-w-md overflow-hidden rounded-[28px] border border-black/5 bg-white shadow-2xl"
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View className="relative flex-row items-center justify-center border-b border-black/5 px-6 py-4">
+              <Text className="text-[17px] font-semibold text-[#111]">Manage Admin</Text>
+              <Pressable
+                onPress={() => setManageOpen(false)}
+                className="absolute right-4 top-3 h-8 w-8 items-center justify-center rounded-full border border-black/10 bg-black/5"
+              >
+                <Text className="text-base text-[#333]">×</Text>
+              </Pressable>
+            </View>
+
+            <View style={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: insets.bottom + 16, gap: 12 }}>
+              <View className="space-y-1 rounded-2xl border border-black/5 bg-white px-4 py-3">
+                <Text className="text-xs font-medium text-[#6C757D]">Full name</Text>
+                <Text className="text-sm font-semibold text-[#111]">{selectedAdmin?.fullName || 'Admin'}</Text>
+              </View>
+
+              <View className="space-y-1 rounded-2xl border border-black/5 bg-white px-4 py-3">
+                <Text className="text-xs font-medium text-[#6C757D]">Email</Text>
+                <Text className="text-sm font-semibold text-[#111]">{selectedAdmin?.email || '-'}</Text>
+              </View>
+
+              <View className="space-y-2 rounded-2xl border border-black/5 bg-white px-4 py-3">
+                <View className="flex-row items-center justify-between">
+                  <View className="space-y-1">
+                    <Text className="text-sm font-semibold text-[#111]">Lock Account</Text>
+                    <Text className="text-xs text-[#6C757D]">
+                      {selectedAdmin?.isActive
+                        ? 'Turn on to disable this admin account'
+                        : 'Account is disabled. Turn off to enable again'}
+                    </Text>
+                  </View>
+                  <Switch
+                    value={Boolean(selectedAdmin && !selectedAdmin.isActive)}
+                    onValueChange={(next) => handleToggleAdminLock(next)}
+                    disabled={!selectedAdmin || manageLoading}
+                    trackColor={{ false: '#E5E5EA', true: '#34C759' }}
+                    thumbColor="#fff"
+                  />
+                </View>
+              </View>
+
+              {manageError ? <Text className="text-sm text-red-500">{manageError}</Text> : null}
+              <AppButton title="Close" onPress={() => setManageOpen(false)} loading={manageLoading} />
+            </View>
           </Pressable>
         </Pressable>
       </Modal>

@@ -141,8 +141,14 @@ export const TabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, naviga
     }, []),
   );
 
+  const homeRouteName = useMemo(() => {
+    if (state.routes.some((route) => route.name === 'AdminDashboard')) return 'AdminDashboard';
+    if (state.routes.some((route) => route.name === 'Dashboard')) return 'Dashboard';
+    return state.routes[0]?.name;
+  }, [state.routes]);
+
   const routes = useMemo(
-    () => state.routes.filter((route) => route.name !== 'Dashboard'),
+    () => state.routes.filter((route) => route.name !== 'Dashboard' && route.name !== 'AdminDashboard'),
     [state.routes],
   );
 
@@ -180,9 +186,9 @@ export const TabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, naviga
                 });
 
                 if (!isFocused && !event.defaultPrevented) {
-                  navigation.navigate(route.name as never, route.params as never);
-                } else if (isFocused) {
-                  navigation.navigate('Dashboard' as never);
+                  (navigation as any).navigate(route.name, route.params);
+                } else if (isFocused && homeRouteName) {
+                  (navigation as any).navigate(homeRouteName);
                 }
 
                 if (badgeCounts[route.name]) {

@@ -1,0 +1,22 @@
+services:
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ace-backend
+    restart: unless-stopped
+    volumes:
+      # Nest ConfigModule will load /app/.env directly in container.
+      - ./backend/.env:/app/.env:ro
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+    ports:
+      # Bind to localhost only; nginx on VPS will reverse proxy to this port.
+      - "127.0.0.1:3001:3001"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:3001/docs',r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s

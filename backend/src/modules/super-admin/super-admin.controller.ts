@@ -1,10 +1,11 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { JwtAccessGuard } from '../../common/guards/jwt-access.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { SuperAdminService } from './super-admin.service';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { UpdateAdminDto } from './dto/update-admin.dto';
+import { UpdateAdminLockDto } from './dto/update-admin-lock.dto';
 
 @Controller('super-admin')
 @UseGuards(JwtAccessGuard, RolesGuard)
@@ -25,6 +26,11 @@ export class SuperAdminController {
   @Put('admins/:id')
   async updateAdmin(@Param('id') id: string, @Body() dto: UpdateAdminDto) {
     return this.service.updateAdmin(id, dto);
+  }
+
+  @Patch('admins/:id/lock')
+  async lockAdmin(@Param('id') id: string, @Body() dto: UpdateAdminLockDto) {
+    return this.service.setAdminLockStatus(id, dto.locked);
   }
 
   @Delete('admins/:id')

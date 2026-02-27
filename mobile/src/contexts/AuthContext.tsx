@@ -3,6 +3,7 @@ import { authService, AuthResponse } from '@services/authService';
 import { tokenStore } from '@lib/tokenStore';
 import { useAuthStore } from '@store/authStore';
 import { useProfileStore } from '@store/profileStore';
+import { AppState, AppStateStatus } from 'react-native';
 
 type AuthContextType = {
   customer: any;
@@ -25,6 +26,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const authStore = useAuthStore();
   const profileStore = useProfileStore();
+  const hardLockMinutes = Number(process.env.EXPO_PUBLIC_HARD_LOCK_MINUTES ?? '10');
 
   useEffect(() => {
     const bootstrap = async () => {
@@ -56,8 +58,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   // CHANGED: login dùng identifier (email hoặc mã KH) giống web
   const login = async (identifier: string, password: string) => {
-    const response = await authService.login(identifier, password);
+    const normalizedIdentifier = identifier.trim();
+    const response = await authService.login(normalizedIdentifier, password);
     await persistTokens(response);
+    if (normalizedIdentifier) {
+      await tokenStore.setItemAsync('ace_last_identifier', normalizedIdentifier);
+    }
+    await tokenStore.deleteItemAsync('ace_bg_at');
     setCustomer(response.customer);
     await profileStore.refreshProfile();
     setCustomer(profileStore.profile ?? response.customer);
@@ -91,6 +98,57 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setCustomer(null);
     setMustChangePassword(false);
   };
+
+  useEffect(() => {
+    let lastState: AppStateStatus = AppState.currentState;
+    let locking = false;
+
+    const clearSessionToLogin = async (reason: 'SOFT' | 'HARD') => {
+      if (locking) return;
+      locking = true;
+      try {
+        await tokenStore.setItemAsync('ace_last_lock_reason', reason);
+        await tokenStore.setItemAsync('ace_last_lock_at', String(Date.now()));
+        await authStore.clear();
+        profileStore.reset();
+        setAccessToken(null);
+        setRefreshToken(null);
+        setCustomer(null);
+        setMustChangePassword(false);
+      } finally {
+        locking = false;
+      }
+    };
+
+    const hardMs =
+      (Number.isFinite(hardLockMinutes) && hardLockMinutes > 0 ? hardLockMinutes : 10) * 60 * 1000;
+
+    const sub = AppState.addEventListener('change', async (nextState) => {
+      if (lastState === 'active' && (nextState === 'inactive' || nextState === 'background')) {
+        if (accessToken && customer) {
+          await tokenStore.setItemAsync('ace_bg_at', String(Date.now()));
+          await clearSessionToLogin('SOFT');
+        }
+      }
+
+      if (nextState === 'active') {
+        const bgAtRaw = await tokenStore.getItemAsync('ace_bg_at');
+        const bgAt = Number(bgAtRaw ?? '0');
+        if (bgAt > 0 && Date.now() - bgAt >= hardMs) {
+          await tokenStore.setItemAsync('ace_last_lock_reason', 'HARD');
+        }
+        if (bgAt > 0) {
+          await tokenStore.deleteItemAsync('ace_bg_at');
+        }
+      }
+
+      lastState = nextState;
+    });
+
+    return () => {
+      sub.remove();
+    };
+  }, [accessToken, customer, authStore, profileStore, hardLockMinutes]);
 
   const value = useMemo(
     () => ({

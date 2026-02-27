@@ -1,0 +1,5 @@
+ALTER TABLE "CustomerCredential"
+ADD COLUMN "tokenVersion" INTEGER NOT NULL DEFAULT 0;
+
+ALTER TABLE "StaffUser"
+ADD COLUMN "tokenVersion" INTEGER NOT NULL DEFAULT 0;

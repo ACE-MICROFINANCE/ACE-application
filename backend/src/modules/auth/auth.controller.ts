@@ -32,7 +32,7 @@ export class AuthController {
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   async refresh(@Req() req: any, @Body() dto: RefreshTokenDto) {
-    return this.authService.refresh(req.user.userId, dto.refreshToken);
+    return this.authService.refresh(req.user, dto.refreshToken);
   }
 
   @UseGuards(JwtAccessGuard)
@@ -45,7 +45,7 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   async logout(@Req() req: any, @Body() dto: RefreshTokenDto) {
-    return this.authService.logout(req.user.userId, dto.refreshToken);
+    return this.authService.logout(req.user, dto.refreshToken);
   }
 
   @Post('staff/forgot-password')

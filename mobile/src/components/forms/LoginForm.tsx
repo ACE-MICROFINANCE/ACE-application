@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Formik } from 'formik';
 import * as Yup from 'yup';
 import { AppButton } from '@components/ui/AppButton';
 import { TextInputField } from '@components/ui/TextInputField';
 import { useAuth } from '@contexts/AuthContext';
 import { Text, View } from 'react-native';
+import { tokenStore } from '@lib/tokenStore';
 
 // CHANGED: giống web - identifier (mã KH hoặc email) + mật khẩu 6 số
 const LoginSchema = Yup.object().shape({
@@ -24,10 +25,24 @@ const LoginSchema = Yup.object().shape({
 export const LoginForm = ({ onSuccess }: { onSuccess: (mustChange: boolean) => void }) => {
   const { login } = useAuth();
   const [error, setError] = useState<string | null>(null);
+  const [initialIdentifier, setInitialIdentifier] = useState('');
+
+  useEffect(() => {
+    let mounted = true;
+    const loadIdentifier = async () => {
+      const saved = (await tokenStore.getItemAsync('ace_last_identifier')) ?? '';
+      if (mounted) setInitialIdentifier(saved);
+    };
+    loadIdentifier();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return (
     <Formik
-      initialValues={{ identifier: '', password: '' }}
+      initialValues={{ identifier: initialIdentifier, password: '' }}
+      enableReinitialize
       validationSchema={LoginSchema}
       onSubmit={async (values, { setSubmitting }) => {
         setError(null);

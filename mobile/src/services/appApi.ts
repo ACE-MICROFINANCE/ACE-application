@@ -257,6 +257,50 @@ export type WeatherResponse = {
   }>;
 };
 
+export type FeatureUsageRange = 'daily' | 'weekly' | 'monthly' | 'year';
+
+export type FeatureUsageSeries = {
+  featureKey: string;
+  label: string;
+  total: number;
+  data: number[];
+};
+
+export type FeatureUsageOverTimeResponse = {
+  range: FeatureUsageRange;
+  buckets: string[];
+  from: string;
+  to: string;
+  features: FeatureUsageSeries[];
+  availableFeatures: Array<{ featureKey: string; label: string; count: number }>;
+};
+
+export type ActiveCustomersResponse = {
+  period: 'weekly' | 'monthly' | 'yearly';
+  from: string;
+  to: string;
+  totalCustomers: number;
+  activeCustomers: number;
+  inactiveCustomers: number;
+  activeRate: number;
+};
+
+export type FeatureTimeSpentItem = {
+  featureKey: string;
+  label: string;
+  totalMinutes: number;
+  averageMinutes: number;
+  sessions: number;
+  activeUsers: number;
+};
+
+export type FeatureTimeSpentResponse = {
+  period: 'weekly' | 'monthly' | 'yearly';
+  from: string;
+  to: string;
+  features: FeatureTimeSpentItem[];
+};
+
 export const appApi = {
   getCurrentLoan: async (): Promise<LoanCurrentResponse> => {
     const { data } = await apiClient.get('/loan/current');
@@ -333,6 +377,10 @@ export const appApi = {
   },
   createAdmin: async (payload: { fullName?: string | null; email: string; password: string }) => {
     const { data } = await apiClient.post('/super-admin/admins', payload);
+    return data;
+  },
+  lockAdmin: async (id: number, locked: boolean) => {
+    const { data } = await apiClient.patch(`/super-admin/admins/${id}/lock`, { locked });
     return data;
   },
   deleteAdmin: async (id: number) => {
@@ -420,6 +468,51 @@ export const appApi = {
   },
   getProfile: async () => {
     const { data } = await apiClient.get('/me');
+    return data;
+  },
+  trackFeatureUsage: async (payload: {
+    featureKey: string;
+    eventType?: string;
+    durationSeconds?: number;
+    occurredAt?: string;
+    clientEventId?: string;
+    source?: string;
+  }) => {
+    const { data } = await apiClient.post('/dashboard/feature-usage/track', payload);
+    return data;
+  },
+  getFeatureUsageOverTime: async (params?: {
+    range?: FeatureUsageRange;
+    features?: string[];
+    limit?: number;
+  }): Promise<FeatureUsageOverTimeResponse> => {
+    const { data } = await apiClient.get('/dashboard/feature-usage-over-time', {
+      params: {
+        ...(params?.range ? { range: params.range } : {}),
+        ...(params?.features?.length ? { features: params.features.join(',') } : {}),
+        ...(params?.limit ? { limit: params.limit } : {}),
+      },
+    });
+    return data;
+  },
+  getActiveCustomers: async (params?: { range?: 'weekly' | 'monthly' | 'yearly' }): Promise<ActiveCustomersResponse> => {
+    const { data } = await apiClient.get('/dashboard/active-customers', {
+      params: {
+        ...(params?.range ? { range: params.range } : {}),
+      },
+    });
+    return data;
+  },
+  getFeatureTimeSpent: async (params?: {
+    range?: 'weekly' | 'monthly' | 'yearly';
+    features?: string[];
+  }): Promise<FeatureTimeSpentResponse> => {
+    const { data } = await apiClient.get('/dashboard/feature-time-spent', {
+      params: {
+        ...(params?.range ? { range: params.range } : {}),
+        ...(params?.features?.length ? { features: params.features.join(',') } : {}),
+      },
+    });
     return data;
   },
   registerDeviceToken: async (token: string, platform: 'android' | 'ios') => {

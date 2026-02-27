@@ -3,25 +3,25 @@ import { PrismaService } from '../../database/prisma.service';
 import { hashPassword } from '../../utils/password.util';
 import { CreateStaffUserDto } from './dto/create-staff-user.dto';
 import { UpdateStaffUserDto } from './dto/update-staff-user.dto';
-import { BranchGroupMapService } from '../customers/branch-group-map.service'; // CHANGED: resolve branch name
+import { BranchGroupMapService } from '../customers/branch-group-map.service';
 
 @Injectable()
 export class StaffUsersService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly branchGroupMapService: BranchGroupMapService, // CHANGED: resolve branch info
+    private readonly branchGroupMapService: BranchGroupMapService,
   ) {}
 
   private async mapBranchName(branchCode?: string | null) {
     const branch = await this.branchGroupMapService.resolveBranchByCode(branchCode);
-    return branch?.branchName ?? null; // CHANGED: map branchName from static map
+    return branch?.branchName ?? null;
   }
 
   private async mapStaffUser(row: { id: bigint; branchCode?: string | null } & Record<string, unknown>) {
     return {
       ...row,
-      id: Number(row.id), // CHANGED: convert BigInt to number for JSON response
-      branchName: await this.mapBranchName(row.branchCode), // CHANGED: include branchName in response
+      id: Number(row.id),
+      branchName: await this.mapBranchName(row.branchCode),
     };
   }
 
@@ -30,12 +30,9 @@ export class StaffUsersService {
     const rows = await this.prisma.staffUser.findMany({
       where: q
         ? {
-            OR: [
-              { email: { contains: q } },
-              { fullName: { contains: q } },
-            ],
+            OR: [{ email: { contains: q } }, { fullName: { contains: q } }],
           }
-        : undefined, // CHANGED: optional search by email/fullName
+        : undefined,
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,
@@ -48,8 +45,8 @@ export class StaffUsersService {
         updatedAt: true,
       },
     });
-    const mapped = await Promise.all(rows.map((row) => this.mapStaffUser(row)));
-    return mapped; // CHANGED: map BigInt + branchName
+
+    return Promise.all(rows.map((row) => this.mapStaffUser(row)));
   }
 
   async listSsoByBranch(branchCode: string) {
@@ -70,28 +67,29 @@ export class StaffUsersService {
         isActive: true,
       },
     });
-    const mapped = await Promise.all(rows.map((row) => this.mapStaffUser(row)));
-    return mapped;
+
+    return Promise.all(rows.map((row) => this.mapStaffUser(row)));
   }
 
   async create(dto: CreateStaffUserDto) {
     const roleNeedsBranch = dto.role === 'BM' || dto.role === 'BA' || dto.role === 'SSO';
     if (roleNeedsBranch && !dto.branchCode) {
-      throw new BadRequestException('Nhân sự chi nhánh phải có mã chi nhánh.'); // CHANGED: Vietnamese message
+      throw new BadRequestException('Nhân sự chi nhánh phải có mã chi nhánh.');
     }
     if (dto.role === 'ADMIN' && dto.branchCode) {
-      throw new BadRequestException('Admin không được gán mã chi nhánh.'); // CHANGED: Vietnamese message
+      throw new BadRequestException('Admin không được gán mã chi nhánh.');
     }
 
     const passwordToUse =
       dto.password && dto.password.length > 0
         ? dto.password
         : dto.role === 'SSO'
-        ? Math.floor(100000 + Math.random() * 900000).toString() // generate 6-digit placeholder
-        : null;
+          ? Math.floor(100000 + Math.random() * 900000).toString()
+          : null;
     if (!passwordToUse) {
       throw new BadRequestException('Mật khẩu bắt buộc đối với vai trò này.');
     }
+
     const passwordHash = await hashPassword(passwordToUse);
     const created = await this.prisma.staffUser.create({
       data: {
@@ -113,31 +111,36 @@ export class StaffUsersService {
         updatedAt: true,
       },
     });
-    return this.mapStaffUser(created); // CHANGED: map BigInt + branchName
+
+    return this.mapStaffUser(created);
   }
 
   async update(id: string, dto: UpdateStaffUserDto) {
     const staffId = BigInt(id);
     const existing = await this.prisma.staffUser.findUnique({ where: { id: staffId } });
     if (!existing) {
-      throw new NotFoundException('Không tìm thấy nhân viên.'); // CHANGED: Vietnamese message
+      throw new NotFoundException('Không tìm thấy nhân viên.');
     }
 
     const role = dto.role ?? existing.role;
     const branchCode = role === 'ADMIN' ? null : dto.branchCode ?? existing.branchCode ?? null;
     const roleNeedsBranch = role === 'BM' || role === 'BA';
     if (roleNeedsBranch && !branchCode) {
-      throw new BadRequestException('Nhân sự chi nhánh phải có mã chi nhánh.'); // CHANGED: Vietnamese message
+      throw new BadRequestException('Nhân sự chi nhánh phải có mã chi nhánh.');
     }
+
+    const shouldBumpTokenVersion =
+      dto.isActive !== undefined && dto.isActive !== existing.isActive;
 
     const updated = await this.prisma.staffUser.update({
       where: { id: staffId },
       data: {
         fullName: dto.fullName ?? undefined,
-        email: dto.email?.toLowerCase() ?? undefined, // CHANGED: allow update email
+        email: dto.email?.toLowerCase() ?? undefined,
         role: dto.role ?? undefined,
         branchCode: dto.role ? (role === 'ADMIN' ? null : branchCode) : undefined,
         isActive: dto.isActive ?? undefined,
+        ...(shouldBumpTokenVersion ? { tokenVersion: { increment: 1 } } : {}),
       },
       select: {
         id: true,
@@ -150,20 +153,21 @@ export class StaffUsersService {
         updatedAt: true,
       },
     });
-    return this.mapStaffUser(updated); // CHANGED: map BigInt + branchName
+
+    return this.mapStaffUser(updated);
   }
 
   async resetPassword(id: string, newPassword: string) {
     const staffId = BigInt(id);
     const existing = await this.prisma.staffUser.findUnique({ where: { id: staffId } });
     if (!existing) {
-      throw new NotFoundException('Không tìm thấy nhân viên.'); // CHANGED: Vietnamese message
+      throw new NotFoundException('Không tìm thấy nhân viên.');
     }
 
     const passwordHash = await hashPassword(newPassword);
-    return this.prisma.staffUser.update({
+    const updated = await this.prisma.staffUser.update({
       where: { id: staffId },
-      data: { passwordHash },
+      data: { passwordHash, tokenVersion: { increment: 1 } },
       select: {
         id: true,
         email: true,
@@ -173,19 +177,24 @@ export class StaffUsersService {
         isActive: true,
         updatedAt: true,
       },
-    }).then((row) => this.mapStaffUser(row)); // CHANGED: map BigInt + branchName
+    });
+
+    return this.mapStaffUser(updated);
   }
 
   async setLockStatus(id: string, locked: boolean) {
     const staffId = BigInt(id);
     const existing = await this.prisma.staffUser.findUnique({ where: { id: staffId } });
     if (!existing) {
-      throw new NotFoundException('Không tìm thấy nhân viên.'); // CHANGED: Vietnamese message
+      throw new NotFoundException('Không tìm thấy nhân viên.');
     }
 
-    return this.prisma.staffUser.update({
+    const updated = await this.prisma.staffUser.update({
       where: { id: staffId },
-      data: { isActive: !locked }, // CHANGED: lock/unlock via isActive
+      data: {
+        isActive: !locked,
+        tokenVersion: { increment: 1 },
+      },
       select: {
         id: true,
         email: true,
@@ -195,21 +204,23 @@ export class StaffUsersService {
         isActive: true,
         updatedAt: true,
       },
-    }).then((row) => this.mapStaffUser(row)); // CHANGED: map BigInt + branchName
+    });
+
+    return this.mapStaffUser(updated);
   }
 
   async remove(id: string) {
     const staffId = BigInt(id);
     const existing = await this.prisma.staffUser.findUnique({ where: { id: staffId } });
     if (!existing) {
-      throw new NotFoundException('Không tìm thấy nhân viên.'); // CHANGED: Vietnamese message
+      throw new NotFoundException('Không tìm thấy nhân viên.');
     }
 
-    await this.prisma.staffUser.delete({ where: { id: staffId } }); // CHANGED: delete staff user
+    await this.prisma.staffUser.delete({ where: { id: staffId } });
     return { success: true };
   }
 
   listBranches() {
-    return this.branchGroupMapService.listBranches(); // CHANGED: expose branch list for admin UI
+    return this.branchGroupMapService.listBranches();
   }
 }

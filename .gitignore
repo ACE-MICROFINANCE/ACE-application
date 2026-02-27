@@ -22,7 +22,6 @@ build/
 /backend/prisma/*.db
 /backend/prisma/*-journal
 /backend/prisma/dev.db*
-/backend/prisma/migrations/
 
 # Web (Next.js)
 /web/.next/

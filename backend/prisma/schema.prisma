@@ -43,6 +43,7 @@ model CustomerCredential {
   customerId            BigInt    @id
   passwordHash          String
   isActive              Boolean   @default(true)
+  tokenVersion          Int       @default(0)
   mustChangePassword    Boolean   @default(true)
   tempPasswordEncrypted String?
   tempPasswordIssuedAt  DateTime?
@@ -70,6 +71,7 @@ model StaffUser {
   fullName                     String?
   phoneNumber                  String?
   isActive                     Boolean        @default(true)
+  tokenVersion                 Int            @default(0)
   mustChangePassword           Boolean        @default(false)
   passwordUpdatedAt            DateTime?
   tempPasswordEncrypted        String?
@@ -295,4 +297,24 @@ model DeviceToken {
   lastSeenAt DateTime @default(now())
 
   @@index([actorKind, actorId])
+}
+
+model FeatureUsageEvent {
+  id            BigInt   @id @default(autoincrement())
+  actorKind     String
+  actorId       String
+  role          String?
+  branchCode    String?
+  featureKey    String
+  eventType     String   @default("VIEW")
+  durationSeconds Int?
+  source        String?
+  clientEventId String?  @unique
+  occurredAt    DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  @@index([occurredAt])
+  @@index([featureKey, occurredAt])
+  @@index([actorKind, actorId, occurredAt])
+  @@index([branchCode, occurredAt])
 }

@@ -102,6 +102,7 @@ export class AdminService {
       },
       update: {
         passwordHash,
+        tokenVersion: { increment: 1 },
         mustChangePassword: true,
         passwordUpdatedAt: new Date(),
         tempPasswordEncrypted: encryptedTempPassword, // CHANGED: store encrypted temp password

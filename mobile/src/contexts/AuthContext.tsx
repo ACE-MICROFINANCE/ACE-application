@@ -31,12 +31,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const bootstrap = async () => {
       await authStore.hydrate();
-      setAccessToken(authStore.accessToken);
-      setRefreshToken(authStore.refreshToken);
-      setMustChangePassword(authStore.mustChangePassword);
-      if (authStore.accessToken) {
+      const hydratedAuth = useAuthStore.getState();
+      setAccessToken(hydratedAuth.accessToken);
+      setRefreshToken(hydratedAuth.refreshToken);
+      setMustChangePassword(hydratedAuth.mustChangePassword);
+      if (hydratedAuth.accessToken) {
         await profileStore.refreshProfile();
-        setCustomer(profileStore.profile);
+        const latestProfile = useProfileStore.getState().profile;
+        setCustomer(latestProfile ?? null);
       }
       setIsLoading(false);
     };
@@ -47,7 +49,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const flag =
       payload.mustChangePassword ??
       payload.customer?.mustChangePassword ??
-      // @ts-expect-error profile only present for staff
       (payload as any)?.profile?.mustChangePassword ??
       false;
     await authStore.setTokens(payload.accessToken, payload.refreshToken, flag);
@@ -65,9 +66,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       await tokenStore.setItemAsync('ace_last_identifier', normalizedIdentifier);
     }
     await tokenStore.deleteItemAsync('ace_bg_at');
-    setCustomer(response.customer);
+    // Staff login returns profile (not customer); keep either to avoid transient unauthenticated state.
+    setCustomer((response as any).customer ?? (response as any).profile ?? null);
     await profileStore.refreshProfile();
-    setCustomer(profileStore.profile ?? response.customer);
+    const latestProfile = useProfileStore.getState().profile;
+    setCustomer(latestProfile ?? (response as any).profile ?? (response as any).customer ?? null);
     return response;
   };
 
@@ -79,14 +82,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       await authStore.setTokens(accessToken, refreshToken, false);
       setMustChangePassword(false);
       await profileStore.refreshProfile();
-      setCustomer(profileStore.profile ?? customer);
+      const latestProfile = useProfileStore.getState().profile;
+      setCustomer(latestProfile ?? customer);
       return response;
     }
 
     await persistTokens(response);
     setMustChangePassword(false);
     await profileStore.refreshProfile();
-    setCustomer(profileStore.profile ?? response.customer);
+    const latestProfile = useProfileStore.getState().profile;
+    setCustomer(latestProfile ?? (response as any).profile ?? (response as any).customer ?? null);
     return response;
   };
 
@@ -124,7 +129,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       (Number.isFinite(hardLockMinutes) && hardLockMinutes > 0 ? hardLockMinutes : 10) * 60 * 1000;
 
     const sub = AppState.addEventListener('change', async (nextState) => {
-      if (lastState === 'active' && (nextState === 'inactive' || nextState === 'background')) {
+      // Only lock when app actually goes to background.
+      // "inactive" can happen transiently (system dialogs) and should not force logout.
+      if (lastState === 'active' && nextState === 'background') {
         if (accessToken && customer) {
           await tokenStore.setItemAsync('ace_bg_at', String(Date.now()));
           await clearSessionToLogin('SOFT');

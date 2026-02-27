@@ -35,6 +35,7 @@ build/
 /mobile/.expo-shared/
 /mobile/.expo/*
 /mobile/.expo-shared/*
+/mobile/.expo-export-check/
 /mobile/node_modules/
 /mobile/.env
 /mobile/.env.local

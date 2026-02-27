@@ -2,10 +2,10 @@
   "expo": {
     "name": "ACE Partner",
     "slug": "ace-farmer",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "jsEngine": "hermes",
-    "icon": "./assets/img/icon.jpg.png",
+    "icon": "./assets/img/icon_app.png",
     "platforms": [
       "ios",
       "android",
@@ -14,23 +14,30 @@
     "assetBundlePatterns": [
       "**/*"
     ],
+    "splash": {
+      "image": "./assets/img/icon_app.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFFFF"
+    },
     "android": {
       "package": "parner.anhchiem.org",
+      "versionCode": 2,
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/img/icon.jpg.png",
+        "foregroundImage": "./assets/img/icon_app.png",
         "backgroundColor": "#FFFFFF"
       }
     },
     "ios": {
-      "icon": "./assets/img/icon.jpg.png"
+      "icon": "./assets/img/icon_app.png",
+      "buildNumber": "2"
     },
     "extra": {
       "eas": {
         "projectId": "3e4a2d40-0d87-41ee-95d9-ecfb1bf469fa"
       }
       ,
-      "API_BASE_URL": "https://ace.phucpink.io.vn/"
+      "API_BASE_URL": "https://api.anhchiem.org"
     },
     "plugins": [
       "expo-font"

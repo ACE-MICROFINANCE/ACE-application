@@ -11,8 +11,8 @@ export class CreateStaffUserDto {
   password?: string;
 
   @IsString()
-  @IsIn(['ADMIN', 'BA', 'BM', 'SUPER_ADMIN', 'SSO'])
-  role!: 'ADMIN' | 'BA' | 'BM' | 'SUPER_ADMIN' | 'SSO';
+  @IsIn(['ADMIN', 'BA', 'BM', 'SSO'])
+  role!: 'ADMIN' | 'BA' | 'BM' | 'SSO';
 
   @IsString()
   @IsOptional()

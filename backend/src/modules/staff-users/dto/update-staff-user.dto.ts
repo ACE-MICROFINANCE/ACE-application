@@ -11,8 +11,8 @@ export class UpdateStaffUserDto {
 
   @IsString()
   @IsOptional()
-  @IsIn(['ADMIN', 'BA', 'BM', 'SUPER_ADMIN'])
-  role?: 'ADMIN' | 'BA' | 'BM' | 'SUPER_ADMIN';
+  @IsIn(['ADMIN', 'BA', 'BM'])
+  role?: 'ADMIN' | 'BA' | 'BM';
 
   @IsString()
   @IsOptional()

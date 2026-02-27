@@ -1,11 +1,12 @@
-import axios from 'axios';
+// Use browser build to avoid pulling Node-only axios entry (crypto/http) in Expo native bundle.
+import axios from 'axios/dist/browser/axios.cjs';
 import Constants from 'expo-constants';
 import { tokenStore } from './tokenStore';
 
 const baseURL =
   (Constants.expoConfig?.extra as any)?.API_BASE_URL ||
   process.env.EXPO_PUBLIC_API_URL ||
-  'https://ace.phucpink.io.vn';
+  'https://api.anhchiem.org';
 
 // CHANGED: đặt timeout mặc định để tránh treo "Loading session..." nếu backend không phản hồi
 const apiClient = axios.create({ baseURL, timeout: 30000 });

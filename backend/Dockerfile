@@ -2,6 +2,7 @@
 
 FROM node:20-bookworm-slim AS base
 WORKDIR /app
+RUN apt-get update -y && apt-get install -y --no-install-recommends openssl libssl3 ca-certificates && rm -rf /var/lib/apt/lists/*
 ENV NODE_ENV=production
 
 FROM base AS deps
@@ -36,5 +37,4 @@ ENV PORT=3001
 EXPOSE 3001
 
 # Run schema migrations before app start
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]
-
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/src/main.js"]

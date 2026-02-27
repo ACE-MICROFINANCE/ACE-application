@@ -107,8 +107,13 @@ const StaffManageScreen = () => {
     { value: "ADMIN", label: "Admin" },
   ];
   const availableRoleOptions = useMemo(
-    () => (profile?.role === "SUPER_ADMIN" ? roleOptions : roleOptions.filter((r) => r.value !== "ADMIN")),
-    [profile?.role],
+    () => {
+      const base =
+        profile?.role === "SUPER_ADMIN" ? roleOptions : roleOptions.filter((r) => r.value !== "ADMIN");
+      // Edit mode: do not allow selecting SSO role.
+      return modalMode === "edit" ? base.filter((r) => r.value !== "SSO") : base;
+    },
+    [profile?.role, modalMode],
   );
 
   const fetchBranches = async () => {
@@ -232,11 +237,13 @@ const StaffManageScreen = () => {
     const email = formState.email.trim();
     if (!fullName) return setSaveError("Please enter full name.");
     if (!email) return setSaveError("Please enter email.");
-    const roleNeedsBranch = ["BM", "BA", "SSO"].includes(formState.role);
+    const roleForUpdate = formState.role === "SSO" ? undefined : formState.role;
+    const effectiveRole = roleForUpdate ?? (selectedStaff.role ?? "");
+    const roleNeedsBranch = ["BM", "BA", "SSO"].includes(effectiveRole);
     if (roleNeedsBranch && !formState.branchCode) {
       return setSaveError("Please select a branch for this role.");
     }
-    if (formState.role === "ADMIN" && formState.branchCode) {
+    if (effectiveRole === "ADMIN" && formState.branchCode) {
       return setSaveError("Admin cannot be assigned to a branch.");
     }
     setSaveLoading(true);
@@ -245,7 +252,7 @@ const StaffManageScreen = () => {
       const payload: UpdateStaffUserPayload = {
         fullName,
         email,
-        role: formState.role,
+        role: roleForUpdate,
         branchCode: roleNeedsBranch ? formState.branchCode : undefined,
       };
       await appApi.updateStaffUser(selectedStaff.id, payload);

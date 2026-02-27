@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+﻿import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { hashPassword } from '../../utils/password.util';
 import { CreateStaffUserDto } from './dto/create-staff-user.dto';
@@ -72,6 +72,10 @@ export class StaffUsersService {
   }
 
   async create(dto: CreateStaffUserDto) {
+    if ((dto.role as string) === 'SUPER_ADMIN') {
+      throw new ForbiddenException('Không được tạo tài khoản SUPER_ADMIN tại API này.');
+    }
+
     const roleNeedsBranch = dto.role === 'BM' || dto.role === 'BA' || dto.role === 'SSO';
     if (roleNeedsBranch && !dto.branchCode) {
       throw new BadRequestException('Nhân sự chi nhánh phải có mã chi nhánh.');
@@ -121,16 +125,22 @@ export class StaffUsersService {
     if (!existing) {
       throw new NotFoundException('Không tìm thấy nhân viên.');
     }
+    if (existing.role === 'SUPER_ADMIN') {
+      throw new ForbiddenException('Không được chỉnh sửa tài khoản SUPER_ADMIN.');
+    }
 
     const role = dto.role ?? existing.role;
+    if ((role as string) === 'SUPER_ADMIN') {
+      throw new ForbiddenException('Không được gán quyền SUPER_ADMIN tại API này.');
+    }
+
     const branchCode = role === 'ADMIN' ? null : dto.branchCode ?? existing.branchCode ?? null;
-    const roleNeedsBranch = role === 'BM' || role === 'BA';
+    const roleNeedsBranch = role === 'BM' || role === 'BA' || role === 'SSO';
     if (roleNeedsBranch && !branchCode) {
       throw new BadRequestException('Nhân sự chi nhánh phải có mã chi nhánh.');
     }
 
-    const shouldBumpTokenVersion =
-      dto.isActive !== undefined && dto.isActive !== existing.isActive;
+    const shouldBumpTokenVersion = dto.isActive !== undefined && dto.isActive !== existing.isActive;
 
     const updated = await this.prisma.staffUser.update({
       where: { id: staffId },
@@ -163,6 +173,9 @@ export class StaffUsersService {
     if (!existing) {
       throw new NotFoundException('Không tìm thấy nhân viên.');
     }
+    if (existing.role === 'SUPER_ADMIN') {
+      throw new ForbiddenException('Không được đặt lại mật khẩu SUPER_ADMIN tại API này.');
+    }
 
     const passwordHash = await hashPassword(newPassword);
     const updated = await this.prisma.staffUser.update({
@@ -187,6 +200,9 @@ export class StaffUsersService {
     const existing = await this.prisma.staffUser.findUnique({ where: { id: staffId } });
     if (!existing) {
       throw new NotFoundException('Không tìm thấy nhân viên.');
+    }
+    if (existing.role === 'SUPER_ADMIN') {
+      throw new ForbiddenException('Không được khóa/mở khóa tài khoản SUPER_ADMIN.');
     }
 
     const updated = await this.prisma.staffUser.update({
@@ -214,6 +230,9 @@ export class StaffUsersService {
     const existing = await this.prisma.staffUser.findUnique({ where: { id: staffId } });
     if (!existing) {
       throw new NotFoundException('Không tìm thấy nhân viên.');
+    }
+    if (existing.role === 'SUPER_ADMIN') {
+      throw new ForbiddenException('Không được xóa tài khoản SUPER_ADMIN.');
     }
 
     await this.prisma.staffUser.delete({ where: { id: staffId } });

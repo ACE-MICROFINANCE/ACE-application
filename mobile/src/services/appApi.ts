@@ -121,14 +121,14 @@ export type ContactsResponse = {
 export type CreateStaffUserPayload = {
   email: string;
   password?: string;
-  role: 'ADMIN' | 'SUPER_ADMIN' | 'BA' | 'BM' | 'SSO' | string;
+  role: 'ADMIN' | 'BA' | 'BM' | 'SSO' | string;
   branchCode?: string | null;
   fullName?: string | null;
 };
 
 export type UpdateStaffUserPayload = {
   email?: string | null;
-  role?: 'ADMIN' | 'SUPER_ADMIN' | 'BA' | 'BM' | 'SSO' | string | null;
+  role?: 'ADMIN' | 'BA' | 'BM' | string | null;
   branchCode?: string | null;
   fullName?: string | null;
 };

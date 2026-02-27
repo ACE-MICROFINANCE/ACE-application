@@ -2,9 +2,11 @@
 
 FROM node:20-bookworm-slim AS base
 WORKDIR /app
-ENV NODE_ENV=production
+RUN apt-get update -y && apt-get install -y --no-install-recommends openssl libssl3 ca-certificates && rm -rf /var/lib/apt/lists/*
+
 
 FROM base AS deps
+ENV NODE_ENV=development
 COPY package*.json ./
 RUN npm ci
 
@@ -15,26 +17,20 @@ COPY . .
 RUN npx prisma generate
 RUN npm run build
 
-FROM base AS prod-deps
-COPY package*.json ./
-RUN npm ci --omit=dev
-
 FROM base AS runner
 WORKDIR /app
+ENV NODE_ENV=production
 
-# Production node_modules + generated Prisma client artifacts
-COPY --from=prod-deps /app/node_modules ./node_modules
+COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/client
 
-# Runtime files
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/src/branch-group-map.json ./src/branch-group-map.json
 COPY package*.json ./
 
 ENV PORT=3001
 EXPOSE 3001
 
-# Run schema migrations before app start
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]
-
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/src/main.js"]

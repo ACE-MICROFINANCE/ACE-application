@@ -281,36 +281,35 @@ export default function LoanPage() {
                   </span>
                 </div>
 
-                {/* // CHANGED: Thay d?ng "S? ti?n ph?i tr? ti?p theo" th?nh 3 d?ng chi ti?t; gi? block c? ?? ??i chi?u */}
+                {/* // CHANGED: Thay dòng "Số tiền phải trả tiếp theo" thành 3 dòng chi tiết; giữ block cũ để đối chiếu */}
                 {false && (
-                <div className="grid grid-cols-[1fr_auto] items-start gap-3 text-[#555]">
-                  <span>Số tiền phải trả tiếp theo</span>
+                  <div className="grid grid-cols-[1fr_auto] items-start gap-3 text-[#555]">
+                    <span>Số tiền phải trả tiếp theo</span>
 
-                  <div className="grid justify-items-end leading-tight">
-                    <div className="font-semibold text-right">
-                      {loan.nextPayment
-                        ? formatCurrencyVND(loan.nextPayment.totalDue ?? loan.nextPayment.principalDue)
-                        : '—'}
-                    </div>
-
-                    {loan.nextPayment?.dueDate ? (
-                      <div className="mt-0.5 inline-block text-right">
-                        {/* <div className="text-[#555] whitespace-nowrap">
-                          Hạn tới {formatDate(loan.nextPayment.dueDate)}
-                        </div> */}
-
-                        {typeof loan.remainingInstallments === 'number' &&
-                        typeof loan.termInstallments === 'number' &&
-                        loan.termInstallments > 0 ? (
-                          <div className="text-[#555] whitespace-nowrap">
-                            {/* Còn {loan.remainingInstallments}/{loan.termInstallments} Kỳ */}
-                          </div>
-                        ) : null}
+                    <div className="grid justify-items-end leading-tight">
+                      <div className="font-semibold text-right">
+                        {loan?.nextPayment
+                          ? formatCurrencyVND(loan?.nextPayment?.totalDue ?? loan?.nextPayment?.principalDue ?? 0)
+                          : '—'}
                       </div>
-                    ) : null}
-                  </div>
-                </div>
 
+                      {loan?.nextPayment?.dueDate ? (
+                        <div className="mt-0.5 inline-block text-right">
+                          {/* <div className="text-[#555] whitespace-nowrap">
+                            Hạn tới {formatDate(loan.nextPayment.dueDate)}
+                          </div> */}
+
+                          {typeof loan?.remainingInstallments === 'number' &&
+                          typeof loan?.termInstallments === 'number' &&
+                          (loan?.termInstallments ?? 0) > 0 ? (
+                            <div className="text-[#555] whitespace-nowrap">
+                              {/* Còn {loan.remainingInstallments}/{loan.termInstallments} Kỳ */}
+                            </div>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
                 )}
 
                 <div className="flex justify-between">

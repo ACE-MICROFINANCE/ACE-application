@@ -4,8 +4,8 @@ set -Eeuo pipefail
 APP_DIR="/opt/ACE_App"
 BRANCH="${DEPLOY_BRANCH:-main}"
 COMPOSE_FILE="${DEPLOY_COMPOSE_FILE:-docker-compose.vps.yml}"
-SERVICE="${DEPLOY_SERVICE:-api}"
-CONTAINER_NAME="${DEPLOY_CONTAINER_NAME:-ace-backend}"
+SERVICES="${DEPLOY_SERVICES:-api web}"
+CONTAINERS="${DEPLOY_CONTAINERS:-ace-backend ace-web}"
 HEALTH_RETRIES="${DEPLOY_HEALTH_RETRIES:-36}"
 HEALTH_SLEEP_SECONDS="${DEPLOY_HEALTH_SLEEP_SECONDS:-5}"
 
@@ -13,20 +13,27 @@ log() {
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
 }
 
-wait_for_service() {
+wait_for_containers() {
   local retries="$1"
   local sleep_seconds="$2"
 
   for ((i=1; i<=retries; i++)); do
-    local status
-    status="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$CONTAINER_NAME" 2>/dev/null || echo "not-found")"
+    local all_ready=true
+    for container in $CONTAINERS; do
+      local status
+      status="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$container" 2>/dev/null || echo "not-found")"
+      if [[ "$status" != "healthy" && "$status" != "running" ]]; then
+        all_ready=false
+        log "Waiting for $container: status=$status ($i/$retries)"
+      else
+        log "Container $container status=$status"
+      fi
+    done
 
-    if [[ "$status" == "healthy" || "$status" == "running" ]]; then
-      log "Container $CONTAINER_NAME status=$status"
+    if [[ "$all_ready" == "true" ]]; then
       return 0
     fi
 
-    log "Waiting for $CONTAINER_NAME: status=$status ($i/$retries)"
     sleep "$sleep_seconds"
   done
 
@@ -38,7 +45,7 @@ rollback() {
     log "Rollback to commit $PREV_COMMIT"
     git checkout "$BRANCH"
     git reset --hard "$PREV_COMMIT"
-    docker compose -f "$COMPOSE_FILE" up -d --build "$SERVICE"
+    docker compose -f "$COMPOSE_FILE" up -d --build $SERVICES
   fi
 }
 
@@ -58,11 +65,11 @@ main() {
   git checkout "$BRANCH"
   git pull --ff-only origin "$BRANCH"
 
-  log "Build and restart service: $SERVICE"
-  docker compose -f "$COMPOSE_FILE" up -d --build "$SERVICE"
+  log "Build and restart services: $SERVICES"
+  docker compose -f "$COMPOSE_FILE" up -d --build $SERVICES
 
   log "Wait for service health"
-  if ! wait_for_service "$HEALTH_RETRIES" "$HEALTH_SLEEP_SECONDS"; then
+  if ! wait_for_containers "$HEALTH_RETRIES" "$HEALTH_SLEEP_SECONDS"; then
     log "Health check timeout"
     exit 1
   fi

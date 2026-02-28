@@ -3,7 +3,7 @@ import { authService, AuthResponse } from '@services/authService';
 import { tokenStore } from '@lib/tokenStore';
 import { useAuthStore } from '@store/authStore';
 import { useProfileStore } from '@store/profileStore';
-import { AppState, AppStateStatus } from 'react-native';
+import { AppState, AppStateStatus, Platform } from 'react-native';
 
 type AuthContextType = {
   customer: any;
@@ -105,6 +105,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   useEffect(() => {
+    if (Platform.OS === 'web') {
+      return;
+    }
+
     let lastState: AppStateStatus = AppState.currentState;
     let locking = false;
 

@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -77,6 +78,8 @@ const AdminManagerScreen = () => {
     if (!confirmed) return;
     try {
       await appApi.deleteAdmin(item.id);
+      setManageOpen(false);
+      setSelectedAdmin(null);
       await loadAdmins();
     } catch (e: any) {
       Alert.alert('Error', e?.response?.data?.message ?? 'Unable to delete admin.');
@@ -87,6 +90,32 @@ const AdminManagerScreen = () => {
     <RectButton onPress={() => handleDelete(item)} style={styles.trashAction}>
       <Ionicons name="trash" size={24} color="#fff" />
     </RectButton>
+  );
+
+  const renderAdminRowContent = (admin: StaffUserItem, idx: number) => (
+    <View
+      style={{
+        borderBottomWidth: idx === admins.length - 1 ? 0 : 1,
+        borderBottomColor: 'rgba(0,0,0,0.05)',
+      }}
+      className="w-full px-4 py-4"
+    >
+      <View className="flex-row items-center justify-between gap-2">
+        <View className="flex-1">
+          <Text className="text-sm font-semibold text-[#111]">{admin.fullName || 'Admin'}</Text>
+          <Text className="text-xs text-[#666]">{admin.email}</Text>
+        </View>
+        <Text
+          className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+            admin.isActive
+              ? 'border-emerald-100 bg-emerald-50 text-emerald-700'
+              : 'border-rose-100 bg-rose-50 text-rose-700'
+          }`}
+        >
+          {admin.isActive ? 'Active' : 'Disabled'}
+        </Text>
+      </View>
+    </View>
   );
 
   const handleCreate = async () => {
@@ -176,55 +205,50 @@ const AdminManagerScreen = () => {
             ) : admins.length === 0 ? (
               <Text className="px-4 py-6 text-center text-sm text-[#666]">No admins yet.</Text>
             ) : (
-              admins.map((admin, idx) => (
-                <Swipeable
-                  ref={(ref) => {
-                    if (ref) {
-                      swipeRefs.current.set(admin.id, ref);
-                    } else {
-                      swipeRefs.current.delete(admin.id);
-                    }
-                  }}
-                  key={admin.id}
-                  renderRightActions={() => renderRightActions(admin)}
-                  overshootRight={false}
-                  onSwipeableWillOpen={() => {
-                    if (openId && openId !== admin.id) {
-                      swipeRefs.current.get(openId)?.close?.();
-                    }
-                    setOpenId(admin.id);
-                  }}
-                  onSwipeableClose={() => {
-                    if (openId === admin.id) setOpenId(null);
-                  }}
-                >
+              admins.map((admin, idx) =>
+                Platform.OS === 'web' ? (
                   <Pressable
+                    key={admin.id}
                     onPress={() => openManageModal(admin)}
                     style={({ pressed }) => ({
                       backgroundColor: pressed ? 'rgba(0,0,0,0.03)' : 'transparent',
-                      borderBottomWidth: idx === admins.length - 1 ? 0 : 1,
-                      borderBottomColor: 'rgba(0,0,0,0.05)',
                     })}
-                    className="w-full px-4 py-4"
                   >
-                    <View className="flex-row items-center justify-between gap-2">
-                      <View className="flex-1">
-                        <Text className="text-sm font-semibold text-[#111]">{admin.fullName || 'Admin'}</Text>
-                        <Text className="text-xs text-[#666]">{admin.email}</Text>
-                      </View>
-                      <Text
-                        className={`rounded-full border px-3 py-1 text-xs font-semibold ${
-                          admin.isActive
-                            ? 'border-emerald-100 bg-emerald-50 text-emerald-700'
-                            : 'border-rose-100 bg-rose-50 text-rose-700'
-                        }`}
-                      >
-                        {admin.isActive ? 'Active' : 'Disabled'}
-                      </Text>
-                    </View>
+                    {renderAdminRowContent(admin, idx)}
                   </Pressable>
-                </Swipeable>
-              ))
+                ) : (
+                  <Swipeable
+                    ref={(ref) => {
+                      if (ref) {
+                        swipeRefs.current.set(admin.id, ref);
+                      } else {
+                        swipeRefs.current.delete(admin.id);
+                      }
+                    }}
+                    key={admin.id}
+                    renderRightActions={() => renderRightActions(admin)}
+                    overshootRight={false}
+                    onSwipeableWillOpen={() => {
+                      if (openId && openId !== admin.id) {
+                        swipeRefs.current.get(openId)?.close?.();
+                      }
+                      setOpenId(admin.id);
+                    }}
+                    onSwipeableClose={() => {
+                      if (openId === admin.id) setOpenId(null);
+                    }}
+                  >
+                    <Pressable
+                      onPress={() => openManageModal(admin)}
+                      style={({ pressed }) => ({
+                        backgroundColor: pressed ? 'rgba(0,0,0,0.03)' : 'transparent',
+                      })}
+                    >
+                      {renderAdminRowContent(admin, idx)}
+                    </Pressable>
+                  </Swipeable>
+                ),
+              )
             )}
           </View>
         </View>
@@ -362,6 +386,14 @@ const AdminManagerScreen = () => {
 
               {manageError ? <Text className="text-sm text-red-500">{manageError}</Text> : null}
               <AppButton title="Close" onPress={() => setManageOpen(false)} loading={manageLoading} />
+              {Platform.OS === 'web' && selectedAdmin ? (
+                <AppButton
+                  title="Delete account"
+                  onPress={() => handleDelete(selectedAdmin)}
+                  loading={manageLoading}
+                  bgColor="#dc2626"
+                />
+              ) : null}
             </View>
           </Pressable>
         </Pressable>

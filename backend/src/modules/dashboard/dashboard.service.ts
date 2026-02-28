@@ -382,7 +382,25 @@ export class DashboardService {
       }),
     ]);
 
-    const activeCustomers = activeActors.length;
+    // Keep numerator/denominator aligned on active customers only.
+    // Some historical events may belong to accounts that are no longer active.
+    const activeCustomerIds = Array.from(
+      new Set(
+        activeActors
+          .map((row) => row.actorId)
+          .filter((actorId) => /^\d+$/.test(actorId))
+          .map((actorId) => BigInt(actorId)),
+      ),
+    );
+
+    const activeCustomers = activeCustomerIds.length
+      ? await this.prisma.customer.count({
+          where: {
+            isActive: true,
+            id: { in: activeCustomerIds },
+          },
+        })
+      : 0;
     const inactiveCustomers = Math.max(totalCustomers - activeCustomers, 0);
     const activeRate = totalCustomers > 0 ? Number(((activeCustomers / totalCustomers) * 100).toFixed(1)) : 0;
 

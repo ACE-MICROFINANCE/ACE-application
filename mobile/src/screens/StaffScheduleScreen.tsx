@@ -168,6 +168,10 @@ const StaffScheduleScreen = () => {
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pickerMode, setPickerMode] = useState<"date" | "time">("date");
   const [tempDate, setTempDate] = useState<Date>(new Date());
+  const [webDatePickerOpen, setWebDatePickerOpen] = useState(false);
+  const [webDateValue, setWebDateValue] = useState("");
+  const [webTimeValue, setWebTimeValue] = useState("");
+  const [webPickerError, setWebPickerError] = useState<string | null>(null);
 
   const [formState, setFormState] = useState({
     title: "",
@@ -190,6 +194,10 @@ const StaffScheduleScreen = () => {
     setPickerMode("date");
     setPickerVisible(false);
     setTempDate(new Date());
+    setWebDatePickerOpen(false);
+    setWebDateValue("");
+    setWebTimeValue("");
+    setWebPickerError(null);
     setFormState({
       title: "",
       eventType: "MEETING",
@@ -212,6 +220,8 @@ const StaffScheduleScreen = () => {
     setGroupPickerOpen(false);
     setModalMode(null);
     setPickerVisible(false);
+    setWebDatePickerOpen(false);
+    setWebPickerError(null);
     setPickerMode("date");
     setTempDate(new Date());
   };
@@ -483,16 +493,15 @@ const modalStatus = isBM && selectedEvent?.hidden ? "HIDDEN" : modalStatusRaw;
     const base = formState.startDate ? new Date(formState.startDate) : new Date();
     const isNotice = formState.eventType === "NOTICE" || formState.eventType === "Thông báo";
     if (Platform.OS === "web") {
-      const raw = (global as any)?.window?.prompt(
-        isNotice
-          ? "Nhập ngày (YYYY-MM-DD):"
-          : "Nhập thời gian bắt đầu (YYYY-MM-DD HH:mm):",
-      );
-      if (!raw) return;
-      const parsed = isNotice ? new Date(raw) : new Date(raw.replace(" ", "T"));
-      if (!Number.isFinite(parsed.getTime())) return;
-      if (isNotice) parsed.setHours(0, 0, 0, 0);
-      setFormState((prev) => ({ ...prev, startDate: parsed.toISOString() }));
+      const yyyy = base.getFullYear();
+      const mm = String(base.getMonth() + 1).padStart(2, "0");
+      const dd = String(base.getDate()).padStart(2, "0");
+      const hh = String(base.getHours()).padStart(2, "0");
+      const min = String(base.getMinutes()).padStart(2, "0");
+      setWebDateValue(`${yyyy}-${mm}-${dd}`);
+      setWebTimeValue(`${hh}:${min}`);
+      setWebPickerError(null);
+      setWebDatePickerOpen(true);
       return;
     }
     if (Platform.OS === "android") {
@@ -524,6 +533,49 @@ const modalStatus = isBM && selectedEvent?.hidden ? "HIDDEN" : modalStatusRaw;
     setTempDate(base);
     setPickerMode("date");
     setPickerVisible(true);
+  };
+
+  const handleApplyWebDatePicker = () => {
+    const isNotice = formState.eventType === "NOTICE" || formState.eventType === "Thông báo";
+    const dateInput = webDateValue.trim();
+    if (!dateInput) {
+      setWebPickerError("Vui lòng nhập ngày theo định dạng YYYY-MM-DD.");
+      return;
+    }
+    const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+    if (!datePattern.test(dateInput)) {
+      setWebPickerError("Ngày không hợp lệ. Ví dụ: 2026-02-28");
+      return;
+    }
+    if (isNotice) {
+      const finalDate = new Date(`${dateInput}T00:00:00`);
+      if (!Number.isFinite(finalDate.getTime())) {
+        setWebPickerError("Ngày không hợp lệ.");
+        return;
+      }
+      finalDate.setHours(0, 0, 0, 0);
+      setFormState((prev) => ({ ...prev, startDate: finalDate.toISOString() }));
+      setWebDatePickerOpen(false);
+      return;
+    }
+
+    const timeInput = webTimeValue.trim();
+    if (!timeInput) {
+      setWebPickerError("Vui lòng nhập giờ theo định dạng HH:mm.");
+      return;
+    }
+    const timePattern = /^([01]\d|2[0-3]):([0-5]\d)$/;
+    if (!timePattern.test(timeInput)) {
+      setWebPickerError("Giờ không hợp lệ. Ví dụ: 09:30");
+      return;
+    }
+    const finalDate = new Date(`${dateInput}T${timeInput}:00`);
+    if (!Number.isFinite(finalDate.getTime())) {
+      setWebPickerError("Ngày giờ không hợp lệ.");
+      return;
+    }
+    setFormState((prev) => ({ ...prev, startDate: finalDate.toISOString() }));
+    setWebDatePickerOpen(false);
   };
 
   const handlePickerConfirm = (selected: Date) => {
@@ -1435,6 +1487,83 @@ const modalStatus = isBM && selectedEvent?.hidden ? "HIDDEN" : modalStatusRaw;
           onCancel={() => setPickerVisible(false)}
           display={Platform.OS === "ios" ? "spinner" : undefined}
         />
+      )}
+
+      {Platform.OS === "web" && (
+        <Modal transparent visible={webDatePickerOpen} animationType="fade" onRequestClose={() => setWebDatePickerOpen(false)}>
+          <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.35)", justifyContent: "center", paddingHorizontal: 20 }}>
+            <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setWebDatePickerOpen(false)} />
+            <View style={{ backgroundColor: "#fff", borderRadius: 20, padding: 16, gap: 12, maxWidth: 460, alignSelf: "center", width: "100%" }}>
+              <Text style={{ fontSize: 16, fontWeight: "700", color: "#111" }}>Chọn thời gian bắt đầu</Text>
+              <View style={{ gap: 6 }}>
+                <Text style={{ fontSize: 12, color: "#6C757D", fontWeight: "600" }}>Ngày (YYYY-MM-DD)</Text>
+                <TextInput
+                  value={webDateValue}
+                  onChangeText={(value) => {
+                    setWebDateValue(value);
+                    if (webPickerError) setWebPickerError(null);
+                  }}
+                  placeholder="2026-02-28"
+                  autoCapitalize="none"
+                  style={{
+                    borderWidth: 1,
+                    borderColor: "rgba(0,0,0,0.08)",
+                    borderRadius: 12,
+                    paddingHorizontal: 12,
+                    paddingVertical: 10,
+                    fontSize: 15,
+                    color: "#111",
+                    backgroundColor: "#fff",
+                  }}
+                  placeholderTextColor="#9ca3af"
+                />
+              </View>
+
+              {!isNoticeType(formState.eventType) ? (
+                <View style={{ gap: 6 }}>
+                  <Text style={{ fontSize: 12, color: "#6C757D", fontWeight: "600" }}>Giờ (HH:mm)</Text>
+                  <TextInput
+                    value={webTimeValue}
+                    onChangeText={(value) => {
+                      setWebTimeValue(value);
+                      if (webPickerError) setWebPickerError(null);
+                    }}
+                    placeholder="09:30"
+                    autoCapitalize="none"
+                    style={{
+                      borderWidth: 1,
+                      borderColor: "rgba(0,0,0,0.08)",
+                      borderRadius: 12,
+                      paddingHorizontal: 12,
+                      paddingVertical: 10,
+                      fontSize: 15,
+                      color: "#111",
+                      backgroundColor: "#fff",
+                    }}
+                    placeholderTextColor="#9ca3af"
+                  />
+                </View>
+              ) : null}
+
+              {webPickerError ? <Text style={{ color: "#dc2626", fontSize: 13 }}>{webPickerError}</Text> : null}
+
+              <View style={{ flexDirection: "row", gap: 10, marginTop: 4 }}>
+                <View style={{ flex: 1 }}>
+                  <AppButton
+                    title="Hủy"
+                    onPress={() => setWebDatePickerOpen(false)}
+                    bgColor="#E5E7EB"
+                    textClassName="text-slate-700"
+                    fullWidth={false}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <AppButton title="Áp dụng" onPress={handleApplyWebDatePicker} fullWidth={false} />
+                </View>
+              </View>
+            </View>
+          </View>
+        </Modal>
       )}
 
       {/* Modal xem toàn bộ nhóm */}

@@ -72,7 +72,6 @@ jobs:
           [ -n "${{ secrets.VPS_HOST }}" ] || (echo "Missing VPS_HOST secret" && exit 1)
           [ -n "${{ secrets.VPS_USER }}" ] || (echo "Missing VPS_USER secret" && exit 1)
           [ -n "${{ secrets.VPS_SSH_KEY }}" ] || (echo "Missing VPS_SSH_KEY secret" && exit 1)
-          [ -n "${{ secrets.VPS_PORT }}" ] || (echo "Missing VPS_PORT secret" && exit 1)
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.2.0
@@ -80,7 +79,7 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          port: ${{ secrets.VPS_PORT }}
+          port: 22
           script_stop: true
           script: |
             cd /opt/ACE_App

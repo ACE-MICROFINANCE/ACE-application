@@ -237,10 +237,14 @@ const AdminDashboardScreen = () => {
       ...chartData.savingData.map((p) => p.value),
       ...chartData.scheduleData.map((p) => p.value),
     ];
-    if (!allValues.length) return 5;
+    if (!allValues.length) return 1;
     const max = Math.max(...allValues, 0);
-    return max <= 4 ? 5 : Math.ceil(max * 1.2);
+    if (max <= 1) return 1;
+    if (max <= 3) return 3;
+    return Math.ceil(max * 1.2);
   }, [chartData]);
+
+  const usageChartSections = useMemo(() => (chartMaxValue <= 3 ? 3 : 4), [chartMaxValue]);
 
   const pieData = useMemo(() => {
     if (!activeUsers || activeUsers.totalCustomers <= 0) return [];
@@ -442,7 +446,7 @@ const AdminDashboardScreen = () => {
                     xAxisColor="#cbd5e1"
                     xAxisLabelTextStyle={{ color: '#64748b', fontSize: 10 }}
                     yAxisTextStyle={{ color: '#64748b', fontSize: 10 }}
-                    noOfSections={4}
+                    noOfSections={usageChartSections}
                     maxValue={chartMaxValue}
                     rulesColor="#e2e8f0"
                     isAnimated

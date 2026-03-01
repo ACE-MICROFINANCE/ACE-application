@@ -31,17 +31,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const bootstrap = async () => {
-      await authStore.hydrate();
-      const hydratedAuth = useAuthStore.getState();
-      setAccessToken(hydratedAuth.accessToken);
-      setRefreshToken(hydratedAuth.refreshToken);
-      setMustChangePassword(hydratedAuth.mustChangePassword);
-      if (hydratedAuth.accessToken) {
-        await profileStore.refreshProfile();
-        const latestProfile = useProfileStore.getState().profile;
-        setCustomer(latestProfile ?? null);
+      try {
+        await authStore.hydrate();
+        const hydratedAuth = useAuthStore.getState();
+        setAccessToken(hydratedAuth.accessToken);
+        setRefreshToken(hydratedAuth.refreshToken);
+        setMustChangePassword(hydratedAuth.mustChangePassword);
+        if (hydratedAuth.accessToken) {
+          await profileStore.refreshProfile();
+          const latestProfile = useProfileStore.getState().profile;
+          setCustomer(latestProfile ?? null);
+        }
+      } catch {
+        await authStore.clear();
+        profileStore.reset();
+        setAccessToken(null);
+        setRefreshToken(null);
+        setMustChangePassword(false);
+        setCustomer(null);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
     bootstrap();
   }, [authStore, profileStore]);

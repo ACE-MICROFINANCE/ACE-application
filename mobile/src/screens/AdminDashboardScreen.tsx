@@ -250,6 +250,13 @@ const AdminDashboardScreen = () => {
     return 4;
   }, [chartMaxValue]);
 
+  const usagePointCount = chartData.loanData.length;
+  const usageChartSpacing = useMemo(() => {
+    if (usagePointCount <= 1) return 40;
+    const available = Math.max(chartWidth - 48, 180);
+    return Math.max(16, Math.floor(available / (usagePointCount - 1)));
+  }, [usagePointCount]);
+
   const pieData = useMemo(() => {
     if (!activeUsers || activeUsers.totalCustomers <= 0) return [];
     return [
@@ -452,6 +459,10 @@ const AdminDashboardScreen = () => {
                     yAxisTextStyle={{ color: '#64748b', fontSize: 10 }}
                     noOfSections={usageChartSections}
                     maxValue={chartMaxValue}
+                    spacing={usageChartSpacing}
+                    initialSpacing={10}
+                    endSpacing={10}
+                    disableScroll
                     rulesColor="#e2e8f0"
                     isAnimated
                     animationDuration={480}

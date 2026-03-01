@@ -213,11 +213,11 @@ const AdminDashboardScreen = () => {
     const showEvery = totalPoints > 16 ? 3 : totalPoints > 10 ? 2 : 1;
 
     const loanData = loanSeries.map((value, idx) => ({
-      value,
+      value: Number(value) || 0,
       label: idx % showEvery === 0 ? labels[idx] ?? '' : '',
     }));
-    const savingData = savingSeries.map((value) => ({ value }));
-    const scheduleData = scheduleSeries.map((value) => ({ value }));
+    const savingData = savingSeries.map((value) => ({ value: Number(value) || 0 }));
+    const scheduleData = scheduleSeries.map((value) => ({ value: Number(value) || 0 }));
 
     return {
       loanData,
@@ -240,11 +240,15 @@ const AdminDashboardScreen = () => {
     if (!allValues.length) return 1;
     const max = Math.max(...allValues, 0);
     if (max <= 1) return 1;
-    if (max <= 3) return 3;
-    return Math.ceil(max * 1.2);
+    if (max <= 6) return Math.ceil(max);
+    return Math.ceil(max * 1.1);
   }, [chartData]);
 
-  const usageChartSections = useMemo(() => (chartMaxValue <= 3 ? 3 : 4), [chartMaxValue]);
+  const usageChartSections = useMemo(() => {
+    if (chartMaxValue <= 1) return 1;
+    if (chartMaxValue <= 6) return chartMaxValue;
+    return 4;
+  }, [chartMaxValue]);
 
   const pieData = useMemo(() => {
     if (!activeUsers || activeUsers.totalCustomers <= 0) return [];
@@ -440,7 +444,7 @@ const AdminDashboardScreen = () => {
                     dataPointsColor1={SERIES.LOANS.color}
                     dataPointsColor2={SERIES.SAVINGS.color}
                     dataPointsColor3={SERIES.SCHEDULE.color}
-                    dataPointsRadius={3}
+                    dataPointsRadius={4}
                     hideDataPoints={false}
                     yAxisColor="#cbd5e1"
                     xAxisColor="#cbd5e1"
@@ -451,7 +455,7 @@ const AdminDashboardScreen = () => {
                     rulesColor="#e2e8f0"
                     isAnimated
                     animationDuration={480}
-                    curved
+                    curved={false}
                     hideRules={false}
                   />
                 </View>

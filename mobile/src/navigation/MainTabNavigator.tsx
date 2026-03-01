@@ -55,7 +55,12 @@ export const MainTabNavigator = () => {
           clientEventId,
           source: 'mobile-tab',
         })
-        .catch(() => undefined);
+        .catch((err) => {
+          if (__DEV__) {
+            // Keep production silent, but surface tracking issues in dev.
+            console.warn('[trackFeatureUsage][VIEW] failed', featureKey, err?.response?.status ?? err?.message);
+          }
+        });
     },
     blur: () => {
       const startedAt = featureFocusAtRef.current[featureKey];
@@ -74,7 +79,11 @@ export const MainTabNavigator = () => {
           durationSeconds: cappedDurationSeconds,
           source: 'mobile-tab',
         })
-        .catch(() => undefined);
+        .catch((err) => {
+          if (__DEV__) {
+            console.warn('[trackFeatureUsage][DURATION] failed', featureKey, err?.response?.status ?? err?.message);
+          }
+        });
     },
   });
 

@@ -4,6 +4,7 @@ import { MobileFrame } from '@components/layout/MobileFrame';
 import { Card } from '@components/ui/Card';
 import { useScreenGuard } from '../hooks/useScreenGuard';
 import { appApi, type ContactItem } from '@services/appApi';
+import { withExternalOpenGuard } from '@lib/permissionPromptGuard';
 
 type InfoItem = {
   image: any;
@@ -77,7 +78,7 @@ const InfoScreen = () => {
   const handleCall = async (phone: string) => {
     try {
       setOpenError(null);
-      await Linking.openURL(`tel:${phone}`);
+      await withExternalOpenGuard(() => Linking.openURL(`tel:${phone}`));
     } catch {
       setOpenError('Không mở được ứng dụng gọi điện.');
     }
@@ -86,7 +87,7 @@ const InfoScreen = () => {
   const handleKnowledge = async () => {
     try {
       setOpenError(null);
-      await Linking.openURL('https://www.accessagriculture.org/search/all/vi');
+      await withExternalOpenGuard(() => Linking.openURL('https://www.accessagriculture.org/search/all/vi'));
     } catch {
       setOpenError('Không mở được đường dẫn.');
     }
@@ -183,3 +184,4 @@ const InfoScreen = () => {
 };
 
 export default InfoScreen;
+

@@ -8,6 +8,7 @@ import { AppButton } from '@components/ui/AppButton';
 import { useAuth } from '@contexts/AuthContext';
 import { useProfileStore } from '@store/profileStore';
 import { appApi, type LoanCurrentResponse, type ScheduleItem, type WeatherResponse } from '@services/appApi';
+import { withPermissionPromptGuard } from '@lib/permissionPromptGuard';
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
 const startOfToday = () => {
@@ -144,7 +145,12 @@ const WeatherCard = ({ isEnglish = false }: { isEnglish?: boolean }) => {
     const requestLocation = async () => {
       try {
         if (Platform.OS !== 'web') {
-          const { status } = await Location.requestForegroundPermissionsAsync();
+          let { status, canAskAgain } = await Location.getForegroundPermissionsAsync();
+          if (status !== 'granted' && canAskAgain !== false) {
+            const asked = await withPermissionPromptGuard(() => Location.requestForegroundPermissionsAsync());
+            status = asked.status;
+            canAskAgain = asked.canAskAgain;
+          }
           if (status === 'granted') {
             const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Lowest });
             fetchWeather(pos.coords.latitude, pos.coords.longitude);

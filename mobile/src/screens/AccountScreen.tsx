@@ -6,6 +6,7 @@ import { useAuth } from '@contexts/AuthContext';
 import { AppButton } from '@components/ui/AppButton';
 import { ChangePasswordForm } from '@components/forms/ChangePasswordForm';
 import { appApi } from '@services/appApi';
+import { withExternalOpenGuard } from '@lib/permissionPromptGuard';
 
 const formatDate = (val?: string | null) => {
   if (!val) return '-';
@@ -239,7 +240,9 @@ const AccountScreen = () => {
                       setContactError(t.contactError);
                       return;
                     }
-                    Linking.openURL(`tel:${socialPhone}`);
+                    withExternalOpenGuard(() => Linking.openURL(`tel:${socialPhone}`)).catch(() => {
+                      setContactError(t.contactError);
+                    });
                   }}
                 />
               </>
@@ -346,3 +349,4 @@ const AccountScreen = () => {
 };
 
 export default AccountScreen;
+

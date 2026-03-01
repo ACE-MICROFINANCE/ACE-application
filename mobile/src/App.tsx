@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -11,15 +11,15 @@ import { queryClient } from '@lib/queryClient';
 import { AuthProvider, useAuth } from '@contexts/AuthContext';
 import { AuthNavigator } from '@navigation/AuthNavigator';
 import { MainTabNavigator } from '@navigation/MainTabNavigator';
-import { View, Text } from 'react-native';
+import { AppState, Platform, Text, View } from 'react-native';
 import { BootGate } from '@screens/BootGate';
 import ForceChangePasswordScreen from '@screens/ForceChangePasswordScreen';
 import * as Notifications from 'expo-notifications';
+import * as Location from 'expo-location';
 import Constants from 'expo-constants';
-import * as Device from 'expo-device';
-import { Platform } from 'react-native';
 import { navigationRef } from '@navigation/navigationRef';
 import { appApi } from '@services/appApi';
+import { withPermissionPromptGuard } from '@lib/permissionPromptGuard';
 
 const RootStack = createNativeStackNavigator();
 
@@ -57,6 +57,54 @@ const RootNavigation = () => {
   const isAuthenticated = Boolean(accessToken && customer);
   const [pendingNotification, setPendingNotification] = useState<NotificationData | null>(null);
   const registeringRef = useRef(false);
+  const ensuringPermissionsRef = useRef(false);
+  const lastPermissionCheckAtRef = useRef(0);
+
+  const ensureCorePermissions = useCallback(
+    async (force = false) => {
+      if (!isAuthenticated || Platform.OS === 'web') return;
+      if (ensuringPermissionsRef.current) return;
+
+      const now = Date.now();
+      if (!force && now - lastPermissionCheckAtRef.current < 30000) return;
+      lastPermissionCheckAtRef.current = now;
+
+      ensuringPermissionsRef.current = true;
+      try {
+        const notificationPerm = await Notifications.getPermissionsAsync();
+        if (notificationPerm.status !== 'granted' && notificationPerm.canAskAgain !== false) {
+          await withPermissionPromptGuard(() => Notifications.requestPermissionsAsync());
+        }
+
+        const locationPerm = await Location.getForegroundPermissionsAsync();
+        if (locationPerm.status !== 'granted' && locationPerm.canAskAgain !== false) {
+          await withPermissionPromptGuard(() => Location.requestForegroundPermissionsAsync());
+        }
+      } catch {
+        // Ignore permission errors, app still works with fallbacks.
+      } finally {
+        ensuringPermissionsRef.current = false;
+      }
+    },
+    [isAuthenticated],
+  );
+
+  useEffect(() => {
+    ensureCorePermissions(true).catch(() => undefined);
+  }, [ensureCorePermissions]);
+
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    const sub = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        ensureCorePermissions(false).catch(() => undefined);
+      }
+    });
+
+    return () => {
+      sub.remove();
+    };
+  }, [ensureCorePermissions]);
 
   // register device token after login
   useEffect(() => {
@@ -65,13 +113,9 @@ const RootNavigation = () => {
       if (Platform.OS === 'web') return;
       registeringRef.current = true;
       try {
+        await ensureCorePermissions();
         const { status: existingStatus } = await Notifications.getPermissionsAsync();
-        let finalStatus = existingStatus;
         if (existingStatus !== 'granted') {
-          const { status } = await Notifications.requestPermissionsAsync();
-          finalStatus = status;
-        }
-        if (finalStatus !== 'granted') {
           registeringRef.current = false;
           return;
         }
@@ -102,7 +146,7 @@ const RootNavigation = () => {
       }
     };
     registerPushToken();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, ensureCorePermissions]);
 
   // notification listeners
   useEffect(() => {

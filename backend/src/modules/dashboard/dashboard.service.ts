@@ -238,37 +238,49 @@ export class DashboardService {
     const eventType = this.normalizeFeatureKey(dto.eventType) || 'VIEW';
     const source = dto.source?.trim() || 'mobile';
     const clientEventId = dto.clientEventId?.trim() || null;
+    const durationSeconds =
+      typeof dto.durationSeconds === 'number' && Number.isFinite(dto.durationSeconds)
+        ? Math.max(0, Math.min(86400, Math.floor(dto.durationSeconds)))
+        : null;
 
-    const data = {
+    const data: Prisma.FeatureUsageEventUncheckedCreateInput = {
       actorKind: String(user?.actorKind ?? 'UNKNOWN'),
       actorId: String(user?.userId ?? 'UNKNOWN'),
       role: user?.role ?? null,
       branchCode: user?.branchCode ?? null,
       featureKey,
       eventType,
-      durationSeconds: dto.durationSeconds ?? null,
       source,
-      clientEventId,
       occurredAt,
     };
+    if (clientEventId) data.clientEventId = clientEventId;
+    if (durationSeconds != null) data.durationSeconds = durationSeconds;
 
-    if (clientEventId) {
-      try {
-        await this.prisma.featureUsageEvent.create({ data });
-      } catch (error: any) {
-        // Ignore duplicate clientEventId to keep endpoint idempotent.
-        if (
-          error instanceof Prisma.PrismaClientKnownRequestError &&
-          error.code === 'P2002'
-        ) {
-          return { success: true };
-        }
+    try {
+      await this.prisma.featureUsageEvent.create({ data });
+    } catch (error: any) {
+      // Ignore duplicate clientEventId to keep endpoint idempotent.
+      if (
+        clientEventId &&
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        return { success: true };
+      }
+
+      // Backward compatibility: if DB has not migrated durationSeconds yet,
+      // retry insert without duration to keep VIEW analytics alive.
+      const missingDurationColumn =
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2022' &&
+        String((error.meta as any)?.column ?? '').includes('durationSeconds');
+      if (!missingDurationColumn) {
         throw error;
       }
-      return { success: true };
-    }
 
-    await this.prisma.featureUsageEvent.create({ data });
+      const { durationSeconds: _drop, ...dataWithoutDuration } = data;
+      await this.prisma.featureUsageEvent.create({ data: dataWithoutDuration });
+    }
     return { success: true };
   }
 
@@ -424,20 +436,33 @@ export class DashboardService {
       .filter((f): f is string => Boolean(f));
 
     const selectedFeatures = requested.length ? requested : DEFAULT_TIME_SPENT_FEATURES;
-    const rows = await this.prisma.featureUsageEvent.findMany({
-      where: {
-        actorKind: 'CUSTOMER',
-        eventType: 'DURATION',
-        durationSeconds: { gt: 0 },
-        occurredAt: { gte: from, lt: to },
-        featureKey: { in: selectedFeatures },
-      },
-      select: {
-        featureKey: true,
-        actorId: true,
-        durationSeconds: true,
-      },
-    });
+    let rows: Array<{ featureKey: string; actorId: string; durationSeconds: number | null }> = [];
+    try {
+      rows = await this.prisma.featureUsageEvent.findMany({
+        where: {
+          actorKind: 'CUSTOMER',
+          eventType: 'DURATION',
+          durationSeconds: { gt: 0 },
+          occurredAt: { gte: from, lt: to },
+          featureKey: { in: selectedFeatures },
+        },
+        select: {
+          featureKey: true,
+          actorId: true,
+          durationSeconds: true,
+        },
+      });
+    } catch (error: any) {
+      const missingDurationColumn =
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2022' &&
+        String((error.meta as any)?.column ?? '').includes('durationSeconds');
+      if (!missingDurationColumn) {
+        throw error;
+      }
+      // DB has not migrated durationSeconds yet; keep endpoint stable.
+      rows = [];
+    }
 
     const byFeature = new Map<string, { totalSeconds: number; sessions: number; actors: Set<string> }>();
     for (const f of selectedFeatures) {

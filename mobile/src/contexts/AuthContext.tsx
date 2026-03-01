@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { authService, AuthResponse } from '@services/authService';
 import { tokenStore } from '@lib/tokenStore';
+import { isSoftLockBypassed } from '@lib/permissionPromptGuard';
 import { useAuthStore } from '@store/authStore';
 import { useProfileStore } from '@store/profileStore';
 import { AppState, AppStateStatus, Platform } from 'react-native';
@@ -133,6 +134,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       (Number.isFinite(hardLockMinutes) && hardLockMinutes > 0 ? hardLockMinutes : 10) * 60 * 1000;
 
     const sub = AppState.addEventListener('change', async (nextState) => {
+      // Skip session lock transitions while OS permission dialog is visible.
+      if (isSoftLockBypassed()) {
+        lastState = nextState;
+        return;
+      }
+
       // Only lock when app actually goes to background.
       // "inactive" can happen transiently (system dialogs) and should not force logout.
       if (lastState === 'active' && nextState === 'background') {

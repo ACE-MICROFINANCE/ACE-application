@@ -71,6 +71,7 @@ const AdminDashboardScreen = () => {
   const [timeSpentLoading, setTimeSpentLoading] = useState(true);
   const [timeSpentError, setTimeSpentError] = useState<string | null>(null);
   const [timeSpent, setTimeSpent] = useState<FeatureTimeSpentResponse | null>(null);
+  const [usageChartWidth, setUsageChartWidth] = useState<number>(chartWidth);
 
   useEffect(() => {
     let mounted = true;
@@ -214,7 +215,7 @@ const AdminDashboardScreen = () => {
 
     const loanData = loanSeries.map((value, idx) => ({
       value: Number(value) || 0,
-      label: idx % showEvery === 0 ? labels[idx] ?? '' : '',
+      label: idx % showEvery === 0 || idx === totalPoints - 1 ? labels[idx] ?? '' : '',
     }));
     const savingData = savingSeries.map((value) => ({ value: Number(value) || 0 }));
     const scheduleData = scheduleSeries.map((value) => ({ value: Number(value) || 0 }));
@@ -428,12 +429,18 @@ const AdminDashboardScreen = () => {
                   ))}
                 </View>
 
-                <View style={{ marginTop: 10, paddingTop: 6 }}>
+                <View
+                  style={{ marginTop: 10, paddingTop: 6 }}
+                  onLayout={(e) => {
+                    const w = Math.floor(e.nativeEvent.layout.width);
+                    if (w > 0 && w !== usageChartWidth) setUsageChartWidth(w);
+                  }}
+                >
                   <LineChart
                     data={chartData.loanData}
                     data2={chartData.savingData}
                     data3={chartData.scheduleData}
-                    width={chartWidth}
+                    width={Math.max(usageChartWidth - 6, 260)}
                     height={220}
                     color1={SERIES.LOANS.color}
                     color2={SERIES.SAVINGS.color}
@@ -451,10 +458,10 @@ const AdminDashboardScreen = () => {
                     xAxisLabelTextStyle={{ color: '#64748b', fontSize: 10 }}
                     yAxisTextStyle={{ color: '#64748b', fontSize: 10 }}
                     noOfSections={usageChartSections}
-                    maxValue={chartMaxValue}
+                    maxValue={Math.max(chartMaxValue, 5)}
                     adjustToWidth
-                    initialSpacing={0}
-                    endSpacing={0}
+                    initialSpacing={12}
+                    endSpacing={24}
                     disableScroll
                     rulesColor="#e2e8f0"
                     isAnimated

@@ -35,6 +35,8 @@ const DEFAULT_TIME_SPENT_FEATURES = ['LOANS', 'SAVINGS', 'SCHEDULE'];
 
 @Injectable()
 export class DashboardService {
+  private readonly analyticsTzOffsetMinutes = 7 * 60; // Asia/Ho_Chi_Minh (UTC+07)
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly loansService: LoansService,
@@ -59,23 +61,39 @@ export class DashboardService {
     return d;
   }
 
+  private toAnalyticsTz(d: Date) {
+    return new Date(d.getTime() + this.analyticsTzOffsetMinutes * 60 * 1000);
+  }
+
+  private fromAnalyticsTz(d: Date) {
+    return new Date(d.getTime() - this.analyticsTzOffsetMinutes * 60 * 1000);
+  }
+
   private startOfUtcDay(d: Date) {
-    return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+    const local = this.toAnalyticsTz(d);
+    const startLocal = new Date(
+      Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate()),
+    );
+    return this.fromAnalyticsTz(startLocal);
   }
 
   private startOfUtcWeek(d: Date) {
     const dayStart = this.startOfUtcDay(d);
-    const day = dayStart.getUTCDay(); // 0..6, Sunday=0
+    const day = this.toAnalyticsTz(dayStart).getUTCDay(); // 0..6, Sunday=0
     const diff = day === 0 ? -6 : 1 - day; // week starts Monday
     return new Date(dayStart.getTime() + diff * 24 * 60 * 60 * 1000);
   }
 
   private startOfUtcMonth(d: Date) {
-    return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
+    const local = this.toAnalyticsTz(d);
+    const startLocal = new Date(Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), 1));
+    return this.fromAnalyticsTz(startLocal);
   }
 
   private startOfUtcYear(d: Date) {
-    return new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    const local = this.toAnalyticsTz(d);
+    const startLocal = new Date(Date.UTC(local.getUTCFullYear(), 0, 1));
+    return this.fromAnalyticsTz(startLocal);
   }
 
   private addDays(d: Date, days: number) {
@@ -95,10 +113,11 @@ export class DashboardService {
   }
 
   private formatLabel(range: UsageRange, start: Date) {
-    const dd = String(start.getUTCDate()).padStart(2, '0');
-    const mm = String(start.getUTCMonth() + 1).padStart(2, '0');
-    const yy = String(start.getUTCFullYear()).slice(-2);
-    const yyyy = String(start.getUTCFullYear());
+    const local = this.toAnalyticsTz(start);
+    const dd = String(local.getUTCDate()).padStart(2, '0');
+    const mm = String(local.getUTCMonth() + 1).padStart(2, '0');
+    const yy = String(local.getUTCFullYear()).slice(-2);
+    const yyyy = String(local.getUTCFullYear());
 
     if (range === 'daily' || range === 'weekly') return `${dd}/${mm}`;
     if (range === 'monthly') return `${mm}/${yy}`;

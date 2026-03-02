@@ -21,4 +21,8 @@ export class CreateStaffUserDto {
   @IsString()
   @IsOptional()
   fullName?: string | null;
+
+  @IsString()
+  @IsOptional()
+  phoneNumber?: string | null;
 }

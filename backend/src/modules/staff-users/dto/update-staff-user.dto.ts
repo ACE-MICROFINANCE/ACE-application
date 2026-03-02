@@ -18,6 +18,10 @@ export class UpdateStaffUserDto {
   @IsOptional()
   branchCode?: string | null;
 
+  @IsString()
+  @IsOptional()
+  phoneNumber?: string | null;
+
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;

@@ -7,7 +7,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useIsFocused, useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { UserCog, UsersRound } from 'lucide-react-native';
 import { LineChart, PieChart } from 'react-native-gifted-charts';
@@ -53,6 +53,7 @@ const chartWidth = Math.max(Dimensions.get('window').width - 92, 280);
 
 const AdminDashboardScreen = () => {
   const navigation = useNavigation<any>();
+  const isFocused = useIsFocused();
   const { profile } = useProfileStore();
   const isAdmin = profile?.actorKind === 'STAFF' && profile?.role === 'ADMIN';
 
@@ -104,6 +105,7 @@ const AdminDashboardScreen = () => {
 
   useEffect(() => {
     let mounted = true;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
     const loadUsage = async () => {
       if (!isAdmin) {
         setUsageLoading(false);
@@ -128,16 +130,27 @@ const AdminDashboardScreen = () => {
       }
     };
 
+    if (!isFocused) {
+      setUsageLoading(false);
+      return () => {
+        mounted = false;
+      };
+    }
+
     loadUsage();
+    intervalId = setInterval(loadUsage, 60 * 1000);
+
     return () => {
       mounted = false;
+      if (intervalId) clearInterval(intervalId);
     };
-  }, [isAdmin, range]);
+  }, [isAdmin, range, isFocused]);
 
   const greetingName = useMemo(() => profile?.fullName || 'Admin', [profile?.fullName]);
 
   useEffect(() => {
     let mounted = true;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
     const loadActiveUsers = async () => {
       if (!isAdmin) {
         setActiveUsersLoading(false);
@@ -158,14 +171,25 @@ const AdminDashboardScreen = () => {
       }
     };
 
+    if (!isFocused) {
+      setActiveUsersLoading(false);
+      return () => {
+        mounted = false;
+      };
+    }
+
     loadActiveUsers();
+    intervalId = setInterval(loadActiveUsers, 60 * 1000);
+
     return () => {
       mounted = false;
+      if (intervalId) clearInterval(intervalId);
     };
-  }, [isAdmin, activeUsersRange]);
+  }, [isAdmin, activeUsersRange, isFocused]);
 
   useEffect(() => {
     let mounted = true;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
     const loadTimeSpent = async () => {
       if (!isAdmin) {
         setTimeSpentLoading(false);
@@ -189,11 +213,21 @@ const AdminDashboardScreen = () => {
       }
     };
 
+    if (!isFocused) {
+      setTimeSpentLoading(false);
+      return () => {
+        mounted = false;
+      };
+    }
+
     loadTimeSpent();
+    intervalId = setInterval(loadTimeSpent, 60 * 1000);
+
     return () => {
       mounted = false;
+      if (intervalId) clearInterval(intervalId);
     };
-  }, [isAdmin, timeSpentRange]);
+  }, [isAdmin, timeSpentRange, isFocused]);
 
   const chartData = useMemo(() => {
     if (!usage) {
@@ -440,7 +474,7 @@ const AdminDashboardScreen = () => {
                     data={chartData.loanData}
                     data2={chartData.savingData}
                     data3={chartData.scheduleData}
-                    width={Math.max(usageChartWidth - 6, 260)}
+                    width={Math.max(usageChartWidth - 12, 180)}
                     height={220}
                     color1={SERIES.LOANS.color}
                     color2={SERIES.SAVINGS.color}
@@ -461,7 +495,7 @@ const AdminDashboardScreen = () => {
                     maxValue={Math.max(chartMaxValue, 5)}
                     adjustToWidth
                     initialSpacing={12}
-                    endSpacing={24}
+                    endSpacing={36}
                     disableScroll
                     rulesColor="#e2e8f0"
                     isAnimated

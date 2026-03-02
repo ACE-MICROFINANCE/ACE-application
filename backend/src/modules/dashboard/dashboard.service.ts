@@ -101,11 +101,17 @@ export class DashboardService {
   }
 
   private addMonths(d: Date, months: number) {
-    return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + months, 1));
+    const local = this.toAnalyticsTz(d);
+    const startLocal = new Date(
+      Date.UTC(local.getUTCFullYear(), local.getUTCMonth() + months, 1),
+    );
+    return this.fromAnalyticsTz(startLocal);
   }
 
   private addYears(d: Date, years: number) {
-    return new Date(Date.UTC(d.getUTCFullYear() + years, 0, 1));
+    const local = this.toAnalyticsTz(d);
+    const startLocal = new Date(Date.UTC(local.getUTCFullYear() + years, 0, 1));
+    return this.fromAnalyticsTz(startLocal);
   }
 
   private toBucketKey(d: Date) {

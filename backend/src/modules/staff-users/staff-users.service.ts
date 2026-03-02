@@ -40,6 +40,7 @@ export class StaffUsersService {
         role: true,
         branchCode: true,
         fullName: true,
+        phoneNumber: true,
         isActive: true,
         createdAt: true,
         updatedAt: true,
@@ -83,6 +84,9 @@ export class StaffUsersService {
     if (dto.role === 'ADMIN' && dto.branchCode) {
       throw new BadRequestException('Admin không được gán mã chi nhánh.');
     }
+    if (dto.role === 'SSO' && !(dto.phoneNumber ?? '').trim()) {
+      throw new BadRequestException('CCO bắt buộc phải nhập số điện thoại.');
+    }
 
     const passwordToUse =
       dto.password && dto.password.length > 0
@@ -102,6 +106,7 @@ export class StaffUsersService {
         role: dto.role,
         branchCode: dto.role === 'ADMIN' ? null : dto.branchCode ?? null,
         fullName: dto.fullName ?? null,
+        phoneNumber: dto.role === 'SSO' ? dto.phoneNumber?.trim() || null : null,
         isActive: true,
       },
       select: {
@@ -110,6 +115,7 @@ export class StaffUsersService {
         role: true,
         branchCode: true,
         fullName: true,
+        phoneNumber: true,
         isActive: true,
         createdAt: true,
         updatedAt: true,
@@ -128,6 +134,9 @@ export class StaffUsersService {
     if (existing.role === 'SUPER_ADMIN') {
       throw new ForbiddenException('Không được chỉnh sửa tài khoản SUPER_ADMIN.');
     }
+    if (existing.role === 'SSO' && dto.role !== undefined) {
+      throw new BadRequestException('Tài khoản SSO không được chuyển sang vai trò khác.');
+    }
 
     const role = dto.role ?? existing.role;
     if ((role as string) === 'SUPER_ADMIN') {
@@ -139,6 +148,9 @@ export class StaffUsersService {
     if (roleNeedsBranch && !branchCode) {
       throw new BadRequestException('Nhân sự chi nhánh phải có mã chi nhánh.');
     }
+    if (dto.phoneNumber !== undefined && role !== 'SSO') {
+      throw new BadRequestException('Chỉ được cập nhật số điện thoại cho vai trò SSO.');
+    }
 
     const shouldBumpTokenVersion = dto.isActive !== undefined && dto.isActive !== existing.isActive;
 
@@ -149,6 +161,7 @@ export class StaffUsersService {
         email: dto.email?.toLowerCase() ?? undefined,
         role: dto.role ?? undefined,
         branchCode: dto.role ? (role === 'ADMIN' ? null : branchCode) : undefined,
+        phoneNumber: dto.phoneNumber !== undefined ? dto.phoneNumber?.trim() || null : undefined,
         isActive: dto.isActive ?? undefined,
         ...(shouldBumpTokenVersion ? { tokenVersion: { increment: 1 } } : {}),
       },
@@ -158,6 +171,7 @@ export class StaffUsersService {
         role: true,
         branchCode: true,
         fullName: true,
+        phoneNumber: true,
         isActive: true,
         createdAt: true,
         updatedAt: true,
@@ -187,6 +201,7 @@ export class StaffUsersService {
         role: true,
         branchCode: true,
         fullName: true,
+        phoneNumber: true,
         isActive: true,
         updatedAt: true,
       },
@@ -217,6 +232,7 @@ export class StaffUsersService {
         role: true,
         branchCode: true,
         fullName: true,
+        phoneNumber: true,
         isActive: true,
         updatedAt: true,
       },

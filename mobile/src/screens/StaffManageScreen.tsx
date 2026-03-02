@@ -43,6 +43,8 @@ const buildRoleChip = (role?: string | null): RoleChip | null => {
       return { text: "BA", className: "border-indigo-100 bg-indigo-50 text-indigo-700" };
     case "BM":
       return { text: "BM", className: "border-amber-100 bg-amber-50 text-amber-700" };
+    case "SSO":
+      return { text: "CCO", className: "border-sky-100 bg-sky-50 text-sky-700" };
     case "ADMIN":
       return { text: "ADMIN", className: "border-slate-200 bg-slate-100 text-slate-700" };
     default:
@@ -79,6 +81,7 @@ const StaffManageScreen = () => {
   const [formState, setFormState] = useState({
     fullName: "",
     email: "",
+    phoneNumber: "",
     role: "BM",
     branchCode: "",
     password: "",
@@ -166,6 +169,7 @@ const StaffManageScreen = () => {
     setFormState({
       fullName: "",
       email: "",
+      phoneNumber: "",
       role: "BM",
       branchCode: "",
       password: "",
@@ -182,6 +186,7 @@ const StaffManageScreen = () => {
     setFormState({
       fullName: staff.fullName ?? "",
       email: staff.email ?? "",
+      phoneNumber: staff.phoneNumber ?? "",
       role: staff.role ?? "BM",
       branchCode: staff.branchCode ?? "",
       password: "",
@@ -199,6 +204,7 @@ const StaffManageScreen = () => {
     const fullName = formState.fullName.trim();
     const email = formState.email.trim();
     const password = formState.password.trim();
+    const phoneNumber = formState.phoneNumber.trim();
     if (!fullName) return setSaveError("Please enter full name.");
     if (!email) return setSaveError("Please enter email.");
     const roleNeedsBranch = ["BM", "BA", "SSO"].includes(formState.role);
@@ -211,6 +217,9 @@ const StaffManageScreen = () => {
     if (formState.role !== "SSO" && !password) {
       return setSaveError("Please enter an initial password.");
     }
+    if (formState.role === "SSO" && !phoneNumber) {
+      return setSaveError("CCO must have a phone number.");
+    }
     setSaveLoading(true);
     setSaveError(null);
     try {
@@ -220,6 +229,7 @@ const StaffManageScreen = () => {
         password: formState.role === "SSO" && !password ? undefined : password,
         role: formState.role,
         branchCode: roleNeedsBranch ? formState.branchCode : undefined,
+        phoneNumber: formState.role === "SSO" ? phoneNumber : undefined,
       };
       await appApi.createStaffUser(payload);
       setModalMode(null);
@@ -233,11 +243,13 @@ const StaffManageScreen = () => {
 
   const handleUpdate = async () => {
     if (!selectedStaff) return;
+    const isEditingSso = selectedStaff.role === "SSO";
     const fullName = formState.fullName.trim();
     const email = formState.email.trim();
     if (!fullName) return setSaveError("Please enter full name.");
     if (!email) return setSaveError("Please enter email.");
-    const roleForUpdate = formState.role === "SSO" ? undefined : formState.role;
+    const phoneNumber = formState.phoneNumber.trim();
+    const roleForUpdate = isEditingSso ? undefined : formState.role === "SSO" ? undefined : formState.role;
     const effectiveRole = roleForUpdate ?? (selectedStaff.role ?? "");
     const roleNeedsBranch = ["BM", "BA", "SSO"].includes(effectiveRole);
     if (roleNeedsBranch && !formState.branchCode) {
@@ -254,6 +266,7 @@ const StaffManageScreen = () => {
         email,
         role: roleForUpdate,
         branchCode: roleNeedsBranch ? formState.branchCode : undefined,
+        phoneNumber: effectiveRole === "SSO" ? phoneNumber || null : undefined,
       };
       await appApi.updateStaffUser(selectedStaff.id, payload);
       setModalMode(null);
@@ -513,31 +526,51 @@ const StaffManageScreen = () => {
                   />
                 </View>
 
-                <View className="space-y-2">
-                  <Text className="text-xs font-medium text-[#6C757D]">Role</Text>
-                  <View className="flex-row flex-wrap gap-2">
-                    {availableRoleOptions.map((opt) => {
-                      const active = formState.role === opt.value;
-                      return (
-                        <Pressable
-                          key={opt.value}
-                          onPress={() =>
-                            setFormState((prev) => ({
-                              ...prev,
-                              role: opt.value,
-                              branchCode: opt.value === "ADMIN" ? "" : prev.branchCode,
-                            }))
-                          }
-                          className={`rounded-full border px-4 py-2 ${
-                            active ? "border-[#0A84FF] bg-[#E7F2FF]" : "border-black/10 bg-white"
-                          }`}
-                        >
-                          <Text className={`text-sm font-semibold ${active ? "text-[#0A84FF]" : "text-[#111]"}`}>{opt.label}</Text>
-                        </Pressable>
-                      );
-                    })}
+                {(modalMode === "create" && formState.role === "SSO") || (modalMode === "edit" && selectedStaff?.role === "SSO") ? (
+                  <View className="space-y-2">
+                    <Text className="text-xs font-medium text-[#6C757D]">Phone Number</Text>
+                    <TextInput
+                      value={formState.phoneNumber}
+                      onChangeText={(v) => setFormState((prev) => ({ ...prev, phoneNumber: v }))}
+                      placeholder="Enter phone number"
+                      keyboardType="phone-pad"
+                      className="rounded-2xl border border-black/5 px-4 py-3 text-base"
+                    />
+                    {modalMode === "create" ? (
+                      <Text className="text-[12px] text-[#DC2626]">
+                        CCO bắt buộc phải nhập số điện thoại để khách hàng có thể liên lạc ngay trên app.
+                      </Text>
+                    ) : null}
                   </View>
-                </View>
+                ) : null}
+
+                {!(modalMode === "edit" && selectedStaff?.role === "SSO") ? (
+                  <View className="space-y-2">
+                    <Text className="text-xs font-medium text-[#6C757D]">Role</Text>
+                    <View className="flex-row flex-wrap gap-2">
+                      {availableRoleOptions.map((opt) => {
+                        const active = formState.role === opt.value;
+                        return (
+                          <Pressable
+                            key={opt.value}
+                            onPress={() =>
+                              setFormState((prev) => ({
+                                ...prev,
+                                role: opt.value,
+                                branchCode: opt.value === "ADMIN" ? "" : prev.branchCode,
+                              }))
+                            }
+                            className={`rounded-full border px-4 py-2 ${
+                              active ? "border-[#0A84FF] bg-[#E7F2FF]" : "border-black/10 bg-white"
+                            }`}
+                          >
+                            <Text className={`text-sm font-semibold ${active ? "text-[#0A84FF]" : "text-[#111]"}`}>{opt.label}</Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  </View>
+                ) : null}
 
                 <View className="space-y-2">
                   <Text className="text-xs font-medium text-[#6C757D]">Branch</Text>

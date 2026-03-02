@@ -95,6 +95,7 @@ export type StaffUserItem = {
   fullName?: string | null;
   email?: string | null;
   role?: 'ADMIN' | 'SUPER_ADMIN' | 'BA' | 'BM' | string | null;
+  phoneNumber?: string | null;
   branchCode?: string | null;
   branchName?: string | null;
   isActive?: boolean | null;
@@ -124,6 +125,7 @@ export type CreateStaffUserPayload = {
   role: 'ADMIN' | 'BA' | 'BM' | 'SSO' | string;
   branchCode?: string | null;
   fullName?: string | null;
+  phoneNumber?: string | null;
 };
 
 export type UpdateStaffUserPayload = {
@@ -131,6 +133,7 @@ export type UpdateStaffUserPayload = {
   role?: 'ADMIN' | 'BA' | 'BM' | string | null;
   branchCode?: string | null;
   fullName?: string | null;
+  phoneNumber?: string | null;
 };
 
 export type ScheduleDetail = {

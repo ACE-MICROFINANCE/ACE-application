@@ -52,6 +52,15 @@ const SERIES = {
 
 const chartWidth = Math.max(Dimensions.get('window').width - 92, 280);
 
+function formatUsageBucketLabel(rawLabel: string, range: FeatureUsageRange): string {
+  if (!rawLabel) return '';
+  if (range === 'year') {
+    // Keep year labels compact on mobile to avoid clipping.
+    return rawLabel.slice(-2);
+  }
+  return rawLabel;
+}
+
 const AdminDashboardScreen = () => {
   const navigation = useNavigation<any>();
   const isFocused = useIsFocused();
@@ -280,12 +289,26 @@ const AdminDashboardScreen = () => {
     const savingSeries = (byFeature.get('SAVINGS')?.data ?? Array(rawLabels.length).fill(0)).slice(startIndex);
     const scheduleSeries = (byFeature.get('SCHEDULE')?.data ?? Array(rawLabels.length).fill(0)).slice(startIndex);
     const totalPoints = labels.length;
-    const showEvery = range === 'daily' ? 1 : totalPoints > 20 ? 4 : totalPoints > 12 ? 3 : totalPoints > 8 ? 2 : 1;
+    const showEvery =
+      range === 'daily'
+        ? totalPoints > 7
+          ? 2
+          : 1
+        : range === 'weekly'
+          ? totalPoints > 8
+            ? 2
+            : 1
+          : range === 'monthly'
+            ? 2
+            : 1;
 
     const loanData = loanSeries.map((value, idx) => ({
       value: Number(value) || 0,
-      // Keep cadence consistent and always show the latest bucket label.
-      label: idx % showEvery === 0 || idx === totalPoints - 1 ? labels[idx] ?? '' : '',
+      // Keep cadence consistent and always show both boundaries.
+      label:
+        idx === 0 || idx === totalPoints - 1 || idx % showEvery === 0
+          ? formatUsageBucketLabel(labels[idx] ?? '', range)
+          : '',
     }));
     const savingData = savingSeries.map((value) => ({ value: Number(value) || 0 }));
     const scheduleData = scheduleSeries.map((value) => ({ value: Number(value) || 0 }));
@@ -501,7 +524,7 @@ const AdminDashboardScreen = () => {
                 </View>
 
                 <View
-                  style={{ marginTop: 10, paddingTop: 6, overflow: 'hidden' }}
+                  style={{ marginTop: 10, paddingTop: 6 }}
                   onLayout={(e) => {
                     const w = Math.floor(e.nativeEvent.layout.width);
                     if (w > 0 && w !== usageChartWidth) setUsageChartWidth(w);
@@ -511,7 +534,7 @@ const AdminDashboardScreen = () => {
                     data={chartData.loanData}
                     data2={chartData.savingData}
                     data3={chartData.scheduleData}
-                    width={Math.max(usageChartWidth - 36, 180)}
+                    width={Math.max(usageChartWidth - 8, 220)}
                     height={220}
                     color1={SERIES.LOANS.color}
                     color2={SERIES.SAVINGS.color}
@@ -526,13 +549,13 @@ const AdminDashboardScreen = () => {
                     hideDataPoints={false}
                     yAxisColor="#cbd5e1"
                     xAxisColor="#cbd5e1"
-                    xAxisLabelTextStyle={{ color: '#64748b', fontSize: 10 }}
+                    xAxisLabelTextStyle={{ color: '#64748b', fontSize: 9 }}
                     yAxisTextStyle={{ color: '#64748b', fontSize: 10 }}
                     noOfSections={usageChartSections}
                     maxValue={chartMaxValue}
                     adjustToWidth
-                    initialSpacing={16}
-                    endSpacing={16}
+                    initialSpacing={8}
+                    endSpacing={8}
                     disableScroll
                     scrollToEnd={false}
                     showScrollIndicator={false}

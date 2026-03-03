@@ -52,12 +52,9 @@ const SERIES = {
 
 const chartWidth = Math.max(Dimensions.get('window').width - 92, 280);
 
-function formatUsageBucketLabel(rawLabel: string, range: FeatureUsageRange): string {
+function formatUsageBucketLabel(rawLabel: string, _range: FeatureUsageRange): string {
   if (!rawLabel) return '';
-  if (range === 'year') {
-    // Keep year labels compact on mobile to avoid clipping.
-    return rawLabel.slice(-2);
-  }
+  // Keep original backend labels for consistency across filters.
   return rawLabel;
 }
 
@@ -282,25 +279,36 @@ const AdminDashboardScreen = () => {
 
     const byFeature = new Map(usage.features.map((f) => [f.featureKey, f]));
     const rawLabels = usage.buckets || [];
-    const startIndex = range === 'daily' ? Math.max(rawLabels.length - 5, 0) : 0;
-    const labels = rawLabels.slice(startIndex);
+    const rawLoanSeries = byFeature.get('LOANS')?.data ?? Array(rawLabels.length).fill(0);
+    const rawSavingSeries = byFeature.get('SAVINGS')?.data ?? Array(rawLabels.length).fill(0);
+    const rawScheduleSeries = byFeature.get('SCHEDULE')?.data ?? Array(rawLabels.length).fill(0);
 
-    const loanSeries = (byFeature.get('LOANS')?.data ?? Array(rawLabels.length).fill(0)).slice(startIndex);
-    const savingSeries = (byFeature.get('SAVINGS')?.data ?? Array(rawLabels.length).fill(0)).slice(startIndex);
-    const scheduleSeries = (byFeature.get('SCHEDULE')?.data ?? Array(rawLabels.length).fill(0)).slice(startIndex);
+    const windowSize =
+      range === 'daily' ? 6 : range === 'weekly' ? 8 : range === 'monthly' ? 8 : rawLabels.length;
+    const startIndex = Math.max(rawLabels.length - windowSize, 0);
+
+    let labels = rawLabels.slice(startIndex);
+    let loanSeries = rawLoanSeries.slice(startIndex);
+    let savingSeries = rawSavingSeries.slice(startIndex);
+    let scheduleSeries = rawScheduleSeries.slice(startIndex);
+
+    // If the latest bucket is still empty, trim it so the chart ends at the most recent activity.
+    while (
+      labels.length > 2 &&
+      (loanSeries[labels.length - 1] ?? 0) === 0 &&
+      (savingSeries[labels.length - 1] ?? 0) === 0 &&
+      (scheduleSeries[labels.length - 1] ?? 0) === 0
+    ) {
+      labels = labels.slice(0, -1);
+      loanSeries = loanSeries.slice(0, -1);
+      savingSeries = savingSeries.slice(0, -1);
+      scheduleSeries = scheduleSeries.slice(0, -1);
+    }
+
     const totalPoints = labels.length;
+    const targetLabelCount = range === 'daily' ? 5 : range === 'weekly' ? 4 : range === 'monthly' ? 4 : 5;
     const showEvery =
-      range === 'daily'
-        ? totalPoints > 7
-          ? 2
-          : 1
-        : range === 'weekly'
-          ? totalPoints > 8
-            ? 2
-            : 1
-          : range === 'monthly'
-            ? 2
-            : 1;
+      totalPoints <= targetLabelCount ? 1 : Math.ceil((totalPoints - 1) / Math.max(targetLabelCount - 1, 1));
 
     const loanData = loanSeries.map((value, idx) => ({
       value: Number(value) || 0,
@@ -318,9 +326,9 @@ const AdminDashboardScreen = () => {
       savingData,
       scheduleData,
       totals: {
-        LOANS: loanSeries.reduce((sum, v) => sum + v, 0),
-        SAVINGS: savingSeries.reduce((sum, v) => sum + v, 0),
-        SCHEDULE: scheduleSeries.reduce((sum, v) => sum + v, 0),
+        LOANS: rawLoanSeries.reduce((sum, v) => sum + v, 0),
+        SAVINGS: rawSavingSeries.reduce((sum, v) => sum + v, 0),
+        SCHEDULE: rawScheduleSeries.reduce((sum, v) => sum + v, 0),
       },
     };
   }, [usage, range]);

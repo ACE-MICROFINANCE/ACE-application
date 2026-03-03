@@ -292,18 +292,7 @@ const AdminDashboardScreen = () => {
     let savingSeries = rawSavingSeries.slice(startIndex);
     let scheduleSeries = rawScheduleSeries.slice(startIndex);
 
-    // If the latest bucket is still empty, trim it so the chart ends at the most recent activity.
-    while (
-      labels.length > 2 &&
-      (loanSeries[labels.length - 1] ?? 0) === 0 &&
-      (savingSeries[labels.length - 1] ?? 0) === 0 &&
-      (scheduleSeries[labels.length - 1] ?? 0) === 0
-    ) {
-      labels = labels.slice(0, -1);
-      loanSeries = loanSeries.slice(0, -1);
-      savingSeries = savingSeries.slice(0, -1);
-      scheduleSeries = scheduleSeries.slice(0, -1);
-    }
+    // Keep current period bucket even when value is 0 so users can see today's/current period marker.
 
     const totalPoints = labels.length;
     const targetLabelCount = range === 'daily' ? 5 : range === 'weekly' ? 4 : range === 'monthly' ? 4 : 5;

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import { Image, Linking, Pressable, Text, TouchableOpacity, View } from 'react-native';
 import { MobileFrame } from '@components/layout/MobileFrame';
 import { Card } from '@components/ui/Card';
@@ -24,6 +24,12 @@ const knowledgeItem: InfoItem = {
   text: 'Kiến thức nông nghiệp Việt Nam',
 };
 
+const isGenericSocialLabel = (label?: string | null) => {
+  const value = (label || '').trim().toLowerCase();
+  if (!value) return true;
+  return /(cán bộ|sđt|social|xã hội|tín dụng)/i.test(value);
+};
+
 const InfoScreen = () => {
   const { loading, allowed, profile } = useScreenGuard((p) => p?.actorKind !== 'STAFF');
   const [expandedContact, setExpandedContact] = useState(true);
@@ -36,6 +42,7 @@ const InfoScreen = () => {
   }, [expandedContact]);
 
   const branchCode = useMemo(() => profile?.branchCode, [profile]);
+  const groupName = useMemo(() => profile?.groupName, [profile]);
 
   useEffect(() => {
     let mounted = true;
@@ -46,10 +53,11 @@ const InfoScreen = () => {
         mounted = false;
       };
     }
+
     (async () => {
       try {
         setContactError(null);
-        const res = await appApi.getContactsByBranchCode(branchCode);
+        const res = await appApi.getContactsByBranchCode(branchCode, groupName);
         if (!mounted) return;
         setContacts(Array.isArray(res?.contacts) ? res.contacts : []);
       } catch {
@@ -63,7 +71,7 @@ const InfoScreen = () => {
     return () => {
       mounted = false;
     };
-  }, [branchCode]);
+  }, [branchCode, groupName]);
 
   if (loading || !allowed) {
     return (
@@ -96,11 +104,29 @@ const InfoScreen = () => {
   const hotline = contacts.filter((c) => c.type === 'HOTLINE');
   const agri = contacts.filter((c) => c.type === 'AGRI');
   const livestock = contacts.filter((c) => c.type === 'LIVESTOCK');
-  const others = contacts.filter((c) => !['HOTLINE', 'AGRI', 'LIVESTOCK'].includes(c.type));
+  const socialOfficer = useMemo(() => {
+    const socialContacts = contacts.filter((c) => c.type === 'SOCIAL_OFFICER' || c.type === 'SOCIAL');
+    if (!socialContacts.length) return [] as ContactItem[];
+
+    const score = (item: ContactItem) => {
+      const hasRealName = !isGenericSocialLabel(item.label);
+      const fromOfficerType = item.type === 'SOCIAL_OFFICER';
+      return (hasRealName ? 2 : 0) + (fromOfficerType ? 1 : 0);
+    };
+
+    const best = socialContacts
+      .filter((item) => (item.phone || '').trim())
+      .sort((a, b) => score(b) - score(a))[0];
+
+    return best ? [best] : [];
+  }, [contacts]);
+  const others = contacts.filter(
+    (c) => !['HOTLINE', 'AGRI', 'LIVESTOCK', 'SOCIAL', 'SOCIAL_OFFICER'].includes(c.type),
+  );
 
   const renderContactRow = (detail: ContactItem) => (
     <TouchableOpacity
-      key={`${detail.type}-${detail.phone}`}
+      key={`${detail.type}-${detail.phone}-${detail.label}`}
       className="flex-row items-center justify-between rounded-lg px-2 py-2"
       activeOpacity={0.8}
       onPress={() => handleCall(detail.phone)}
@@ -135,27 +161,36 @@ const InfoScreen = () => {
                     {hotline.map(renderContactRow)}
                   </View>
                 ) : null}
+
                 {agri.length ? (
                   <View className="space-y-1 pt-1">
                     <Text className="text-xs font-semibold text-[#6B7280]">Cán bộ trồng trọt</Text>
                     {agri.map(renderContactRow)}
                   </View>
                 ) : null}
+
                 {livestock.length ? (
                   <View className="space-y-1 pt-1">
                     <Text className="text-xs font-semibold text-[#6B7280]">Cán bộ chăn nuôi</Text>
                     {livestock.map(renderContactRow)}
                   </View>
                 ) : null}
+
+                {socialOfficer.length ? (
+                  <View className="space-y-1 pt-1">
+                    <Text className="text-xs font-semibold text-[#6B7280]">Cán bộ công tác xã hội</Text>
+                    {socialOfficer.map(renderContactRow)}
+                  </View>
+                ) : null}
+
                 {others.length ? (
                   <View className="space-y-1 pt-1">
                     <Text className="text-xs font-semibold text-[#6B7280]">Khác</Text>
                     {others.map(renderContactRow)}
                   </View>
                 ) : null}
-                {contactError ? (
-                  <Text className="text-sm text-red-500 text-center">{contactError}</Text>
-                ) : null}
+
+                {contactError ? <Text className="text-sm text-red-500 text-center">{contactError}</Text> : null}
               </View>
             ) : null}
           </Card>
@@ -184,4 +219,3 @@ const InfoScreen = () => {
 };
 
 export default InfoScreen;
-

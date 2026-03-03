@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -51,11 +52,40 @@ const SERIES = {
 } as const;
 
 const chartWidth = Math.max(Dimensions.get('window').width - 92, 280);
+const ANALYTICS_TZ_OFFSET_MINUTES = 7 * 60;
+const chartInitialSpacing = Platform.OS === 'web' ? 28 : 20;
+const chartEndSpacing = Platform.OS === 'web' ? 56 : 32;
 
 function formatUsageBucketLabel(rawLabel: string, _range: FeatureUsageRange): string {
   if (!rawLabel) return '';
   // Keep original backend labels for consistency across filters.
   return rawLabel;
+}
+
+function toAnalyticsTz(d: Date) {
+  return new Date(d.getTime() + ANALYTICS_TZ_OFFSET_MINUTES * 60 * 1000);
+}
+
+function formatCurrentUsageBucket(range: FeatureUsageRange): string {
+  const nowLocal = toAnalyticsTz(new Date());
+  const dd = String(nowLocal.getUTCDate()).padStart(2, '0');
+  const mm = String(nowLocal.getUTCMonth() + 1).padStart(2, '0');
+  const yy = String(nowLocal.getUTCFullYear()).slice(-2);
+  const yyyy = String(nowLocal.getUTCFullYear());
+
+  if (range === 'daily') return `${dd}/${mm}`;
+  if (range === 'weekly') {
+    const day = nowLocal.getUTCDay(); // Sunday = 0
+    const diff = day === 0 ? -6 : 1 - day; // Monday first
+    const weekStart = new Date(
+      Date.UTC(nowLocal.getUTCFullYear(), nowLocal.getUTCMonth(), nowLocal.getUTCDate() + diff),
+    );
+    const wdd = String(weekStart.getUTCDate()).padStart(2, '0');
+    const wmm = String(weekStart.getUTCMonth() + 1).padStart(2, '0');
+    return `${wdd}/${wmm}`;
+  }
+  if (range === 'monthly') return `${mm}/${yy}`;
+  return yyyy;
 }
 
 const AdminDashboardScreen = () => {
@@ -67,7 +97,7 @@ const AdminDashboardScreen = () => {
   const [summaryLoading, setSummaryLoading] = useState(true);
   const [summary, setSummary] = useState<SummaryState>({ customers: 0, staff: 0 });
 
-  const [range, setRange] = useState<FeatureUsageRange>('weekly');
+  const [range, setRange] = useState<FeatureUsageRange>('daily');
   const [usageLoading, setUsageLoading] = useState(true);
   const [usageError, setUsageError] = useState<string | null>(null);
   const [usage, setUsage] = useState<FeatureUsageOverTimeResponse | null>(null);
@@ -278,37 +308,55 @@ const AdminDashboardScreen = () => {
     }
 
     const byFeature = new Map(usage.features.map((f) => [f.featureKey, f]));
-    const rawLabels = usage.buckets || [];
-    const rawLoanSeries = byFeature.get('LOANS')?.data ?? Array(rawLabels.length).fill(0);
-    const rawSavingSeries = byFeature.get('SAVINGS')?.data ?? Array(rawLabels.length).fill(0);
-    const rawScheduleSeries = byFeature.get('SCHEDULE')?.data ?? Array(rawLabels.length).fill(0);
+    const rawLabels = [...(usage.buckets || [])];
+    const rawLoanSeries = [...(byFeature.get('LOANS')?.data ?? Array(rawLabels.length).fill(0))];
+    const rawSavingSeries = [...(byFeature.get('SAVINGS')?.data ?? Array(rawLabels.length).fill(0))];
+    const rawScheduleSeries = [...(byFeature.get('SCHEDULE')?.data ?? Array(rawLabels.length).fill(0))];
+
+    const currentBucketLabel = formatCurrentUsageBucket(range);
+    const hasCurrentBucket = rawLabels.includes(currentBucketLabel);
+    if (!hasCurrentBucket) {
+      rawLabels.push(currentBucketLabel);
+      rawLoanSeries.push(0);
+      rawSavingSeries.push(0);
+      rawScheduleSeries.push(0);
+    }
 
     const windowSize =
-      range === 'daily' ? 6 : range === 'weekly' ? 8 : range === 'monthly' ? 8 : rawLabels.length;
+      range === 'daily' ? 7 : range === 'weekly' ? 8 : range === 'monthly' ? 8 : rawLabels.length;
     const startIndex = Math.max(rawLabels.length - windowSize, 0);
 
-    let labels = rawLabels.slice(startIndex);
-    let loanSeries = rawLoanSeries.slice(startIndex);
-    let savingSeries = rawSavingSeries.slice(startIndex);
-    let scheduleSeries = rawScheduleSeries.slice(startIndex);
+    const labels = rawLabels.slice(startIndex);
+    const loanSeries = rawLoanSeries.slice(startIndex);
+    const savingSeries = rawSavingSeries.slice(startIndex);
+    const scheduleSeries = rawScheduleSeries.slice(startIndex);
 
     // Keep current period bucket even when value is 0 so users can see today's/current period marker.
 
     const totalPoints = labels.length;
-    const targetLabelCount = range === 'daily' ? 5 : range === 'weekly' ? 4 : range === 'monthly' ? 4 : 5;
+    const paddedLabels = [...labels, ''];
+    const paddedLoanSeries = [...loanSeries, loanSeries[loanSeries.length - 1] ?? 0];
+    const paddedSavingSeries = [...savingSeries, savingSeries[savingSeries.length - 1] ?? 0];
+    const paddedScheduleSeries = [...scheduleSeries, scheduleSeries[scheduleSeries.length - 1] ?? 0];
+    const paddedPoints = paddedLabels.length;
+    const lastRealPointIndex = Math.max(totalPoints - 1, 0);
+    const targetLabelCount =
+      range === 'daily' ? totalPoints : range === 'weekly' ? 4 : range === 'monthly' ? 4 : 5;
     const showEvery =
       totalPoints <= targetLabelCount ? 1 : Math.ceil((totalPoints - 1) / Math.max(targetLabelCount - 1, 1));
 
-    const loanData = loanSeries.map((value, idx) => ({
+    const loanData = paddedLoanSeries.map((value, idx) => ({
       value: Number(value) || 0,
       // Keep cadence consistent and always show both boundaries.
       label:
-        idx === 0 || idx === totalPoints - 1 || idx % showEvery === 0
-          ? formatUsageBucketLabel(labels[idx] ?? '', range)
-          : '',
+        idx === paddedPoints - 1
+          ? ''
+          : idx === 0 || idx === lastRealPointIndex || idx % showEvery === 0
+            ? formatUsageBucketLabel(paddedLabels[idx] ?? '', range)
+            : '',
     }));
-    const savingData = savingSeries.map((value) => ({ value: Number(value) || 0 }));
-    const scheduleData = scheduleSeries.map((value) => ({ value: Number(value) || 0 }));
+    const savingData = paddedSavingSeries.map((value) => ({ value: Number(value) || 0 }));
+    const scheduleData = paddedScheduleSeries.map((value) => ({ value: Number(value) || 0 }));
 
     return {
       loanData,
@@ -546,13 +594,13 @@ const AdminDashboardScreen = () => {
                     hideDataPoints={false}
                     yAxisColor="#cbd5e1"
                     xAxisColor="#cbd5e1"
-                    xAxisLabelTextStyle={{ color: '#64748b', fontSize: 9 }}
+                    xAxisLabelTextStyle={{ color: '#64748b', fontSize: 9, width: 34, textAlign: 'center' }}
                     yAxisTextStyle={{ color: '#64748b', fontSize: 10 }}
                     noOfSections={usageChartSections}
                     maxValue={chartMaxValue}
                     adjustToWidth
-                    initialSpacing={8}
-                    endSpacing={8}
+                    initialSpacing={chartInitialSpacing}
+                    endSpacing={chartEndSpacing}
                     disableScroll
                     scrollToEnd={false}
                     showScrollIndicator={false}

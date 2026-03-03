@@ -64,7 +64,38 @@ MAIL_PASS=your_app_password
 MAIL_FROM=your_mail@gmail.com
 MAIL_TO=staff@ace.vn
 FRONTEND_URL=http://localhost:3000   # or your tunnel URL
+CUSTOMER_BOOTSTRAP_SYNC_ON_STARTUP=false
+CUSTOMER_STARTUP_SYNC_MODE=unsynced_or_stale
+CUSTOMER_STARTUP_SYNC_DELAY_SECONDS=20
+CUSTOMER_STARTUP_SYNC_MAX_CUSTOMERS=300
+CUSTOMER_WEEKLY_SYNC_ENABLED=true
+CUSTOMER_WEEKLY_SYNC_DAY=6
+CUSTOMER_WEEKLY_SYNC_HOUR=22
+CUSTOMER_WEEKLY_SYNC_TIMEZONE=Asia/Bangkok
+CUSTOMER_WEEKLY_SYNC_STALE_DAYS=7
+CUSTOMER_WEEKLY_SYNC_MAX_CUSTOMERS=300
+CUSTOMER_WEEKLY_SYNC_BATCH_SIZE=50
+CUSTOMER_WEEKLY_SYNC_BATCH_DELAY_MS=150
 ```
+
+- `CUSTOMER_BOOTSTRAP_SYNC_ON_STARTUP`:
+  - `false` (mặc định): không chạy bootstrap sync khi backend khởi động.
+  - `true`: chạy full bootstrap sync customer từ BIJLI lúc startup (có thể lâu với dữ liệu lớn).
+- Startup sync (khi `CUSTOMER_BOOTSTRAP_SYNC_ON_STARTUP=true`) chạy nền, không chặn app start:
+  - `CUSTOMER_STARTUP_SYNC_MODE`:
+    - `unsynced_or_stale` (khuyến nghị): chỉ sync account chưa sync/stale.
+    - `all`: sync toàn bộ customer.
+  - `CUSTOMER_STARTUP_SYNC_DELAY_SECONDS`: delay bao nhiêu giây sau khi app up mới bắt đầu sync.
+  - `CUSTOMER_STARTUP_SYNC_MAX_CUSTOMERS`: giới hạn số customer cho mode `unsynced_or_stale`.
+- Weekly customer sync (mặc định bật, chạy nền để hệ thống vẫn hoạt động):
+  - `CUSTOMER_WEEKLY_SYNC_ENABLED=true`: bật/tắt sync định kỳ.
+  - `CUSTOMER_WEEKLY_SYNC_DAY`: ngày chạy (0=CN, 1=T2, ..., 6=T7). Mặc định `6` (Thứ 7).
+  - `CUSTOMER_WEEKLY_SYNC_HOUR`: giờ chạy 0-23 theo timezone bên dưới. Mặc định `22`.
+  - `CUSTOMER_WEEKLY_SYNC_TIMEZONE`: timezone chạy lịch. Mặc định `Asia/Bangkok`.
+  - `CUSTOMER_WEEKLY_SYNC_STALE_DAYS`: chỉ sync account chưa từng sync hoặc đã cũ hơn N ngày. Mặc định `7`.
+  - `CUSTOMER_WEEKLY_SYNC_MAX_CUSTOMERS`: giới hạn số customer mỗi lần chạy để tránh tải cao.
+  - `CUSTOMER_WEEKLY_SYNC_BATCH_SIZE`: số customer mỗi batch.
+  - `CUSTOMER_WEEKLY_SYNC_BATCH_DELAY_MS`: nghỉ giữa các batch (ms), giúp giảm áp lực hệ thống.
 
 ### Web .env
 ```
@@ -150,6 +181,8 @@ npm run dev    # runs at 3000
 - Admin debug endpoints:
   - POST /admin/debug/members/:memberNo/refresh
   - GET /admin/debug/members/:memberNo
+  - GET /admin/debug/customers/sync-candidates?staleDays=7&limit=100
+  - POST /admin/debug/customers/sync-now?staleDays=7&maxCustomers=300
 - Use for internal testing only; keep disabled in production.
 
 ## Frontend (Web) Highlights

@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Dimensions,
   Pressable,
+  RefreshControl,
   ScrollView,
   Text,
   View,
@@ -73,6 +74,7 @@ const AdminDashboardScreen = () => {
   const [timeSpentError, setTimeSpentError] = useState<string | null>(null);
   const [timeSpent, setTimeSpent] = useState<FeatureTimeSpentResponse | null>(null);
   const [usageChartWidth, setUsageChartWidth] = useState<number>(chartWidth);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -105,7 +107,6 @@ const AdminDashboardScreen = () => {
 
   useEffect(() => {
     let mounted = true;
-    let intervalId: ReturnType<typeof setInterval> | null = null;
     const loadUsage = async () => {
       if (!isAdmin) {
         setUsageLoading(false);
@@ -138,11 +139,9 @@ const AdminDashboardScreen = () => {
     }
 
     loadUsage();
-    intervalId = setInterval(loadUsage, 60 * 1000);
 
     return () => {
       mounted = false;
-      if (intervalId) clearInterval(intervalId);
     };
   }, [isAdmin, range, isFocused]);
 
@@ -150,7 +149,6 @@ const AdminDashboardScreen = () => {
 
   useEffect(() => {
     let mounted = true;
-    let intervalId: ReturnType<typeof setInterval> | null = null;
     const loadActiveUsers = async () => {
       if (!isAdmin) {
         setActiveUsersLoading(false);
@@ -179,17 +177,14 @@ const AdminDashboardScreen = () => {
     }
 
     loadActiveUsers();
-    intervalId = setInterval(loadActiveUsers, 60 * 1000);
 
     return () => {
       mounted = false;
-      if (intervalId) clearInterval(intervalId);
     };
   }, [isAdmin, activeUsersRange, isFocused]);
 
   useEffect(() => {
     let mounted = true;
-    let intervalId: ReturnType<typeof setInterval> | null = null;
     const loadTimeSpent = async () => {
       if (!isAdmin) {
         setTimeSpentLoading(false);
@@ -221,13 +216,50 @@ const AdminDashboardScreen = () => {
     }
 
     loadTimeSpent();
-    intervalId = setInterval(loadTimeSpent, 60 * 1000);
 
     return () => {
       mounted = false;
-      if (intervalId) clearInterval(intervalId);
     };
   }, [isAdmin, timeSpentRange, isFocused]);
+
+  const onRefresh = async () => {
+    if (!isAdmin) return;
+    setRefreshing(true);
+    try {
+      const [customers, staff, usageData, activeUsersData, timeSpentData] = await Promise.all([
+        appApi.getStaffCustomers().catch(() => []),
+        appApi.getStaffUsers().catch(() => []),
+        appApi.getFeatureUsageOverTime({
+          range,
+          features: [...TRACKED_FEATURES],
+          limit: 3,
+        }),
+        appApi.getActiveCustomers({ range: activeUsersRange }),
+        appApi.getFeatureTimeSpent({
+          range: timeSpentRange,
+          features: [...TIME_SPENT_FEATURES],
+        }),
+      ]);
+
+      setSummary({
+        customers: Array.isArray(customers) ? customers.length : 0,
+        staff: Array.isArray(staff) ? staff.length : 0,
+      });
+      setUsage(usageData);
+      setUsageError(null);
+      setActiveUsers(activeUsersData);
+      setActiveUsersError(null);
+      setTimeSpent(timeSpentData);
+      setTimeSpentError(null);
+    } catch (e: any) {
+      // Preserve existing data; only surface refresh errors for each panel.
+      if (!usageError) setUsageError(e?.response?.data?.message ?? 'Unable to refresh usage data.');
+      if (!activeUsersError) setActiveUsersError(e?.response?.data?.message ?? 'Unable to refresh active users data.');
+      if (!timeSpentError) setTimeSpentError(e?.response?.data?.message ?? 'Unable to refresh time spent data.');
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const chartData = useMemo(() => {
     if (!usage) {
@@ -240,15 +272,19 @@ const AdminDashboardScreen = () => {
     }
 
     const byFeature = new Map(usage.features.map((f) => [f.featureKey, f]));
-    const labels = usage.buckets || [];
-    const loanSeries = byFeature.get('LOANS')?.data ?? Array(labels.length).fill(0);
-    const savingSeries = byFeature.get('SAVINGS')?.data ?? Array(labels.length).fill(0);
-    const scheduleSeries = byFeature.get('SCHEDULE')?.data ?? Array(labels.length).fill(0);
+    const rawLabels = usage.buckets || [];
+    const startIndex = range === 'daily' ? Math.max(rawLabels.length - 5, 0) : 0;
+    const labels = rawLabels.slice(startIndex);
+
+    const loanSeries = (byFeature.get('LOANS')?.data ?? Array(rawLabels.length).fill(0)).slice(startIndex);
+    const savingSeries = (byFeature.get('SAVINGS')?.data ?? Array(rawLabels.length).fill(0)).slice(startIndex);
+    const scheduleSeries = (byFeature.get('SCHEDULE')?.data ?? Array(rawLabels.length).fill(0)).slice(startIndex);
     const totalPoints = labels.length;
-    const showEvery = totalPoints > 16 ? 3 : totalPoints > 10 ? 2 : 1;
+    const showEvery = range === 'daily' ? 1 : totalPoints > 20 ? 4 : totalPoints > 12 ? 3 : totalPoints > 8 ? 2 : 1;
 
     const loanData = loanSeries.map((value, idx) => ({
       value: Number(value) || 0,
+      // Keep cadence consistent and always show the latest bucket label.
       label: idx % showEvery === 0 || idx === totalPoints - 1 ? labels[idx] ?? '' : '',
     }));
     const savingData = savingSeries.map((value) => ({ value: Number(value) || 0 }));
@@ -264,7 +300,7 @@ const AdminDashboardScreen = () => {
         SCHEDULE: scheduleSeries.reduce((sum, v) => sum + v, 0),
       },
     };
-  }, [usage]);
+  }, [usage, range]);
 
   const chartMaxValue = useMemo(() => {
     const allValues = [
@@ -364,6 +400,7 @@ const AdminDashboardScreen = () => {
         className="flex-1"
         contentContainerStyle={{ paddingTop: 24, paddingBottom: 24, gap: 14 }}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         <Card className="items-center justify-center rounded-2xl bg-[#DDEBFF] px-6 py-6 shadow-lg">
           <Text className="text-base font-semibold text-slate-900">Welcome</Text>
@@ -464,7 +501,7 @@ const AdminDashboardScreen = () => {
                 </View>
 
                 <View
-                  style={{ marginTop: 10, paddingTop: 6 }}
+                  style={{ marginTop: 10, paddingTop: 6, overflow: 'hidden' }}
                   onLayout={(e) => {
                     const w = Math.floor(e.nativeEvent.layout.width);
                     if (w > 0 && w !== usageChartWidth) setUsageChartWidth(w);
@@ -474,7 +511,7 @@ const AdminDashboardScreen = () => {
                     data={chartData.loanData}
                     data2={chartData.savingData}
                     data3={chartData.scheduleData}
-                    width={Math.max(usageChartWidth - 12, 180)}
+                    width={Math.max(usageChartWidth - 36, 180)}
                     height={220}
                     color1={SERIES.LOANS.color}
                     color2={SERIES.SAVINGS.color}
@@ -492,11 +529,13 @@ const AdminDashboardScreen = () => {
                     xAxisLabelTextStyle={{ color: '#64748b', fontSize: 10 }}
                     yAxisTextStyle={{ color: '#64748b', fontSize: 10 }}
                     noOfSections={usageChartSections}
-                    maxValue={Math.max(chartMaxValue, 5)}
+                    maxValue={chartMaxValue}
                     adjustToWidth
-                    initialSpacing={12}
-                    endSpacing={36}
+                    initialSpacing={16}
+                    endSpacing={16}
                     disableScroll
+                    scrollToEnd={false}
+                    showScrollIndicator={false}
                     rulesColor="#e2e8f0"
                     isAnimated
                     animationDuration={480}

@@ -56,4 +56,34 @@ export default () => ({
     byBranchJson: process.env.CONTACTS_BY_BRANCH_JSON || '',
     byGroupJson: process.env.CONTACTS_BY_GROUP_JSON || '',
   },
+  customerSync: {
+    bootstrapOnStartup: process.env.CUSTOMER_BOOTSTRAP_SYNC_ON_STARTUP === 'true',
+    startupMode: process.env.CUSTOMER_STARTUP_SYNC_MODE || 'unsynced_or_stale',
+    startupDelaySeconds: process.env.CUSTOMER_STARTUP_SYNC_DELAY_SECONDS
+      ? Number(process.env.CUSTOMER_STARTUP_SYNC_DELAY_SECONDS)
+      : 20,
+    startupMaxCustomers: process.env.CUSTOMER_STARTUP_SYNC_MAX_CUSTOMERS
+      ? Number(process.env.CUSTOMER_STARTUP_SYNC_MAX_CUSTOMERS)
+      : 300,
+    weeklyEnabled: process.env.CUSTOMER_WEEKLY_SYNC_ENABLED !== 'false',
+    weeklyDay: process.env.CUSTOMER_WEEKLY_SYNC_DAY
+      ? Number(process.env.CUSTOMER_WEEKLY_SYNC_DAY)
+      : 6,
+    weeklyHour: process.env.CUSTOMER_WEEKLY_SYNC_HOUR
+      ? Number(process.env.CUSTOMER_WEEKLY_SYNC_HOUR)
+      : 22,
+    weeklyTimezone: process.env.CUSTOMER_WEEKLY_SYNC_TIMEZONE || 'Asia/Bangkok',
+    weeklyStaleDays: process.env.CUSTOMER_WEEKLY_SYNC_STALE_DAYS
+      ? Number(process.env.CUSTOMER_WEEKLY_SYNC_STALE_DAYS)
+      : 7,
+    weeklyMaxCustomers: process.env.CUSTOMER_WEEKLY_SYNC_MAX_CUSTOMERS
+      ? Number(process.env.CUSTOMER_WEEKLY_SYNC_MAX_CUSTOMERS)
+      : 300,
+    weeklyBatchSize: process.env.CUSTOMER_WEEKLY_SYNC_BATCH_SIZE
+      ? Number(process.env.CUSTOMER_WEEKLY_SYNC_BATCH_SIZE)
+      : 50,
+    weeklyBatchDelayMs: process.env.CUSTOMER_WEEKLY_SYNC_BATCH_DELAY_MS
+      ? Number(process.env.CUSTOMER_WEEKLY_SYNC_BATCH_DELAY_MS)
+      : 150,
+  },
 });

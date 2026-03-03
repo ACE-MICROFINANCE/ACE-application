@@ -25,6 +25,7 @@ import { CustomerBootstrapSyncService } from './customer-bootstrap-sync.service'
     CustomersService,
     BijliCustomerSyncService,
     BijliClientService,
+    CustomerBootstrapSyncService,
     BranchGroupMapService, // CHANGED: export branch mapping service
   ], // CHANGED: export BijliClientService for /savings
 })

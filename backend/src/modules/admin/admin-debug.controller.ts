@@ -3,6 +3,7 @@ import {
   Get,
   Param,
   Post,
+  Query,
 } from '@nestjs/common';
 // import { ForbiddenException, UseGuards } from '@nestjs/common'; // TODO: replaced by ACE Farmer implementation
 // import { ConfigService } from '@nestjs/config'; // TODO: replaced by ACE Farmer implementation
@@ -10,6 +11,7 @@ import {
 // import { RolesGuard } from '../../common/guards/roles.guard'; // TODO: replaced by ACE Farmer implementation
 // import { Roles } from '../../common/decorators/roles.decorator'; // TODO: replaced by ACE Farmer implementation
 import { MemberDebugSyncService } from './member-debug-sync.service';
+import { CustomerBootstrapSyncService } from '../customers/customer-bootstrap-sync.service';
 
 @Controller('admin/debug')
 // @UseGuards(JwtAccessGuard, RolesGuard) // TODO: replaced by ACE Farmer implementation
@@ -17,6 +19,7 @@ import { MemberDebugSyncService } from './member-debug-sync.service';
 export class AdminDebugController {
   constructor(
     private readonly memberDebugSyncService: MemberDebugSyncService,
+    private readonly customerBootstrapSyncService: CustomerBootstrapSyncService,
     // private readonly configService: ConfigService, // TODO: replaced by ACE Farmer implementation
   ) {}
 
@@ -38,5 +41,27 @@ export class AdminDebugController {
   async getMember(@Param('memberNo') memberNo: string) {
     // this.ensureDebugEnabled(); // TODO: replaced by ACE Farmer implementation
     return this.memberDebugSyncService.getMember(memberNo);
+  }
+
+  @Get('customers/sync-candidates')
+  async getSyncCandidates(
+    @Query('staleDays') staleDays?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.customerBootstrapSyncService.listSyncCandidates({
+      staleDays: staleDays ? Number(staleDays) : undefined,
+      limit: limit ? Number(limit) : undefined,
+    });
+  }
+
+  @Post('customers/sync-now')
+  async syncNow(
+    @Query('staleDays') staleDays?: string,
+    @Query('maxCustomers') maxCustomers?: string,
+  ) {
+    return this.customerBootstrapSyncService.runManualSync({
+      staleDays: staleDays ? Number(staleDays) : undefined,
+      maxCustomers: maxCustomers ? Number(maxCustomers) : undefined,
+    });
   }
 }

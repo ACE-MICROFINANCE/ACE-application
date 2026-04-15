@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MobileFrame } from "@components/layout/MobileFrame";
 import { Card } from "@components/ui/Card";
 import { AppButton } from "@components/ui/AppButton";
+import { PaginationBar } from "@components/ui/PaginationBar";
 import { useProfileStore } from "@store/profileStore";
 import {
   appApi,
@@ -27,6 +28,7 @@ import {
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 
 type ModalMode = "create" | "edit" | null;
+const PAGE_LIMIT = 20;
 
 type StatusBadge = { text: string; className: string };
 type RoleChip = { text: string; className: string };
@@ -65,6 +67,9 @@ const StaffManageScreen = () => {
   const floatingBottom = tabH + 12; // spacing above tab bar
 
   const [staffUsers, setStaffUsers] = useState<StaffUserItem[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [totalStaffUsers, setTotalStaffUsers] = useState(0);
   const [branches, setBranches] = useState<StaffBranchItem[]>([]);
   const [searchValue, setSearchValue] = useState("");
   const [query, setQuery] = useState("");
@@ -128,14 +133,23 @@ const StaffManageScreen = () => {
     }
   };
 
-  const fetchStaffUsers = async (q?: string) => {
+  const fetchStaffUsers = async (options?: { q?: string; page?: number }) => {
+    const q = options?.q?.trim() || undefined;
+    const page = options?.page ?? 1;
     setLoading(true);
     setError(null);
     try {
-      const data = await appApi.getStaffUsers(q?.trim() || undefined);
-      setStaffUsers(Array.isArray(data) ? data : []);
+      const data = await appApi.getStaffUsers({ q, page, limit: PAGE_LIMIT });
+      setStaffUsers(data?.items ?? []);
+      setCurrentPage(data?.page ?? page);
+      setHasMore(Boolean(data?.hasMore));
+      setTotalStaffUsers(data?.total ?? 0);
     } catch (e: any) {
       setError(e?.response?.data?.message ?? "Unable to load staff list.");
+      setStaffUsers([]);
+      setCurrentPage(1);
+      setHasMore(false);
+      setTotalStaffUsers(0);
     } finally {
       setLoading(false);
     }
@@ -144,7 +158,6 @@ const StaffManageScreen = () => {
   useEffect(() => {
     if (!isAdmin) return;
     fetchBranches();
-    fetchStaffUsers();
   }, [isAdmin]);
 
   useEffect(() => {
@@ -157,8 +170,13 @@ const StaffManageScreen = () => {
 
   useEffect(() => {
     if (!isAdmin) return;
-    fetchStaffUsers(query);
+    fetchStaffUsers({ q: query, page: 1 });
   }, [query, isAdmin]);
+
+  const handlePageChange = async (page: number) => {
+    if (loading || page === currentPage) return;
+    await fetchStaffUsers({ q: query, page });
+  };
 
   const openCreateModal = () => {
     setModalMode("create");
@@ -233,7 +251,7 @@ const StaffManageScreen = () => {
       };
       await appApi.createStaffUser(payload);
       setModalMode(null);
-      await fetchStaffUsers(query);
+      await fetchStaffUsers({ q: query, page: 1 });
     } catch (err: any) {
       setSaveError(err?.response?.data?.message ?? "Unable to create staff user.");
     } finally {
@@ -270,7 +288,7 @@ const StaffManageScreen = () => {
       };
       await appApi.updateStaffUser(selectedStaff.id, payload);
       setModalMode(null);
-      await fetchStaffUsers(query);
+      await fetchStaffUsers({ q: query, page: 1 });
     } catch (err: any) {
       setSaveError(err?.response?.data?.message ?? "Unable to update staff user.");
     } finally {
@@ -292,7 +310,7 @@ const StaffManageScreen = () => {
     try {
       await appApi.lockStaffUser(selectedStaff.id, !nextActive);
       setSelectedStaff((prev) => (prev ? { ...prev, isActive: nextActive } : prev));
-      await fetchStaffUsers(query);
+      await fetchStaffUsers({ q: query, page: 1 });
     } catch (err: any) {
       setSaveError(err?.response?.data?.message ?? "Unable to update account status.");
     } finally {
@@ -331,7 +349,7 @@ const StaffManageScreen = () => {
     try {
       await appApi.deleteStaffUser(selectedStaff.id);
       setModalMode(null);
-      await fetchStaffUsers(query);
+      await fetchStaffUsers({ q: query, page: 1 });
     } catch (err: any) {
       setSaveError(err?.response?.data?.message ?? "Unable to delete staff user.");
     } finally {
@@ -453,6 +471,16 @@ const StaffManageScreen = () => {
                 })
             )}
           </View>
+
+          {!loading && staffUsers.length > 0 ? (
+            <PaginationBar
+              currentPage={currentPage}
+              totalItems={totalStaffUsers}
+              pageSize={PAGE_LIMIT}
+              onPageChange={(page) => void handlePageChange(page)}
+              disabled={loading}
+            />
+          ) : null}
         </View>
       </ScrollView>
 

@@ -25,8 +25,17 @@ export class EventsController {
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('eventType') eventType?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
-    return this.eventsService.listStaffEvents(req.user, { from, to, eventType }); // CHANGED: staff list
+    return this.eventsService.listStaffEventsPage(
+      req.user,
+      { from, to, eventType },
+      {
+        page: page ? Number(page) : undefined,
+        limit: limit ? Number(limit) : undefined,
+      },
+    ); // CHANGED: staff list
   }
 
   @UseGuards(JwtAccessGuard, RolesGuard)

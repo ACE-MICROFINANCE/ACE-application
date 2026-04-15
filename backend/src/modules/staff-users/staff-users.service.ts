@@ -5,6 +5,8 @@ import { CreateStaffUserDto } from './dto/create-staff-user.dto';
 import { UpdateStaffUserDto } from './dto/update-staff-user.dto';
 import { BranchGroupMapService } from '../customers/branch-group-map.service';
 
+const DEFAULT_STAFF_USER_LIST_LIMIT = 20;
+
 @Injectable()
 export class StaffUsersService {
   constructor(
@@ -12,28 +14,53 @@ export class StaffUsersService {
     private readonly branchGroupMapService: BranchGroupMapService,
   ) {}
 
+  private normalizePagination(page?: number, limit?: number) {
+    const safePage = Number.isFinite(page) && (page ?? 0) > 0 ? Math.floor(page as number) : 1;
+    const safeLimit = Number.isFinite(limit) && (limit ?? 0) > 0
+      ? Math.min(Math.floor(limit as number), 50)
+      : DEFAULT_STAFF_USER_LIST_LIMIT;
+
+    return {
+      page: safePage,
+      limit: safeLimit,
+      skip: (safePage - 1) * safeLimit,
+      take: safeLimit,
+    };
+  }
+
   private async mapBranchName(branchCode?: string | null) {
     const branch = await this.branchGroupMapService.resolveBranchByCode(branchCode);
     return branch?.branchName ?? null;
   }
 
-  private async mapStaffUser(row: { id: bigint; branchCode?: string | null } & Record<string, unknown>) {
+  private async mapStaffUser(
+    row: { id: bigint; branchCode?: string | null } & Record<string, unknown>,
+    branchNameMap?: Map<string, string | null>,
+  ) {
     return {
       ...row,
       id: Number(row.id),
-      branchName: await this.mapBranchName(row.branchCode),
+      branchName:
+        branchNameMap?.has(row.branchCode ?? '')
+          ? branchNameMap.get(row.branchCode ?? '') ?? null
+          : await this.mapBranchName(row.branchCode),
     };
   }
 
-  async list(query?: { q?: string | null }) {
+  async list(query?: { q?: string | null; page?: number; limit?: number }) {
     const q = query?.q?.trim();
+    const { page, limit, skip, take } = this.normalizePagination(query?.page, query?.limit);
+    const where = q
+      ? {
+          OR: [{ email: { contains: q } }, { fullName: { contains: q } }],
+        }
+      : undefined;
+    const total = await this.prisma.staffUser.count({ where });
     const rows = await this.prisma.staffUser.findMany({
-      where: q
-        ? {
-            OR: [{ email: { contains: q } }, { fullName: { contains: q } }],
-          }
-        : undefined,
+      where,
       orderBy: { createdAt: 'desc' },
+      skip,
+      take,
       select: {
         id: true,
         email: true,
@@ -47,7 +74,22 @@ export class StaffUsersService {
       },
     });
 
-    return Promise.all(rows.map((row) => this.mapStaffUser(row)));
+    const branchCodes = Array.from(new Set(rows.map((row) => row.branchCode).filter(Boolean))) as string[];
+    const branches = await this.branchGroupMapService.listBranches();
+    const branchNameMap = new Map(
+      branches
+        .filter((branch) => branchCodes.includes(branch.branchCode))
+        .map((branch) => [branch.branchCode, branch.branchName ?? null]),
+    );
+
+    const items = await Promise.all(rows.map((row) => this.mapStaffUser(row, branchNameMap)));
+    return {
+      items,
+      total,
+      page,
+      limit,
+      hasMore: skip + items.length < total,
+    };
   }
 
   async listSsoByBranch(branchCode: string) {

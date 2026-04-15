@@ -15,8 +15,12 @@ export class StaffUsersController {
   constructor(private readonly staffUsersService: StaffUsersService) {}
 
   @Get()
-  async list(@Query('q') q?: string) {
-    return this.staffUsersService.list({ q }); // CHANGED: optional search
+  async list(@Query('q') q?: string, @Query('page') page?: string, @Query('limit') limit?: string) {
+    return this.staffUsersService.list({
+      q,
+      page: page ? Number(page) : undefined,
+      limit: limit ? Number(limit) : undefined,
+    }); // CHANGED: optional search
   }
 
   @Get('sso')

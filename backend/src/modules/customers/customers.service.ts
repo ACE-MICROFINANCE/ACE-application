@@ -12,15 +12,77 @@ import { BranchGroupMapService } from './branch-group-map.service'; // CHANGED: 
 import { TempPasswordCryptoService } from '../../common/services/temp-password-crypto.service'; // CHANGED: temp password crypto
 import { BijliCustomerSyncService } from './bijli-customer-sync.service'; // CHANGED: auto-sync BIJI on create account
 import { normalizeGroupNameKey } from '../../common/utils/normalize-group-name.util';
+import { formatVietnameseName } from '../../common/utils/string.utils';
+
+const DEFAULT_STAFF_CUSTOMER_LIST_LIMIT = 20;
+const SEARCH_STAFF_CUSTOMER_LIST_LIMIT = 20;
+const DEFAULT_STAFF_GROUP_LIST_LIMIT = 20;
+const DEFAULT_GROUP_REQUEST_LIST_LIMIT = 20;
+const CUSTOMER_LIST_COUNT_CACHE_TTL_MS = 60_000;
 
 @Injectable()
 export class CustomersService {
+  private readonly customerListCountCache = new Map<string, { total: number; expiresAt: number }>();
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly branchGroupMapService: BranchGroupMapService, // CHANGED: branch group mapping
     private readonly tempPasswordCryptoService: TempPasswordCryptoService, // CHANGED: temp password crypto
     private readonly bijliCustomerSyncService: BijliCustomerSyncService, // CHANGED: auto-sync BIJI on create account
   ) {}
+
+  private normalizePagination(page?: number, limit?: number, defaults?: { limit?: number; max?: number }) {
+    const safePage = Number.isFinite(page) && (page ?? 0) > 0 ? Math.floor(page as number) : 1;
+    const defaultLimit = defaults?.limit ?? 20;
+    const maxLimit = defaults?.max ?? 50;
+    const safeLimit = Number.isFinite(limit) && (limit ?? 0) > 0
+      ? Math.min(Math.floor(limit as number), maxLimit)
+      : defaultLimit;
+
+    return {
+      page: safePage,
+      limit: safeLimit,
+      skip: (safePage - 1) * safeLimit,
+      take: safeLimit,
+    };
+  }
+
+  private buildCustomerListCountCacheKey(
+    staff: { role?: string; branchCode?: string | null },
+    query?: string,
+  ) {
+    return JSON.stringify({
+      role: staff.role ?? null,
+      branchCode: staff.branchCode ?? null,
+      query: query ?? null,
+    });
+  }
+
+  private getCachedCustomerListTotal(cacheKey: string) {
+    const cached = this.customerListCountCache.get(cacheKey);
+    if (!cached) return null;
+    if (cached.expiresAt <= Date.now()) {
+      this.customerListCountCache.delete(cacheKey);
+      return null;
+    }
+    return cached.total;
+  }
+
+  private setCachedCustomerListTotal(cacheKey: string, total: number) {
+    this.customerListCountCache.set(cacheKey, {
+      total,
+      expiresAt: Date.now() + CUSTOMER_LIST_COUNT_CACHE_TTL_MS,
+    });
+  }
+
+  private async resolveCustomerListTotal(cacheKey: string, where: Prisma.CustomerWhereInput) {
+    const cached = this.getCachedCustomerListTotal(cacheKey);
+    if (cached !== null) return cached;
+
+    const total = await this.prisma.customer.count({ where });
+    this.setCachedCustomerListTotal(cacheKey, total);
+    return total;
+  }
 
   private async assertValidSso(branchCode: string, ssoId: number) {
     const sso = await this.prisma.staffUser.findUnique({
@@ -191,6 +253,7 @@ export class CustomersService {
   async listStaffGroupsWithCounts(
     staff: { role?: string | null; branchCode?: string | null },
     branchCode?: string,
+    pagination?: { page?: number; limit?: number },
   ) {
     const branchCodeResolved =
       staff?.role === 'BM' || staff?.role === 'BA'
@@ -203,12 +266,26 @@ export class CustomersService {
       throw new ForbiddenException('Không được xem nhóm ngoài chi nhánh của bạn.');
     }
 
+    const { page, limit, skip, take } = this.normalizePagination(
+      pagination?.page,
+      pagination?.limit,
+      { limit: DEFAULT_STAFF_GROUP_LIST_LIMIT },
+    );
+
+    const total = await this.prisma.group.count({
+      where: { branchCode: branchCodeResolved },
+    });
+
     const groups = await this.prisma.group.findMany({
       where: { branchCode: branchCodeResolved },
       orderBy: { groupName: 'asc' },
+      skip,
+      take,
     });
 
-    if (!groups.length) return [];
+    if (!groups.length) {
+      return { items: [], total, page, limit, hasMore: false };
+    }
 
     const customerCounts = await this.prisma.customer.groupBy({
       by: ['branchCode', 'groupCode'],
@@ -234,7 +311,7 @@ export class CustomersService {
     const unmappedMap = new Map<string, number>();
     unmappedCounts.forEach((c) => unmappedMap.set(c.groupNameKey ?? '', c._count._all));
 
-    return groups.map((g) => ({
+    const items = groups.map((g) => ({
       id: Number(g.id),
       branchCode: g.branchCode,
       groupCode: g.groupCode,
@@ -243,6 +320,14 @@ export class CustomersService {
       customerCount: customerCountMap.get(`${g.branchCode}::${g.groupCode}`) ?? 0,
       unmappedCustomerCount: unmappedMap.get(g.groupNameKey) ?? 0,
     }));
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+      hasMore: skip + items.length < total,
+    };
   }
 
   async createGroup(
@@ -469,19 +554,35 @@ export class CustomersService {
   }
 
   // BA view own requests
-  async listMyGroupRequests(staff: { id?: string | null; role?: string | null }) {
+  async listMyGroupRequests(
+    staff: { id?: string | null; role?: string | null },
+    pagination?: { page?: number; limit?: number },
+  ) {
     if (staff.role !== 'BA') {
       throw new ForbiddenException('Chỉ BA được phép xem danh sách này.');
     }
     const now = new Date();
+    const { page, limit, skip, take } = this.normalizePagination(
+      pagination?.page,
+      pagination?.limit,
+      { limit: DEFAULT_GROUP_REQUEST_LIST_LIMIT },
+    );
+
+    const where: Prisma.GroupRequestWhereInput = {
+      createdByStaffId: BigInt(staff.id ?? '0'),
+      NOT: {
+        AND: [{ status: GroupRequestStatus.REJECTED }, { expiresAt: { lte: now } }],
+      },
+    };
+
+    const total = await this.prisma.groupRequest.count({ where });
     const rows = await this.prisma.groupRequest.findMany({
       where: {
-        createdByStaffId: BigInt(staff.id ?? '0'),
-        NOT: {
-          AND: [{ status: GroupRequestStatus.REJECTED }, { expiresAt: { lte: now } }],
-        },
+        ...where,
       },
       orderBy: { createdAt: 'asc' },
+      skip,
+      take,
     });
     const rank = (s: GroupRequestStatus) =>
       s === GroupRequestStatus.REJECTED ? 0 : s === GroupRequestStatus.PENDING ? 1 : 2;
@@ -490,7 +591,7 @@ export class CustomersService {
       if (r !== 0) return r;
       return Number(a.id - b.id);
     });
-    return sorted.map((r) => ({
+    const items = sorted.map((r) => ({
       ...r,
       id: Number(r.id),
       targetGroupId: r.targetGroupId ? Number(r.targetGroupId) : null,
@@ -498,6 +599,13 @@ export class CustomersService {
       reviewedByStaffId: r.reviewedByStaffId ? Number(r.reviewedByStaffId) : null,
       proposedSsoId: r.proposedSsoId ? Number(r.proposedSsoId) : null,
     }));
+    return {
+      items,
+      total,
+      page,
+      limit,
+      hasMore: skip + items.length < total,
+    };
   }
 
   // BM list requests
@@ -505,6 +613,7 @@ export class CustomersService {
     staff: { id?: string | null; role?: string | null; branchCode?: string | null },
     status?: string,
     branchCodeFromQuery?: string | null,
+    pagination?: { page?: number; limit?: number },
   ) {
     if (staff.role !== 'BM') {
       throw new ForbiddenException('Chỉ BM được phép xem danh sách này.');
@@ -519,11 +628,24 @@ export class CustomersService {
         ? (status as GroupRequestStatus)
         : GroupRequestStatus.PENDING;
 
+    const { page, limit, skip, take } = this.normalizePagination(
+      pagination?.page,
+      pagination?.limit,
+      { limit: DEFAULT_GROUP_REQUEST_LIST_LIMIT },
+    );
+    const where: Prisma.GroupRequestWhereInput = {
+      branchCode: branchCodeResolved,
+      status: statusFilter,
+    };
+
+    const total = await this.prisma.groupRequest.count({ where });
     const rows = await this.prisma.groupRequest.findMany({
-      where: { branchCode: branchCodeResolved, status: statusFilter },
+      where,
       orderBy: { createdAt: 'asc' },
+      skip,
+      take,
     });
-    return rows.map((r) => ({
+    const items = rows.map((r) => ({
       ...r,
       id: Number(r.id),
       targetGroupId: r.targetGroupId ? Number(r.targetGroupId) : null,
@@ -531,6 +653,13 @@ export class CustomersService {
       reviewedByStaffId: r.reviewedByStaffId ? Number(r.reviewedByStaffId) : null,
       proposedSsoId: r.proposedSsoId ? Number(r.proposedSsoId) : null,
     }));
+    return {
+      items,
+      total,
+      page,
+      limit,
+      hasMore: skip + items.length < total,
+    };
   }
 
   // BM approve request
@@ -711,37 +840,80 @@ export class CustomersService {
   async listCustomersForStaff(
     staff: { role?: string; branchCode?: string | null },
     q?: string,
+    pagination?: { page?: number; limit?: number },
   ) {
     const query = q?.trim();
+    const hasQuery = Boolean(query);
+    const isMemberNoQuery = /^\d+$/.test(query ?? '');
+    const { page, limit, skip, take } = this.normalizePagination(
+      pagination?.page,
+      pagination?.limit,
+      {
+        limit: hasQuery ? SEARCH_STAFF_CUSTOMER_LIST_LIMIT : DEFAULT_STAFF_CUSTOMER_LIST_LIMIT,
+      },
+    );
+
+    // Avoid broad full-name scans for 1-character queries.
+    if (hasQuery && !isMemberNoQuery && (query?.length ?? 0) < 2) {
+      return { items: [], total: 0, page, limit, hasMore: false };
+    }
+
+    const normalizedNameQuery =
+      hasQuery && !isMemberNoQuery && query ? formatVietnameseName(query) : undefined;
     const where: Prisma.CustomerWhereInput = {
       ...(staff.role === 'BM' && staff.branchCode
         ? { branchCode: staff.branchCode }
         : {}),
-      ...(query
+      ...(hasQuery && query
         ? {
-            OR: [
-              { memberNo: { contains: query } },
-              { fullName: { contains: query } },
-            ],
+            OR: isMemberNoQuery
+              ? [{ memberNo: { equals: query } }, { memberNo: { startsWith: query } }]
+              : [
+                  { fullName: { startsWith: normalizedNameQuery, mode: 'insensitive' } },
+                  { fullName: { contains: normalizedNameQuery, mode: 'insensitive' } },
+                ],
           }
         : {}),
     };
 
+    const countCacheKey = this.buildCustomerListCountCacheKey(staff, query);
+    const total = await this.resolveCustomerListTotal(countCacheKey, where);
     const rows = await this.prisma.customer.findMany({
       where,
-      include: { credential: true },
+      select: {
+        memberNo: true,
+        fullName: true,
+        phoneNumber: true,
+        groupName: true,
+        branchName: true,
+        accessibilityEnabled: true,
+        isActive: true,
+      },
       orderBy: { updatedAt: 'desc' },
+      skip,
+      take: take + 1,
     });
 
-    return rows.map((customer) => ({
+    const hasMore = rows.length > take;
+    const pageRows = hasMore ? rows.slice(0, take) : rows;
+
+    const items = pageRows.map((customer) => ({
       memberNo: customer.memberNo,
       fullName: customer.fullName,
       phoneNumber: customer.phoneNumber,
       groupName: customer.groupName,
       branchName: customer.branchName,
       accessibilityEnabled: customer.accessibilityEnabled,
-      isActive: customer.credential?.isActive ?? false,
+      isActive: customer.isActive,
     }));
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+      hasMore,
+    };
   }
 
   // CHANGED: staff/admin customer detail

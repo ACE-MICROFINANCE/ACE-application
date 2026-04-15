@@ -92,13 +92,13 @@ const AdminDashboardScreen = () => {
       setSummaryLoading(true);
       try {
         const [customers, staff] = await Promise.all([
-          appApi.getStaffCustomers().catch(() => []),
-          appApi.getStaffUsers().catch(() => []),
+          appApi.getStaffCustomers({ page: 1, limit: 1 }).catch(() => null),
+          appApi.getStaffUsers({ page: 1, limit: 1 }).catch(() => null),
         ]);
         if (!mounted) return;
         setSummary({
-          customers: Array.isArray(customers) ? customers.length : 0,
-          staff: Array.isArray(staff) ? staff.length : 0,
+          customers: customers?.total ?? 0,
+          staff: staff?.total ?? 0,
         });
       } finally {
         if (mounted) setSummaryLoading(false);
@@ -233,8 +233,8 @@ const AdminDashboardScreen = () => {
     setRefreshing(true);
     try {
       const [customers, staff, usageData, activeUsersData, timeSpentData] = await Promise.all([
-        appApi.getStaffCustomers().catch(() => []),
-        appApi.getStaffUsers().catch(() => []),
+        appApi.getStaffCustomers({ page: 1, limit: 1 }).catch(() => null),
+        appApi.getStaffUsers({ page: 1, limit: 1 }).catch(() => null),
         appApi.getFeatureUsageOverTime({
           range,
           features: [...TRACKED_FEATURES],
@@ -248,8 +248,8 @@ const AdminDashboardScreen = () => {
       ]);
 
       setSummary({
-        customers: Array.isArray(customers) ? customers.length : 0,
-        staff: Array.isArray(staff) ? staff.length : 0,
+        customers: customers?.total ?? 0,
+        staff: staff?.total ?? 0,
       });
       setUsage(usageData);
       setUsageError(null);

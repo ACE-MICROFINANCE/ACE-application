@@ -1,15 +1,18 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Image,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
-  Share,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as MediaLibrary from 'expo-media-library';
 import { MobileFrame } from '@components/layout/MobileFrame';
 import { Card } from '@components/ui/Card';
 import { useScreenGuard } from '../hooks/useScreenGuard';
@@ -187,10 +190,33 @@ const LoansScreen = () => {
   const handleSaveQr = async () => {
     if (!qrImageUrl) return;
     try {
-      // CHANGED: tận dụng Share để lưu/chia sẻ QR (không dùng thêm thư viện)
-      await Share.share({ url: qrImageUrl, message: 'Mã QR thanh toán khoản vay ACE' });
+      if (Platform.OS === 'web') {
+        window.open(qrImageUrl, '_blank', 'noopener,noreferrer');
+        return;
+      }
+
+      const permission = await MediaLibrary.requestPermissionsAsync(
+        true,
+        Platform.OS === 'android' ? ['photo'] : undefined,
+      );
+      if (!permission.granted) {
+        Alert.alert('Chưa có quyền lưu ảnh', 'Vui lòng cấp quyền thư viện ảnh để lưu mã QR.');
+        return;
+      }
+
+      const fileSafeLoanNo = (loan?.loanNo ?? 'loan-qr').replace(/[^a-zA-Z0-9-_]/g, '-');
+      const destinationUri = `${FileSystem.cacheDirectory ?? FileSystem.documentDirectory}${fileSafeLoanNo}-${Date.now()}.png`;
+      const download = await FileSystem.downloadAsync(qrImageUrl, destinationUri);
+
+      if (download.status !== 200) {
+        throw new Error(`Download failed with status ${download.status}`);
+      }
+
+      await MediaLibrary.saveToLibraryAsync(download.uri);
+      await FileSystem.deleteAsync(download.uri, { idempotent: true }).catch(() => undefined);
+      Alert.alert('Đã lưu thành công', 'Mã QR đã được lưu vào thư viện ảnh của bạn.');
     } catch {
-      // ignore
+      Alert.alert('Không thể lưu ảnh', 'Hiện chưa lưu được mã QR. Vui lòng thử lại sau.');
     }
   };
 

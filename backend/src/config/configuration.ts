@@ -39,7 +39,9 @@ export default () => ({
     tempPasswordEncKey: process.env.TEMP_PASSWORD_ENC_KEY, // CHANGED: AES-GCM key for temp password
   },
   notifications: {
-    pushMode: process.env.PUSH_MODE || 'stub', // stub|fcm
+    pushMode: process.env.PUSH_MODE || 'expo', // stub|expo (fcm reserved)
+    expoPushEndpoint: process.env.EXPO_PUSH_ENDPOINT || 'https://exp.host/--/api/v2/push/send',
+    expoAccessToken: process.env.EXPO_ACCESS_TOKEN || '',
     enableRealtime: process.env.ENABLE_REALTIME === 'true',
     enableScheduleReminder: process.env.ENABLE_SCHEDULE_REMINDER === 'true',
     scheduleReminderDays: process.env.SCHEDULE_REMINDER_DAYS

@@ -37,6 +37,8 @@ model Customer {
 
   @@index([branchCode, groupCode])
   @@index([groupNameKey])
+  @@index([updatedAt])
+  @@index([branchCode, updatedAt])
 }
 
 model CustomerCredential {

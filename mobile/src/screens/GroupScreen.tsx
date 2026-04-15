@@ -19,6 +19,7 @@ import { useIsFocused } from "@react-navigation/native";
 import { MobileFrame } from "@components/layout/MobileFrame";
 import { Card } from "@components/ui/Card";
 import { AppButton } from "@components/ui/AppButton";
+import { PaginationBar } from "@components/ui/PaginationBar";
 import { useProfileStore } from "@store/profileStore";
 import { appApi } from "@services/appApi";
 
@@ -44,12 +45,27 @@ type GroupRequestItem = {
   rejectedAt?: string | null;
 };
 
+const GROUPS_PAGE_LIMIT = 20;
+const REQUESTS_PAGE_LIMIT = 20;
+
 const buildStatusBadge = (status?: string | null) => {
   if (status === "ACTIVE" || status == null) return { text: "Đang hoạt động", className: "border-emerald-100 bg-emerald-50 text-emerald-700" };
   if (status === "PENDING") return { text: "Chờ duyệt", className: "border-amber-100 bg-amber-50 text-amber-700" };
   if (status === "APPROVED") return { text: "Đã duyệt", className: "border-emerald-100 bg-emerald-50 text-emerald-700" };
   return { text: "Đã từ chối", className: "border-rose-100 bg-rose-50 text-rose-700" };
 };
+
+const mapGroupItem = (group: any): GroupItem => ({
+  id: Number(group.id),
+  branchCode: group.branchCode ?? null,
+  branchName: group.branchName ?? null,
+  groupCode: group.groupCode ?? null,
+  groupName: group.groupName ?? '',
+  customerCount: Number(group.customerCount ?? 0),
+  unmappedCustomerCount: Number(group.unmappedCustomerCount ?? 0),
+  status: group.status ?? 'ACTIVE',
+  groupNameKey: group.groupNameKey ?? undefined,
+});
 
 const GroupScreen = () => {
   const { profile } = useProfileStore();
@@ -72,6 +88,12 @@ const GroupScreen = () => {
 
   const [groups, setGroups] = useState<GroupItem[]>([]);
   const [requests, setRequests] = useState<GroupRequestItem[]>([]);
+  const [groupPage, setGroupPage] = useState(1);
+  const [groupHasMore, setGroupHasMore] = useState(false);
+  const [groupTotal, setGroupTotal] = useState(0);
+  const [requestPage, setRequestPage] = useState(1);
+  const [requestHasMore, setRequestHasMore] = useState(false);
+  const [requestTotal, setRequestTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -87,21 +109,31 @@ const GroupScreen = () => {
   const [selectedRequest, setSelectedRequest] = useState<GroupRequestItem | null>(null);
   const [editTargetGroup, setEditTargetGroup] = useState<GroupItem | null>(null);
 
-  const fetchData = async () => {
+  const fetchData = async (options?: { groupPage?: number; requestPage?: number }) => {
     if (!isStaff) return;
+    const nextGroupPage = options?.groupPage ?? 1;
+    const nextRequestPage = options?.requestPage ?? 1;
     setLoading(true);
     setError(null);
     try {
       const [groupRes, reqRes] = await Promise.all([
-        appApi.getStaffGroups(),
+        appApi.getStaffGroups({ page: nextGroupPage, limit: GROUPS_PAGE_LIMIT }),
         isBM
-          ? appApi.getStaffGroupRequests({ branchCode: profile?.branchCode ?? null })
+          ? appApi.getStaffGroupRequests({
+              branchCode: profile?.branchCode ?? null,
+              page: nextRequestPage,
+              limit: REQUESTS_PAGE_LIMIT,
+            })
           : isBA
-          ? appApi.getMyGroupRequests()
-          : Promise.resolve([]),
+          ? appApi.getMyGroupRequests({ page: nextRequestPage, limit: REQUESTS_PAGE_LIMIT })
+          : Promise.resolve({ items: [], total: 0, page: nextRequestPage, limit: REQUESTS_PAGE_LIMIT, hasMore: false }),
       ]);
-      setGroups(Array.isArray(groupRes) ? groupRes : []);
-      const sortedReqs = (Array.isArray(reqRes) ? reqRes : []).slice().sort((a, b) => {
+      setGroups((groupRes?.items ?? []).map(mapGroupItem));
+      setGroupPage(groupRes?.page ?? nextGroupPage);
+      setGroupHasMore(Boolean(groupRes?.hasMore));
+      setGroupTotal(groupRes?.total ?? 0);
+
+      const sortedReqs = (reqRes?.items ?? []).slice().sort((a, b) => {
         const rank = (s?: string | null) =>
           s === 'PENDING' ? 0 : s === 'APPROVED' ? 1 : 2; // REJECTED last
         const r = rank(a.status) - rank(b.status);
@@ -109,6 +141,9 @@ const GroupScreen = () => {
         return (a.id ?? 0) - (b.id ?? 0);
       });
       setRequests(sortedReqs);
+      setRequestPage(reqRes?.page ?? nextRequestPage);
+      setRequestHasMore(Boolean(reqRes?.hasMore));
+      setRequestTotal(reqRes?.total ?? 0);
     } catch (e: any) {
       setError(e?.response?.data?.message ?? "Không tải được dữ liệu nhóm.");
     } finally {
@@ -149,8 +184,18 @@ const GroupScreen = () => {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchData();
+    await fetchData({ groupPage, requestPage });
     setRefreshing(false);
+  };
+
+  const handleGroupPageChange = async (page: number) => {
+    if (loading || page === groupPage) return;
+    await fetchData({ groupPage: page, requestPage });
+  };
+
+  const handleRequestPageChange = async (page: number) => {
+    if (loading || page === requestPage) return;
+    await fetchData({ groupPage, requestPage: page });
   };
 
   const openCreateModal = () => {
@@ -393,14 +438,24 @@ const GroupScreen = () => {
           </Card>
 
           {(isBA || isBM) && requests.length > 0 ? (
+            <View style={{ gap: 12 }}>
             <View className="rounded-3xl border border-black/5 bg-white shadow-[0_12px_32px_rgba(0,0,0,0.10)] overflow-hidden">
               <View className="px-4 py-3 border-b border-black/5">
                 <Text className="text-sm font-semibold text-[#111]">Trạng thái</Text>
               </View>
               {requests.map(renderRequestCard)}
             </View>
+            <PaginationBar
+              currentPage={requestPage}
+              totalItems={requestTotal}
+              pageSize={REQUESTS_PAGE_LIMIT}
+              onPageChange={(page) => void handleRequestPageChange(page)}
+              disabled={loading}
+            />
+            </View>
           ) : null}
 
+          <View style={{ gap: 12 }}>
           <View className="rounded-3xl border border-black/5 bg-white shadow-[0_12px_32px_rgba(0,0,0,0.10)] overflow-hidden">
             {loading ? (
               <View className="px-4 py-6 items-center">
@@ -414,6 +469,16 @@ const GroupScreen = () => {
             ) : (
               groups.map(renderGroupCard)
             )}
+          </View>
+          {!loading && groups.length > 0 ? (
+            <PaginationBar
+              currentPage={groupPage}
+              totalItems={groupTotal}
+              pageSize={GROUPS_PAGE_LIMIT}
+              onPageChange={(page) => void handleGroupPageChange(page)}
+              disabled={loading}
+            />
+          ) : null}
           </View>
         </View>
       </ScrollView>

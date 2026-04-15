@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../../database/prisma.service';
 import { NotificationProvider } from './notification.provider';
 import { NotificationToSend } from '../types';
-import { PushClient, StubPushClient } from '../push-client';
+import { ExpoPushClient, PushClient, StubPushClient } from '../push-client';
 
 @Injectable()
 export class PushNotificationProvider implements NotificationProvider {
@@ -12,10 +12,21 @@ export class PushNotificationProvider implements NotificationProvider {
 
   constructor(private readonly prisma: PrismaService, private readonly configService: ConfigService) {
     const mode = (this.configService.get<string>('notifications.pushMode') || 'stub').toLowerCase();
-    // TODO: add FcmPushClient when credential available
-    this.client = new StubPushClient();
-    if (mode !== 'stub') {
-      this.logger.warn(`PUSH_MODE=${mode} but no concrete client configured. Falling back to stub.`);
+    if (mode === 'stub') {
+      this.client = new StubPushClient();
+      this.logger.warn('PUSH_MODE=stub, push notifications are disabled.');
+      return;
+    }
+
+    const endpoint =
+      this.configService.get<string>('notifications.expoPushEndpoint') ||
+      'https://exp.host/--/api/v2/push/send';
+    const accessToken = this.configService.get<string>('notifications.expoAccessToken') || undefined;
+
+    // Default concrete client for production app builds (Expo push token flow).
+    this.client = new ExpoPushClient(endpoint, accessToken);
+    if (mode !== 'expo') {
+      this.logger.warn(`PUSH_MODE=${mode} is not explicitly supported yet. Falling back to Expo push client.`);
     }
   }
 
@@ -51,11 +62,17 @@ export class PushNotificationProvider implements NotificationProvider {
         )
         .map((t) => t.token);
       if (!tokens.length) continue;
-      await this.client.send(tokens, {
-        title: item.title,
-        body: item.body,
-        data: item.data as any,
-      });
+      try {
+        await this.client.send(tokens, {
+          title: item.title,
+          body: item.body,
+          data: item.data as any,
+        });
+      } catch (error: any) {
+        this.logger.error(
+          `Push send failed for ${item.recipientActorKind}:${item.recipientId} key=${item.notificationKey}: ${error?.message ?? error}`,
+        );
+      }
     }
   }
 }

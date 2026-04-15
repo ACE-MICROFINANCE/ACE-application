@@ -34,10 +34,19 @@ export class CustomersController {
   @UseGuards(JwtAccessGuard, RolesGuard)
   @Roles('BA', 'BM')
   @Get('staff/groups')
-  async listStaffGroups(@Req() req: any, @Query('branchCode') branchCode?: string) {
+  async listStaffGroups(
+    @Req() req: any,
+    @Query('branchCode') branchCode?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
     return this.customersService.listStaffGroupsWithCounts(
       { role: req.user?.role, branchCode: req.user?.branchCode },
       branchCode,
+      {
+        page: page ? Number(page) : undefined,
+        limit: limit ? Number(limit) : undefined,
+      },
     );
   }
 
@@ -98,7 +107,7 @@ export class CustomersController {
   @UseGuards(JwtAccessGuard, RolesGuard)
   @Roles('BA')
   @Get('staff/group-requests/mine')
-  async myRequests(@Req() req: any) {
+  async myRequests(@Req() req: any, @Query('page') page?: string, @Query('limit') limit?: string) {
     const staffCtx: { id?: string | null; role?: string | null; branchCode?: string | null } = {
       id: req.user?.userId,
       role: req.user?.role,
@@ -106,6 +115,10 @@ export class CustomersController {
     };
     return this.customersService.listMyGroupRequests(
       staffCtx,
+      {
+        page: page ? Number(page) : undefined,
+        limit: limit ? Number(limit) : undefined,
+      },
     );
   }
 
@@ -113,7 +126,13 @@ export class CustomersController {
   @UseGuards(JwtAccessGuard, RolesGuard)
   @Roles('BM')
   @Get('staff/group-requests')
-  async listRequests(@Req() req: any, @Query('status') status?: string, @Query('branchCode') branchCode?: string) {
+  async listRequests(
+    @Req() req: any,
+    @Query('status') status?: string,
+    @Query('branchCode') branchCode?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
     const staffCtx: { id?: string | null; role?: string | null; branchCode?: string | null } = {
       id: req.user?.userId,
       role: req.user?.role,
@@ -123,6 +142,10 @@ export class CustomersController {
       staffCtx,
       status,
       branchCode,
+      {
+        page: page ? Number(page) : undefined,
+        limit: limit ? Number(limit) : undefined,
+      },
     );
   }
 
@@ -182,10 +205,19 @@ export class CustomersController {
   @UseGuards(JwtAccessGuard, RolesGuard)
   @Roles('ADMIN', 'BM', 'BA') // allow BA manage/view customers
   @Get('staff/customers')
-  async listStaffCustomers(@Req() req: any, @Query('q') q?: string) {
+  async listStaffCustomers(
+    @Req() req: any,
+    @Query('q') q?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
     return this.customersService.listCustomersForStaff(
       { role: req.user?.role, branchCode: req.user?.branchCode },
       q,
+      {
+        page: page ? Number(page) : undefined,
+        limit: limit ? Number(limit) : undefined,
+      },
     ); // CHANGED: list/search customers for staff/admin
   }
 

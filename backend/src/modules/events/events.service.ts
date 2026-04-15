@@ -35,12 +35,28 @@ type StaffEventFilters = {
   eventType?: string;
 };
 
+const DEFAULT_STAFF_EVENT_LIST_LIMIT = 20;
+
 @Injectable()
 export class EventsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificationsService: NotificationsService,
   ) {}
+
+  private normalizePagination(page?: number, limit?: number) {
+    const safePage = Number.isFinite(page) && (page ?? 0) > 0 ? Math.floor(page as number) : 1;
+    const safeLimit = Number.isFinite(limit) && (limit ?? 0) > 0
+      ? Math.min(Math.floor(limit as number), 50)
+      : DEFAULT_STAFF_EVENT_LIST_LIMIT;
+
+    return {
+      page: safePage,
+      limit: safeLimit,
+      skip: (safePage - 1) * safeLimit,
+      take: safeLimit,
+    };
+  }
 
   private startOfToday() {
     const now = new Date();
@@ -309,6 +325,24 @@ export class EventsService {
       if (da !== db) return da - db;
       return (a.id ?? 0) - (b.id ?? 0);
     });
+  }
+
+  async listStaffEventsPage(
+    staff: StaffContext,
+    filters: StaffEventFilters,
+    pagination?: { page?: number; limit?: number },
+  ) {
+    const { page, limit, skip } = this.normalizePagination(pagination?.page, pagination?.limit);
+    const itemsAll = await this.listStaffEvents(staff, filters);
+    const items = itemsAll.slice(skip, skip + limit);
+
+    return {
+      items,
+      total: itemsAll.length,
+      page,
+      limit,
+      hasMore: skip + items.length < itemsAll.length,
+    };
   }
 
   private async getBranchManagers(branchCode: string) {

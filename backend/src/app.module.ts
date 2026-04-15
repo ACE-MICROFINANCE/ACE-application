@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ConfigModule } from '@nestjs/config';
 import configuration from './config/configuration';
@@ -18,6 +19,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { TtsModule } from './modules/tts/tts.module';
 import { ContactsModule } from './modules/contacts/contacts.module';
 import { SuperAdminModule } from './modules/super-admin/super-admin.module';
+import { RequestPerformanceInterceptor } from './common/interceptors/request-performance.interceptor';
 
 @Module({
   imports: [
@@ -42,6 +44,12 @@ import { SuperAdminModule } from './modules/super-admin/super-admin.module';
     TtsModule,
     ContactsModule,
     SuperAdminModule,
+  ],
+  providers: [
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: RequestPerformanceInterceptor,
+    },
   ],
 })
 export class AppModule {}

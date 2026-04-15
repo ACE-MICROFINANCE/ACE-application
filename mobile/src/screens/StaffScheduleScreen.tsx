@@ -23,6 +23,7 @@ import { Feather } from "@expo/vector-icons";
 import { MobileFrame } from "@components/layout/MobileFrame";
 import { Card } from "@components/ui/Card";
 import { AppButton } from "@components/ui/AppButton";
+import { PaginationBar } from "@components/ui/PaginationBar";
 import { useProfileStore } from "@store/profileStore";
 import {
   appApi,
@@ -33,6 +34,8 @@ import {
 } from "@services/appApi";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useIsFocused } from "@react-navigation/native";
+
+const PAGE_LIMIT = 20;
 
 const EVENT_TYPES: Array<{ value: string; label: string }> = [
   { value: "MEETING", label: "Họp nhóm" },
@@ -141,6 +144,9 @@ const StaffScheduleScreen = () => {
   const MODAL_H = Math.min(WIN_H * 0.9, 720);
 
   const [events, setEvents] = useState<ScheduleItem[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [totalEvents, setTotalEvents] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -226,28 +232,36 @@ const StaffScheduleScreen = () => {
     setTempDate(new Date());
   };
 
-  const fetchSchedule = async () => {
+  const fetchSchedule = async (options?: { page?: number }) => {
+    const page = options?.page ?? 1;
     setIsLoading(true);
     setError(null);
     try {
-      const data = await appApi.getSchedule();
-      setEvents(Array.isArray(data) ? data : []);
+      const data = await appApi.getStaffEvents({ page, limit: PAGE_LIMIT });
+      setEvents(data?.items ?? []);
+      setCurrentPage(data?.page ?? page);
+      setHasMore(Boolean(data?.hasMore));
+      setTotalEvents(data?.total ?? 0);
     } catch (e: any) {
       setError(e?.response?.data?.message ?? "Không tải được lịch sự kiện. Vui lòng thử lại.");
+      setEvents([]);
+      setCurrentPage(1);
+      setHasMore(false);
+      setTotalEvents(0);
     } finally {
       setIsLoading(false);
     }
   };
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchSchedule();
+    await fetchSchedule({ page: 1 });
     setRefreshing(false);
   };
 
   const fetchStaffGroups = async () => {
     try {
-      const data = await appApi.getStaffGroups();
-      setStaffGroups(Array.isArray(data) ? data : []);
+      const data = await appApi.getStaffGroups({ page: 1, limit: 100 });
+      setStaffGroups(Array.isArray(data?.items) ? data.items : []);
     } catch {
       setStaffGroups([]);
     }
@@ -294,7 +308,6 @@ const StaffScheduleScreen = () => {
 
   useEffect(() => {
     if (isStaff) {
-      fetchSchedule();
       fetchStaffGroups();
     }
   }, [isStaff]);
@@ -302,9 +315,14 @@ const StaffScheduleScreen = () => {
   useEffect(() => {
     if (!isStaff) return;
     if (isFocused) {
-      fetchSchedule();
+      fetchSchedule({ page: 1 });
     }
   }, [isFocused, isStaff]);
+
+  const handlePageChange = async (page: number) => {
+    if (isLoading || page === currentPage) return;
+    await fetchSchedule({ page });
+  };
 
   const filteredGroups = useMemo(() => {
     const q = groupSearch.trim().toLowerCase();
@@ -428,7 +446,7 @@ const modalStatus = isBM && selectedEvent?.hidden ? "HIDDEN" : modalStatusRaw;
       const payload = buildUpdatePayload();
       await appApi.updateSchedule(selectedEvent.id as number, payload);
       setModalMode(null);
-      await fetchSchedule();
+      await fetchSchedule({ page: 1 });
     } catch (e: any) {
       setSaveError(e?.response?.data?.message ?? "Lưu lịch thất bại.");
     } finally {
@@ -481,7 +499,7 @@ const modalStatus = isBM && selectedEvent?.hidden ? "HIDDEN" : modalStatusRaw;
 
       await appApi.createEvent(payload);
       setModalMode(null);
-      await fetchSchedule();
+      await fetchSchedule({ page: 1 });
     } catch (e: any) {
       setSaveError(e?.response?.data?.message ?? "Tạo lịch thất bại.");
     } finally {
@@ -689,7 +707,7 @@ const modalStatus = isBM && selectedEvent?.hidden ? "HIDDEN" : modalStatusRaw;
           ) : error ? (
             <View className="rounded-3xl border border-black/5 bg-white overflow-hidden px-4 py-6 items-center" style={{ gap: 8 }}>
               <Text className="text-sm text-red-500">{error}</Text>
-              <AppButton title="Thử lại" onPress={fetchSchedule} />
+              <AppButton title="Thử lại" onPress={() => void fetchSchedule({ page: 1 })} />
             </View>
           ) : !displayedEvents.length ? (
             <View className="rounded-3xl border border-black/5 bg-white overflow-hidden px-4 py-6">
@@ -809,6 +827,16 @@ const modalStatus = isBM && selectedEvent?.hidden ? "HIDDEN" : modalStatusRaw;
               </View>
             ))
           )}
+
+          {!isLoading && displayedEvents.length > 0 ? (
+            <PaginationBar
+              currentPage={currentPage}
+              totalItems={totalEvents}
+              pageSize={PAGE_LIMIT}
+              onPageChange={(page) => void handlePageChange(page)}
+              disabled={isLoading}
+            />
+          ) : null}
         </View>
       </ScrollView>
 
@@ -1149,7 +1177,7 @@ const modalStatus = isBM && selectedEvent?.hidden ? "HIDDEN" : modalStatusRaw;
                                 // BA sẽ không thấy event ẩn; đóng modal để tránh bối rối
                                 closeAllModals();
                               }
-                              await fetchSchedule();
+                              await fetchSchedule({ page: 1 });
                             } catch {
                               setSaveError("Không thể cập nhật trạng thái ẩn.");
                             } finally {
@@ -1207,7 +1235,7 @@ const modalStatus = isBM && selectedEvent?.hidden ? "HIDDEN" : modalStatusRaw;
                                       const payload = buildUpdatePayload();
                                       await appApi.updateSchedule(selectedEvent.id as number, payload);
                                       await appApi.approveSchedule(selectedEvent.id as number);
-                                      await fetchSchedule();
+                                      await fetchSchedule({ page: 1 });
                                       closeAllModals();
                                     } catch (e: any) {
                                       setSaveError(e?.response?.data?.message ?? "Không thể duyệt lịch.");
@@ -1230,7 +1258,7 @@ const modalStatus = isBM && selectedEvent?.hidden ? "HIDDEN" : modalStatusRaw;
                                     setSaveError(null);
                                     try {
                                       await appApi.rejectSchedule(selectedEvent.id as number);
-                                      await fetchSchedule();
+                                      await fetchSchedule({ page: 1 });
                                       closeAllModals();
                                     } catch (e: any) {
                                       setSaveError(e?.response?.data?.message ?? "Không thể từ chối lịch.");

@@ -21,6 +21,12 @@
 ## API
 - `POST /notifications/device-token` (auth required): body `{ token, platform: 'android'|'ios' }`. Uses JWT payload actorKind/userId to upsert DeviceToken.
 
+## Runtime config
+- `PUSH_MODE=expo` (default): gửi push thật qua Expo Push API.
+- `PUSH_MODE=stub`: tắt gửi push (chỉ lưu DB notification).
+- `EXPO_PUSH_ENDPOINT` (optional, default `https://exp.host/--/api/v2/push/send`).
+- `EXPO_ACCESS_TOKEN` (optional): Expo access token cho protected push projects.
+
 ## Idempotency
 - Every send call must provide `notificationKey`; Notification has a UNIQUE constraint. Duplicates are skipped so reminder cron or repeated events do not spam users.
 

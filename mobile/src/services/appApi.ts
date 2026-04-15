@@ -57,6 +57,14 @@ export type LoanQrResponse = {
   amount: number;
 };
 
+export type PaginatedResponse<T> = {
+  items: T[];
+  total: number;
+  page: number;
+  limit: number;
+  hasMore: boolean;
+};
+
 export type StaffCustomerItem = {
   memberNo: string;
   fullName: string;
@@ -318,8 +326,18 @@ export const appApi = {
     const { data } = await apiClient.get('/savings'); // CHANGED: lấy sổ tiết kiệm
     return data;
   },
-  getStaffCustomers: async (q?: string): Promise<StaffCustomerItem[]> => {
-    const { data } = await apiClient.get('/staff/customers', { params: q ? { q } : undefined }); // CHANGED
+  getStaffCustomers: async (params?: {
+    q?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<PaginatedResponse<StaffCustomerItem>> => {
+    const { data } = await apiClient.get('/staff/customers', {
+      params: {
+        ...(params?.q ? { q: params.q } : {}),
+        ...(params?.page ? { page: params.page } : {}),
+        ...(params?.limit ? { limit: params.limit } : {}),
+      },
+    }); // CHANGED
     return data;
   },
   getStaffCustomerDetail: async (memberNo: string): Promise<StaffCustomerDetail> => {
@@ -342,8 +360,18 @@ export const appApi = {
     const { data } = await apiClient.patch(`/staff/customers/${memberNo}/accessibility`, { enabled }); // CHANGED
     return data;
   },
-  getStaffUsers: async (q?: string): Promise<StaffUserItem[]> => {
-    const { data } = await apiClient.get('/staff-users', { params: q ? { q } : undefined });
+  getStaffUsers: async (params?: {
+    q?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<PaginatedResponse<StaffUserItem>> => {
+    const { data } = await apiClient.get('/staff-users', {
+      params: {
+        ...(params?.q ? { q: params.q } : {}),
+        ...(params?.page ? { page: params.page } : {}),
+        ...(params?.limit ? { limit: params.limit } : {}),
+      },
+    });
     return data;
   },
   getStaffBranches: async (): Promise<StaffBranchItem[]> => {
@@ -394,6 +422,24 @@ export const appApi = {
     const { data } = await apiClient.get('/schedule');
     return data;
   },
+  getStaffEvents: async (params?: {
+    from?: string;
+    to?: string;
+    eventType?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<PaginatedResponse<ScheduleItem>> => {
+    const { data } = await apiClient.get('/events', {
+      params: {
+        ...(params?.from ? { from: params.from } : {}),
+        ...(params?.to ? { to: params.to } : {}),
+        ...(params?.eventType ? { eventType: params.eventType } : {}),
+        ...(params?.page ? { page: params.page } : {}),
+        ...(params?.limit ? { limit: params.limit } : {}),
+      },
+    });
+    return data;
+  },
   getScheduleDetail: async (id: number): Promise<ScheduleDetail> => {
     const { data } = await apiClient.get(`/schedule/${id}`); // CHANGED: chi tiết lịch
     return data;
@@ -422,8 +468,18 @@ export const appApi = {
     const { data } = await apiClient.post('/events', payload); // CHANGED: alias create schedule
     return data;
   },
-  getStaffGroups: async (): Promise<StaffGroupItem[]> => {
-    const { data } = await apiClient.get('/staff/groups'); // CHANGED: nhóm staff
+  getStaffGroups: async (params?: {
+    page?: number;
+    limit?: number;
+    branchCode?: string;
+  }): Promise<PaginatedResponse<StaffGroupItem>> => {
+    const { data } = await apiClient.get('/staff/groups', {
+      params: {
+        ...(params?.page ? { page: params.page } : {}),
+        ...(params?.limit ? { limit: params.limit } : {}),
+        ...(params?.branchCode ? { branchCode: params.branchCode } : {}),
+      },
+    }); // CHANGED: nhóm staff
     return data;
   },
   createGroupRequest: async (payload: GroupRequestPayload) => {
@@ -434,26 +490,47 @@ export const appApi = {
     const { data } = await apiClient.post('/staff/group-requests/update', payload);
     return data;
   },
-  getStaffGroupRequests: async (params?: { status?: string; branchCode?: string | null }): Promise<GroupRequestItem[]> => {
+  getStaffGroupRequests: async (params?: {
+    status?: string;
+    branchCode?: string | null;
+    page?: number;
+    limit?: number;
+  }): Promise<PaginatedResponse<GroupRequestItem>> => {
     const { data } = await apiClient.get('/staff/group-requests', {
       params: {
         ...(params?.status ? { status: params.status } : {}),
         ...(params?.branchCode ? { branchCode: params.branchCode } : {}),
+        ...(params?.page ? { page: params.page } : {}),
+        ...(params?.limit ? { limit: params.limit } : {}),
       },
     });
-    return (data || []).map((r: any) => ({
-      ...r,
-      groupName: r.groupName ?? r.proposedGroupName ?? r.targetGroupName ?? '',
-      groupCode: r.groupCode ?? r.proposedGroupCode ?? r.targetGroupCode ?? null,
-    }));
+    return {
+      ...data,
+      items: (data?.items || []).map((r: any) => ({
+        ...r,
+        groupName: r.groupName ?? r.proposedGroupName ?? r.targetGroupName ?? '',
+        groupCode: r.groupCode ?? r.proposedGroupCode ?? r.targetGroupCode ?? null,
+      })),
+    };
   },
-  getMyGroupRequests: async (): Promise<GroupRequestItem[]> => {
-    const { data } = await apiClient.get('/staff/group-requests/mine');
-    return (data || []).map((r: any) => ({
-      ...r,
-      groupName: r.groupName ?? r.proposedGroupName ?? r.targetGroupName ?? '',
-      groupCode: r.groupCode ?? r.proposedGroupCode ?? r.targetGroupCode ?? null,
-    }));
+  getMyGroupRequests: async (params?: {
+    page?: number;
+    limit?: number;
+  }): Promise<PaginatedResponse<GroupRequestItem>> => {
+    const { data } = await apiClient.get('/staff/group-requests/mine', {
+      params: {
+        ...(params?.page ? { page: params.page } : {}),
+        ...(params?.limit ? { limit: params.limit } : {}),
+      },
+    });
+    return {
+      ...data,
+      items: (data?.items || []).map((r: any) => ({
+        ...r,
+        groupName: r.groupName ?? r.proposedGroupName ?? r.targetGroupName ?? '',
+        groupCode: r.groupCode ?? r.proposedGroupCode ?? r.targetGroupCode ?? null,
+      })),
+    };
   },
   approveGroupRequest: async (id: number) => {
     const { data } = await apiClient.post(`/staff/group-requests/${id}/approve`);

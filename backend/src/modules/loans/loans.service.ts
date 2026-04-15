@@ -9,6 +9,12 @@ import { BijliClientService } from './bijli-client.service';
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
 const LOAN_SYNC_TTL_MS = 6 * 60 * 60 * 1000; // [BIJLI-LOAN] cache TTL 6 hours
+const PAYMENT_ACCOUNT_BY_BRANCH: Record<string, string> = {
+  '001': '125000075242',
+  '002': '127000102458',
+  '003': '127000064275',
+  '004': '120000141444',
+};
 
 @Injectable()
 export class LoansService {
@@ -83,6 +89,15 @@ export class LoansService {
     // CHANGED: parse Decimal-like values to number safely
     const decimal = this.parseDecimal(value);
     return decimal ? Number(decimal) : 0;
+  }
+
+  private resolvePaymentAccountNumber(branchCode?: string | null) {
+    const normalizedBranchCode = String(branchCode ?? '').trim();
+    const mappedAccount = normalizedBranchCode
+      ? PAYMENT_ACCOUNT_BY_BRANCH[normalizedBranchCode]
+      : undefined;
+    if (mappedAccount) return mappedAccount;
+    return this.configService.get<string>('payment.accountNumber') ?? '';
   }
 
   // [BIJLI-LOAN-RULE] loan type mapping from product name
@@ -228,7 +243,7 @@ export class LoansService {
 
     // [BIJLI-LOAN] keep existing VietQR payload for current FE contract
     const bankBin = this.configService.get<string>('payment.bankBin') ?? '';
-    const accountNumber = this.configService.get<string>('payment.accountNumber') ?? '';
+    const accountNumber = this.resolvePaymentAccountNumber(loan.customer?.branchCode);
     const accountName = this.configService.get<string>('payment.accountName') ?? '';
 
     const lateAmount = options?.lateAmount ?? 0; // CHANGED: lateAmount từ BE
@@ -567,7 +582,7 @@ export class LoansService {
     }
 
     const bankBin = this.configService.get<string>('payment.bankBin') ?? '';
-    const accountNumber = this.configService.get<string>('payment.accountNumber') ?? '';
+    const accountNumber = this.resolvePaymentAccountNumber(result.loan.customer?.branchCode);
     const accountName = this.configService.get<string>('payment.accountName') ?? '';
     const normalizedVillageName = removeVietnameseAccents(result.loan.customer.villageName || '').toUpperCase();
     const normalizedName = removeVietnameseAccents(result.loan.customer.fullName || '').toUpperCase();

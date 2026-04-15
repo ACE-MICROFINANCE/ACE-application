@@ -11,6 +11,7 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3001
+      - TZ=Asia/Ho_Chi_Minh
     ports:
       # Bind to localhost only; nginx on VPS will reverse proxy to this port.
       - "127.0.0.1:3001:3001"

@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MobileFrame } from '@components/layout/MobileFrame';
 import { Card } from '@components/ui/Card';
 import { AppButton } from '@components/ui/AppButton';
+import { PaginationBar } from '@components/ui/PaginationBar';
 import { useProfileStore } from '@store/profileStore';
 import {
   appApi,
@@ -28,6 +29,7 @@ import {
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 
 type ModalMode = 'create' | 'edit' | null;
+const PAGE_LIMIT = 20;
 
 type StatusBadge = { text: string; className: string };
 
@@ -67,6 +69,9 @@ const StaffCustomersScreen = () => {
   const MODAL_H = Math.min(WIN_H * 0.86, 720);
 
   const [customers, setCustomers] = useState<StaffCustomerItem[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [totalCustomers, setTotalCustomers] = useState(0);
   const [searchValue, setSearchValue] = useState('');
   const [query, setQuery] = useState('');
   const searchRef = useRef<TextInput | null>(null);
@@ -92,14 +97,23 @@ const StaffCustomersScreen = () => {
   const [lockLoading, setLockLoading] = useState(false);
   const [accessibilityLoading, setAccessibilityLoading] = useState(false);
 
-  const fetchCustomers = async (q?: string) => {
+  const fetchCustomers = async (options?: { q?: string; page?: number }) => {
+    const q = options?.q?.trim() || undefined;
+    const page = options?.page ?? 1;
     setLoading(true);
     setError(null);
     try {
-      const data = await appApi.getStaffCustomers(q?.trim() || undefined);
-      setCustomers(Array.isArray(data) ? data : []);
+      const data = await appApi.getStaffCustomers({ q, page, limit: PAGE_LIMIT });
+      setCustomers(data?.items ?? []);
+      setCurrentPage(data?.page ?? page);
+      setHasMore(Boolean(data?.hasMore));
+      setTotalCustomers(data?.total ?? 0);
     } catch (e: any) {
       setError(e?.response?.data?.message ?? 'Unable to load customer list.');
+      setCustomers([]);
+      setCurrentPage(1);
+      setHasMore(false);
+      setTotalCustomers(0);
     } finally {
       setLoading(false);
     }
@@ -121,11 +135,6 @@ const StaffCustomersScreen = () => {
 
   useEffect(() => {
     if (!isStaff) return;
-    fetchCustomers();
-  }, [isStaff]);
-
-  useEffect(() => {
-    if (!isStaff) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       setQuery(searchValue.trim());
@@ -134,8 +143,13 @@ const StaffCustomersScreen = () => {
 
   useEffect(() => {
     if (!isStaff) return;
-    fetchCustomers(query);
+    fetchCustomers({ q: query, page: 1 });
   }, [query, isStaff]);
+
+  const handlePageChange = async (page: number) => {
+    if (loading || page === currentPage) return;
+    await fetchCustomers({ q: query, page });
+  };
 
   const openCreate = () => {
     setModalMode('create');
@@ -184,7 +198,7 @@ const StaffCustomersScreen = () => {
       };
       await appApi.createCustomerAccountForStaff(payload);
       setModalMode(null);
-      await fetchCustomers(query);
+      await fetchCustomers({ q: query, page: 1 });
     } catch (e: any) {
       setSaveError(e?.response?.data?.message ?? 'Unable to create customer account.');
     } finally {
@@ -219,7 +233,7 @@ const StaffCustomersScreen = () => {
       setResetPassword('');
       setShowResetPassword(false);
       setShowTempPassword(true);
-      await fetchCustomers(query);
+      await fetchCustomers({ q: query, page: 1 });
     } catch (e: any) {
       setSaveError(e?.response?.data?.message ?? 'Unable to reset password.');
     } finally {
@@ -248,7 +262,7 @@ const StaffCustomersScreen = () => {
       setSelectedDetail((prev) =>
         prev && prev.credential ? { ...prev, credential: { ...prev.credential, isActive: !lock } } : prev,
       );
-      await fetchCustomers(query);
+      await fetchCustomers({ q: query, page: 1 });
     } catch (e: any) {
       setSaveError(e?.response?.data?.message ?? 'Unable to update account status.');
     } finally {
@@ -263,7 +277,7 @@ const StaffCustomersScreen = () => {
     try {
       await appApi.setCustomerAccessibilityForStaff(selectedDetail.memberNo, enabled);
       setSelectedDetail((prev) => (prev ? { ...prev, accessibilityEnabled: enabled } : prev));
-      await fetchCustomers(query);
+      await fetchCustomers({ q: query, page: 1 });
     } catch (e: any) {
       setSaveError(e?.response?.data?.message ?? 'Unable to update accessibility.');
     } finally {
@@ -378,6 +392,16 @@ const StaffCustomersScreen = () => {
               })
             )}
           </View>
+
+          {!loading && customers.length > 0 ? (
+            <PaginationBar
+              currentPage={currentPage}
+              totalItems={totalCustomers}
+              pageSize={PAGE_LIMIT}
+              onPageChange={(page) => void handlePageChange(page)}
+              disabled={loading}
+            />
+          ) : null}
         </View>
       </ScrollView>
 

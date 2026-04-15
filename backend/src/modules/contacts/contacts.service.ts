@@ -1,10 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+﻿import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../database/prisma.service';
 import { normalizeGroupNameKey } from '../../common/utils/normalize-group-name.util';
 
 export type ContactItem = {
-  type: 'HOTLINE' | 'AGRI' | 'SOCIAL' | string;
+  type: 'HOTLINE' | 'AGRI' | 'LIVESTOCK' | 'SOCIAL' | 'SOCIAL_OFFICER' | string;
   label: string;
   phone: string;
 };
@@ -32,17 +32,19 @@ export class ContactsService {
     }
 
     try {
-      const parsed = JSON.parse(raw);
+      const parsed = JSON.parse(this.unwrapWrappedQuotes(raw));
       if (parsed && typeof parsed === 'object') {
         Object.entries(parsed).forEach(([branchCode, contacts]) => {
           if (Array.isArray(contacts)) {
-            this.contactsByBranch[branchCode] = contacts.filter(
+            const key = this.normalizeBranchCodeKey(branchCode) || branchCode.trim();
+            this.contactsByBranch[key] = contacts.filter(
               (c) =>
                 c &&
                 typeof c.phone === 'string' &&
                 typeof c.label === 'string' &&
-                // KHÔNG lấy số SOCIAL từ .env nữa; để DB SSO cung cấp
-                c.type !== 'SOCIAL',
+                // SOCIAL comes from group SSO/CCO mapping in DB.
+                c.type !== 'SOCIAL' &&
+                c.type !== 'SOCIAL_OFFICER',
             ) as ContactItem[];
           }
         });
@@ -54,7 +56,7 @@ export class ContactsService {
     const rawGroup = this.configService.get<string>('CONTACTS_BY_GROUP_JSON');
     if (rawGroup) {
       try {
-        const parsed = JSON.parse(rawGroup);
+        const parsed = JSON.parse(this.unwrapWrappedQuotes(rawGroup));
         if (parsed && typeof parsed === 'object') {
           Object.entries(parsed).forEach(([groupName, contacts]) => {
             if (Array.isArray(contacts)) {
@@ -64,7 +66,8 @@ export class ContactsService {
                   c &&
                   typeof c.phone === 'string' &&
                   typeof c.label === 'string' &&
-                  c.type !== 'SOCIAL',
+                  c.type !== 'SOCIAL' &&
+                  c.type !== 'SOCIAL_OFFICER',
               ) as ContactItem[];
             }
           });
@@ -75,6 +78,25 @@ export class ContactsService {
     }
   }
 
+  private unwrapWrappedQuotes(raw: string) {
+    const value = raw.trim();
+    if (value.length >= 2) {
+      const first = value[0];
+      const last = value[value.length - 1];
+      if ((first === "'" && last === "'") || (first === '"' && last === '"')) {
+        return value.slice(1, -1);
+      }
+    }
+    return value;
+  }
+
+  private normalizeBranchCodeKey(value?: string | null) {
+    const trimmed = (value || '').trim();
+    if (!trimmed) return '';
+    if (/^\d+$/.test(trimmed)) return trimmed.padStart(3, '0');
+    return trimmed;
+  }
+
   private mergeContacts(base: ContactItem[], overrides: ContactItem[]) {
     const map = new Map<string, ContactItem>();
     base.forEach((c) => map.set(c.type || c.label, c));
@@ -83,69 +105,74 @@ export class ContactsService {
   }
 
   async getByBranchCode(branchCode?: string, groupName?: string): Promise<ContactsResponse> {
-    const normalized = (branchCode || '').trim();
-    const contacts = normalized && Array.isArray(this.contactsByBranch[normalized])
-      ? this.contactsByBranch[normalized].filter((c) => c.type !== 'SOCIAL')
-      : [];
-    let merged = contacts;
+    const normalized = this.normalizeBranchCodeKey(branchCode);
+    const rawBranchCode = (branchCode || '').trim();
+    const lookupCode =
+      (normalized && this.contactsByBranch[normalized] ? normalized : '') ||
+      (rawBranchCode && this.contactsByBranch[rawBranchCode] ? rawBranchCode : '') ||
+      normalized ||
+      rawBranchCode;
+    const branchContacts =
+      lookupCode && Array.isArray(this.contactsByBranch[lookupCode])
+        ? this.contactsByBranch[lookupCode].filter((c) => c.type !== 'SOCIAL' && c.type !== 'SOCIAL_OFFICER')
+        : [];
+
+    let merged = branchContacts;
     let socialPhone: string | null = null;
 
-    // Ưu tiên lấy SSO từ DB theo group
     if (groupName) {
       const gKey = normalizeGroupNameKey(groupName) || groupName;
 
-      // Nếu file JSON có contacts theo group thì merge vào trước
+      // Merge optional group-level overrides from env first.
       const gContacts = this.contactsByGroup[gKey];
       if (Array.isArray(gContacts) && gContacts.length) {
         merged = this.mergeContacts(merged, gContacts);
       }
 
-      // Tìm group trong DB để lấy SSO được gán
+      // Then load SSO/CCO phone from DB mapping.
       const group = await this.prisma.group.findFirst({
         where: {
           groupNameKey: gKey,
-          ...(normalized ? { branchCode: normalized } : {}),
+          ...(lookupCode ? { branchCode: lookupCode } : {}),
         },
         include: { sso: true },
       });
 
-      const ssoPhone = group?.sso?.phoneNumber ?? null;
+      const ssoPhone = group?.sso?.phoneNumber?.trim() || null;
       if (ssoPhone) {
-        const ssoContact: ContactItem = {
-          type: 'SOCIAL',
-          label: group?.sso?.fullName || 'CCO phụ trách',
-          phone: ssoPhone,
-        };
-        const socialOfficer: ContactItem = {
-          type: 'SOCIAL_OFFICER',
-          label: 'Cán bộ tín dụng xã hội',
-          phone: ssoPhone,
-        };
-        merged = this.mergeContacts(merged, [ssoContact, socialOfficer]);
+        const ssoName = group?.sso?.fullName?.trim() || 'Cán bộ công tác xã hội';
+        merged = this.mergeContacts(merged, [
+          {
+            type: 'SOCIAL_OFFICER',
+            label: ssoName,
+            phone: ssoPhone,
+          },
+        ]);
         socialPhone = ssoPhone;
       }
     }
 
-    // fallback nếu chưa lấy được từ DB
     if (!socialPhone) {
-      socialPhone = merged.find((c) => c.type === 'SOCIAL')?.phone ?? null;
+      socialPhone =
+        merged.find((c) => c.type === 'SOCIAL_OFFICER')?.phone ??
+        merged.find((c) => c.type === 'SOCIAL')?.phone ??
+        null;
     }
 
-    // Bảo đảm luôn có dòng CÁN BỘ CÔNG TÁC XÃ HỘI (dùng cùng số SSO/social nếu có)
     if (socialPhone) {
       const hasSocialOfficer = merged.some((c) => c.type === 'SOCIAL_OFFICER');
       if (!hasSocialOfficer) {
         merged = this.mergeContacts(merged, [
           {
             type: 'SOCIAL_OFFICER',
-            label: 'Cán bộ công tác xã hội',
+            label: 'SĐT Cán bộ công tác xã hội',
             phone: socialPhone,
           },
         ]);
       }
     }
 
-    // Đảm bảo tách riêng trồng trọt / chăn nuôi: nếu thiếu LIVESTOCK mà có AGRI thì duplicate với label mới
+    // Ensure we always have separate AGRI/LIVESTOCK lines.
     const hasAgri = merged.some((c) => c.type === 'AGRI');
     const hasLivestock = merged.some((c) => c.type === 'LIVESTOCK');
     if (hasAgri && !hasLivestock) {
@@ -155,14 +182,14 @@ export class ContactsService {
           {
             ...agri,
             type: 'LIVESTOCK',
-            label: agri.label.replace(/trồng trọt.*$/i, 'Cán bộ chăn nuôi').replace(/&.*$/i, '').trim() || 'Cán bộ chăn nuôi',
+            label: 'SĐT Cán bộ chăn nuôi',
           },
         ]);
       }
     }
 
     return {
-      branchCode: normalized,
+      branchCode: lookupCode,
       contacts: merged,
       socialPhone,
     };

@@ -8,7 +8,11 @@ import axios, {
 import { authStore } from '@/hooks/useAuth';
 
 const axiosClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL,
+  baseURL:
+    (process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || 'https://api.anhchiem.org').replace(
+      /\/+$/,
+      '',
+    ),
 });
 
 type RetriableAxiosConfig = AxiosRequestConfig & { _retry?: boolean };
@@ -33,10 +37,12 @@ const refreshTokens = async (): Promise<string | null> => {
   }
 
   try {
-    const response = await axios.post(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL ?? ''}/auth/refresh`,
-      { refreshToken },
-    );
+    const apiBase =
+      (process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || 'https://api.anhchiem.org').replace(
+        /\/+$/,
+        '',
+      );
+    const response = await axios.post(`${apiBase}/auth/refresh`, { refreshToken });
     const data = response.data as { accessToken: string; refreshToken: string };
     authStore.updateTokens(data);
     return data.accessToken;
